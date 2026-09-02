@@ -136,7 +136,7 @@ export default function Home() {
     setError(null)
     
     try {
-      const response = await fetch(`/api/route?page=${page}&limit=10`)
+      const response = await fetch(`/api?page=${page}&limit=10`)
       const result: ApiResponse<Post[]> = await response.json()
       
       if (result.success && result.data) {
@@ -167,7 +167,7 @@ export default function Home() {
     setError(null)
 
     try {
-      const url = editingId ? '/api/route' : '/api/route'
+      const url = editingId ? '/api' : '/api'
       const method = editingId ? 'PUT' : 'POST'
       
       const body = editingId
@@ -216,7 +216,7 @@ export default function Home() {
     if (!confirm('هل أنت متأكد من حذف هذا المنشور؟')) return
 
     try {
-      const response = await fetch(`/api/route?id=${id}&authorId=${currentUserId}`, {
+      const response = await fetch(`/api?id=${id}&authorId=${currentUserId}`, {
         method: 'DELETE',
       })
       
@@ -272,7 +272,7 @@ export default function Home() {
               >
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">منشور جديد</span>
-                <span sm:hidden>+</span>
+                <span className="sm:hidden">+</span>
               </Button>
             </div>
           </div>

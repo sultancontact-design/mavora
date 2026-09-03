@@ -27,7 +27,7 @@ export async function GET(
         phone,
         address,
         is_verified,
-        is_active,
+        isActive,
         created_at,
         updated_at,
         owner:profiles!organizations_owner_id_fkey(id, display_name, avatar_url),

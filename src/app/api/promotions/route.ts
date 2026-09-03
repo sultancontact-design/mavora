@@ -215,7 +215,7 @@ export async function GET(request: NextRequest) {
       .from('promotions')
       .select('*')
       .eq('listing_id', listing_id)
-      .eq('is_active', true)
+      .eq('isActive', true)
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false });
 

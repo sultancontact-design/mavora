@@ -8,7 +8,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('token_packages')
       .select('*')
-      .eq('is_active', true)
+      .eq('isActive', true)
       .order('sort_order', { ascending: true });
 
     if (error) {

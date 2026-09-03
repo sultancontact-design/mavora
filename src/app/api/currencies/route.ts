@@ -8,7 +8,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('currencies')
       .select('*')
-      .eq('is_active', true)
+      .eq('isActive', true)
       .order('code', { ascending: true });
 
     if (error) {

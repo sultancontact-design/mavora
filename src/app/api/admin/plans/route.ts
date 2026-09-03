@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       images_per_listing,
       duration_days,
       features,
-      is_active,
+      isActive,
       sort_order,
       highlight_color,
     } = body;
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
         images_per_listing: images_per_listing || 5,
         duration_days: duration_days || 30,
         features: features || [],
-        is_active: is_active !== false,
+        isActive: is_active !== false,
         sort_order: sort_order || 0,
         highlight_color: highlight_color || null,
       })

@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       .from('plans')
       .select('*')
       .eq('id', plan_id)
-      .eq('is_active', true)
+      .eq('isActive', true)
       .single();
 
     if (planError || !plan) {

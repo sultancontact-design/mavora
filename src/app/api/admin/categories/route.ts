@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name_en, name_ar, name_fr, parent_id, icon_name, slug, is_active } = body;
+    const { name_en, name_ar, name_fr, parent_id, icon_name, slug, isActive } = body;
 
     // Validate required fields
     if (!name_ar || !name_en) {
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
         parent_id: parent_id || null,
         icon_name: icon_name || '',
         slug: categorySlug,
-        is_active: is_active !== false,
+        isActive: is_active !== false,
         sort_order: (maxOrder ?? 0) + 1,
       })
       .select()
@@ -172,7 +172,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { updates } = body as { updates: Array<{ id: string; sort_order?: number; is_active?: boolean; name_ar?: string; name_en?: string; name_fr?: string }> };
+    const { updates } = body as { updates: Array<{ id: string; sort_order?: number; isActive?: boolean; name_ar?: string; name_en?: string; name_fr?: string }> };
 
     if (!updates || !Array.isArray(updates) || updates.length === 0) {
       return NextResponse.json(

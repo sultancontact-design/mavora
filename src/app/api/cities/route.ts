@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('cities')
       .select('*')
-      .eq('is_active', true)
+      .eq('isActive', true)
       .order('sort_order', { ascending: true });
 
     if (country_id) {

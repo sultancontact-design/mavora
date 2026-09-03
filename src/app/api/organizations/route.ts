@@ -27,13 +27,13 @@ export async function GET(request: NextRequest) {
         phone,
         address,
         is_verified,
-        is_active,
+        isActive,
         created_at,
         updated_at,
         owner:profiles!organizations_owner_id_fkey(id, display_name, avatar_url),
         member_count:organization_members(count)
       `, { count: 'exact' })
-      .eq('is_active', true)
+      .eq('isActive', true)
       .order('created_at', { ascending: false });
 
     if (search) {

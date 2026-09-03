@@ -2,74 +2,89 @@ const fs = require('fs');
 const { createClient } = require('@supabase/supabase-js');
 
 const SUPABASE_URL = 'https://kyanecjjautqmuowbtvy.supabase.co';
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5YW5lY2pqYXV0cW11b3widHZ5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODI5ODM2MiwiZXhwIjoyMTAzODc0MzYyfQ.CfYJjFHkacydBjS7U2kE44K9o4k8fH5DexC9Xd7sdN0';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5YW5lY2pqYXV0cW11b3didHZ5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODI5ODM2MiwiZXhwIjoyMTAzODc0MzYyfQ.CfYJjFHkacydBjS7U2kE44K9o4k8fH5DexC9Xd7sdN0';
 
-async function runMigration() {
-  console.log('🚀 Starting database migration to Supabase...\n');
+async function executeMigration() {
+  console.log('🚀 Starting MAVORA Database Migration...\n');
   
   const sqlContent = fs.readFileSync('prisma/migrations/20260103000000_init/migration.sql', 'utf8');
-  console.log(`📄 SQL file size: ${sqlContent.length} characters`);
   
-  // Better SQL splitting - handle statements properly
+  // Parse SQL into individual statements
   const lines = sqlContent.split('\n');
   let currentStatement = '';
   const statements = [];
   
   for (const line of lines) {
     const trimmedLine = line.trim();
-    
-    // Skip comment-only lines but keep them for context
-    if (trimmedLine.startsWith('--')) {
-      continue;
-    }
+    if (trimmedLine.startsWith('--')) continue;
     
     currentStatement += line + '\n';
     
-    // Check if statement ends with semicolon
     if (trimmedLine.endsWith(';')) {
       const cleanStmt = currentStatement.trim();
-      if (cleanStmt.length > 10) { // Only add non-trivial statements
+      if (cleanStmt.length > 10) {
         statements.push(cleanStmt);
       }
       currentStatement = '';
     }
   }
   
-  console.log(`📊 Found ${statements.length} SQL statements to execute\n`);
+  console.log(`📊 Total SQL Statements: ${statements.length}\n`);
   
-  // Log first few statements
-  console.log('Sample statements:');
-  statements.slice(0, 3).forEach((s, i) => {
-    console.log(`  ${i+1}. ${s.substring(0, 80)}...`);
-  });
+  // Try executing via fetch to various endpoints
+  console.log('🔄 Attempting to execute SQL via API...\n');
   
-  // Try to execute via Supabase SQL API
-  console.log('\n🔄 Attempting to execute via Supabase API...');
+  // Test with a simple CREATE TABLE first
+  const testSQL = `CREATE TABLE IF NOT EXISTS _migration_test (
+    id serial PRIMARY KEY,
+    created_at timestamp default now()
+  );`;
   
-  // Method 1: Try using the internal _sql endpoint (if available)
+  // Method 1: Try /rpc endpoint
+  console.log('Method 1: Trying /rpc/exec_sql...');
   try {
-    const response = await fetch(`${SUPABASE_URL}/pg/query`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/exec_sql`, {
       method: 'POST',
       headers: {
-        'apikey': SUPABASE_SERVICE_KEY,
-        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ query: 'SELECT 1 as test' })
+      body: JSON.stringify({ sql_string: testSQL })
     });
-    
-    const result = await response.json();
-    console.log('PG Query API Response:', JSON.stringify(result).substring(0, 200));
-  } catch (err) {
-    console.log('PG Query not available:', err.message);
+    console.log('   Status:', res.status, await res.text().catch(() => ''));
+  } catch (e) {
+    console.log('   Error:', e.message);
   }
   
-  // Method 2: Check if we can use the dashboard SQL editor endpoint
-  console.log('\n💡 To complete the migration, you can:');
-  console.log('   1. Go to your Supabase Dashboard');
-  console.log('   2. Open SQL Editor');
-  console.log('   3. Copy and paste the content of: prisma/migrations/20260103000000_init/migration.sql');
-  console.log('   4. Run the SQL');
+  // Method 2: Try direct pg endpoint
+  console.log('\nMethod 2: Trying /pg/sql...');
+  try {
+    const res = await fetch(`${SUPABASE_URL}/pg/sql`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ query: testSQL })
+    });
+    console.log('   Status:', res.status, (await res.text()).substring(0, 100));
+  } catch (e) {
+    console.log('   Error:', e.message);
+  }
+  
+  console.log('\n' + '='.repeat(50));
+  console.log('\n💡 MIGRATION INSTRUCTIONS:');
+  console.log('='.repeat(50));
+  console.log('\nThe SQL file is ready at:');
+  console.log('   📄 prisma/migrations/20260103000000_init/migration.sql');
+  console.log('\nTo complete migration:');
+  console.log('   1. Open https://supabase.com/dashboard/project/kyanecjjautqmuowbtvy/sql');
+  console.log('   2. Click "New Query"');
+  console.log('   3. Copy the entire content of the SQL file above');
+  console.log('   4. Paste and press Run (Ctrl+Enter)');
+  console.log('   5. Wait for all 40+ tables to be created ✅\n');
 }
 
-runMigration().catch(console.error);
+executeMigration().catch(console.error);

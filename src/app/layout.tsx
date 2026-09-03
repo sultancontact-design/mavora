@@ -1,31 +1,118 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, IBM_Plex_Sans_Arabic } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "sonner";
+import AuthProvider from "@/components/auth/AuthProvider";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const ibmPlexArabic = IBM_Plex_Sans_Arabic({
+  variable: "--font-ibm-plex-arabic",
+  weight: ["300", "400", "500", "600", "700"],
+  subsets: ["arabic", "latin"],
+  display: "swap",
 });
+
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://mavora.ma";
+
+const titleTemplates = {
+  ar: "مافورا — سوقك الإلكتروني الموثوق في المغرب وشمال إفريقيا",
+  fr: "MAVORA — Votre marché en ligne de confiance au Maroc et en Afrique du Nord",
+  en: "MAVORA — Your Trusted Online Marketplace in Morocco & North Africa",
+};
+
+const descriptionTemplates = {
+  ar: "مافورا هي أكبر سوق إلكتروني في المغرب وشمال إفريقيا. اشترِ وبِع السيارات والعقارات والإلكترونيات والأزياء والمزيد. آمن وسريع وموثوق.",
+  fr: "MAVORA est le plus grand marché en ligne du Maroc et d'Afrique du Nord. Achetez et vendez des véhicules, immobilier, électronique, mode et plus encore. Sûr, rapide et fiable.",
+  en: "MAVORA is the largest online marketplace in Morocco and North Africa. Buy and sell vehicles, real estate, electronics, fashion, and more. Safe, fast, and trusted.",
+};
 
 export const metadata: Metadata = {
-  title: "نظام إدارة المنشورات | آمن وموثوق",
-  description: "منصة آمنة لإدارة المحتوى مع حماية متقدمة من XSS و SQL Injection",
-  keywords: ["إدارة المحتوى", "منشورات", "أمان", "Next.js", "TypeScript", "RTL", "عربي"],
-  authors: [{ name: "فريق التطوير" }],
+  title: {
+    default: titleTemplates.ar,
+    template: "%s | MAVORA",
+  },
+  description: descriptionTemplates.ar,
+  keywords: [
+    "MAVORA",
+    "marketplace",
+    "Morocco",
+    "classifieds",
+    "buy",
+    "sell",
+    "vehicles",
+    "real estate",
+    "electronics",
+    "North Africa",
+    "MENA",
+    "المغرب",
+    "سوق إلكتروني",
+    "إعلانات",
+    "سيارات",
+    "عقارات",
+  ],
+  authors: [{ name: "MAVORA" }],
   icons: {
-    icon: "/logo.svg",
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
+  metadataBase: new URL(siteUrl),
+  alternates: {
+    canonical: "/",
+    languages: {
+      "ar-MA": "/",
+      "fr-MA": "/?lang=fr",
+      "en-US": "/?lang=en",
+    },
   },
   openGraph: {
-    title: "نظام إدارة المنشورات",
-    description: "منصة آمنة لإدارة المحتوى",
+    title: titleTemplates.ar,
+    description: descriptionTemplates.ar,
+    siteName: "MAVORA",
     type: "website",
-    locale: "ar_SA",
+    locale: "ar_MA",
+    alternateLocale: ["fr_MA", "en_US"],
+    url: siteUrl,
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "MAVORA — Online Marketplace",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: titleTemplates.ar,
+    description: descriptionTemplates.ar,
+    images: ["/og-image.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 5,
+  },
+  other: {
+    "theme-color": [
+      { media: "(prefers-color-scheme: light)", color: "#0f2b46" },
+      { media: "(prefers-color-scheme: dark)", color: "#0a1f33" },
+    ],
   },
 };
 
@@ -36,11 +123,24 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
+      <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="alternate" hrefLang="ar" href={`${siteUrl}/`} />
+        <link rel="alternate" hrefLang="fr" href={`${siteUrl}/?lang=fr`} />
+        <link rel="alternate" hrefLang="en" href={`${siteUrl}/?lang=en`} />
+        <link rel="alternate" hrefLang="x-default" href={`${siteUrl}/`} />
+        <meta name="theme-color" content="#0f2b46" />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+        className={`${inter.variable} ${ibmPlexArabic.variable} antialiased bg-background text-foreground`}
       >
-        {children}
-        <Toaster />
+        <AuthProvider>
+          <div className="min-h-screen flex flex-col">
+            {children}
+          </div>
+        </AuthProvider>
+        <Toaster richColors position={"top-center"} />
       </body>
     </html>
   );

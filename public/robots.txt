@@ -1,14 +1,7 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
+# MAVORA Sitemap & Crawler Rules
 User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /setup
+
+Sitemap: https://mavora.ma/sitemap.xml

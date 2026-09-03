@@ -1,6 +1,8 @@
-// Prisma Schema - آمن ومحسن
-// آخر تحديث: 2026-09-03
-// المراجعة الأمنية: مكتملة
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
   provider = "prisma-client-js"
@@ -11,24 +13,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// نموذج المستخدم مع حماية البيانات
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
-  role      String   @default("user") // user, admin, moderator
-  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
-  // علاقة واحدة مع المنشورات
-  posts     Post[]
-  
-  @@index([email])
-  @@index([role])
 }
 
-// نموذج المنشور مع العلاقات الصحيحة والأمان
 model Post {
   id        String   @id @default(cuid())
   title     String
@@ -37,11 +29,4 @@ model Post {
   authorId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
-  // علاقة مع المستخدم - إلزامية
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  
-  @@index([authorId])
-  @@index([published])
-  @@index([createdAt])
 }

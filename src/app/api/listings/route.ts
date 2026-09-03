@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
       .from('listings')
       .select(`
         *,
-        category:categories(id, name_ar, name_en, slug),
+        category:categories(id, name, nameAr, nameFr, slug),
         media:listing_media(*)
       `, { count: 'exact' })
       .eq('status', 'active');

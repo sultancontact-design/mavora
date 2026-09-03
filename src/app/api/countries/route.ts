@@ -9,7 +9,7 @@ export async function GET() {
       .from('countries')
       .select('*')
       .eq('isActive', true)
-      .order('sort_order', { ascending: true });
+      .order('sortOrder', { ascending: true });
 
     if (error) {
       console.error('Countries fetch error:', error);

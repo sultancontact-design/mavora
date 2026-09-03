@@ -9,7 +9,7 @@ export async function GET() {
       .from('token_packages')
       .select('*')
       .eq('isActive', true)
-      .order('sort_order', { ascending: true });
+      .order('sortOrder', { ascending: true });
 
     if (error) {
       console.error('Token packages fetch error:', error);
@@ -23,7 +23,7 @@ export async function GET() {
         tokens: pkg.tokens,
         price: parseFloat(pkg.price),
         currency_code: pkg.currency_code,
-        sort_order: pkg.sort_order,
+        sortOrder: pkg.sort_order,
       }))
     );
   } catch (error) {

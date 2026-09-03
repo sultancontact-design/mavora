@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       .from('cities')
       .select('*')
       .eq('isActive', true)
-      .order('sort_order', { ascending: true });
+      .order('sortOrder', { ascending: true });
 
     if (country_id) {
       query = query.eq('country_id', country_id);

@@ -9,7 +9,7 @@ export async function GET() {
       .from('plans')
       .select('*')
       .eq('isActive', true)
-      .order('sort_order', { ascending: true });
+      .order('sortOrder', { ascending: true });
 
     if (error) {
       console.error('Plans fetch error:', error);
@@ -30,7 +30,7 @@ export async function GET() {
         listing_limit: p.listing_limit,
         featured_limit: p.featured_limit,
         max_images_per_listing: p.max_images_per_listing,
-        sort_order: p.sort_order,
+        sortOrder: p.sort_order,
       }))
     );
   } catch (error) {

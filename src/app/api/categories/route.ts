@@ -10,7 +10,7 @@ export async function GET() {
       .from('categories')
       .select('*')
       .eq('isActive', true)
-      .order('sort_order', { ascending: true });
+      .order('sortOrder', { ascending: true });
 
     if (error) {
       console.error('Categories fetch error:', error);
@@ -25,7 +25,7 @@ export async function GET() {
         ...parent,
         children: allCategories
           .filter((cat) => cat.parent_id === parent.id)
-          .sort((a, b) => a.sort_order - b.sort_order),
+          .sort((a, b) => a.sortOrder - b.sortOrder),
       }));
 
     return NextResponse.json(parentCategories);

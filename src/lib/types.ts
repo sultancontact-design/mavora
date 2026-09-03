@@ -5,6 +5,29 @@
 export type Locale = 'ar' | 'fr' | 'en';
 export type Direction = 'rtl' | 'ltr';
 
+// ===================================================
+// Auth Types
+// ===================================================
+
+/**
+ * Extended UserRole including all possible roles in the system
+ */
+export type UserRole =
+  | 'user'
+  | 'verified_user'
+  | 'professional_seller'
+  | 'support_agent'
+  | 'finance_manager'
+  | 'content_manager'
+  | 'analyst'
+  | 'moderator'
+  | 'admin'
+  | 'super_admin';
+
+/**
+ * User interface - represents an authenticated user
+ * This is the main user object used throughout the application
+ */
 export interface User {
   id: string;
   email: string;
@@ -20,13 +43,69 @@ export interface User {
   created_at: string;
 }
 
-export type UserRole =
-  | 'user'
-  | 'verified_user'
-  | 'professional_seller'
-  | 'moderator'
-  | 'admin'
-  | 'super_admin';
+/**
+ * Session data returned after successful authentication
+ */
+export interface AuthSession {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  expires_at: string;
+}
+
+/**
+ * Complete authentication response including user and session
+ */
+export interface AuthResponse {
+  user: User;
+  session?: AuthSession | null;
+  profile?: Record<string, unknown> | null;
+  message?: string;
+}
+
+/**
+ * Authentication state for the auth store
+ */
+export interface AuthState {
+  user: User | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  error: string | null;
+}
+
+/**
+ * Password strength levels
+ */
+export type PasswordStrength = 'weak' | 'fair' | 'good' | 'strong';
+
+/**
+ * Password strength result with score and metadata
+ */
+export interface PasswordStrengthResult {
+  score: number; // 0-4
+  labelKey: string; // i18n key for the label
+  color: string; // Tailwind color class
+  width: string; // Tailwind width class
+}
+
+/**
+ * 2FA (Two-Factor Authentication) status
+ */
+export interface TwoFactorStatus {
+  enabled: boolean;
+  secret?: string;
+  qrCodeUrl?: string;
+  recoveryCodes?: string[];
+}
+
+/**
+ * Rate limit information for API responses
+ */
+export interface RateLimitInfo {
+  remainingAttempts: number;
+  lockoutEnd?: number;
+  retryAfter?: number;
+}
 
 export interface Country {
   id: string;
@@ -139,17 +218,51 @@ export interface Report {
   reviewed_by: string | null;
 }
 
-// Form types
+// ===================================================
+// Auth Form Types
+// ===================================================
+
 export interface SignupFormValues {
   email: string;
   password: string;
   confirmPassword: string;
   display_name: string;
+  phone?: string;
+  acceptTerms?: boolean;
 }
 
 export interface LoginFormValues {
   email: string;
   password: string;
+  rememberMe?: boolean;
+}
+
+export interface UpdateProfileFormValues {
+  display_name?: string;
+  bio?: string;
+  phone?: string;
+  avatar_url?: string;
+  country_id?: string;
+  city_id?: string;
+  email_notifications?: boolean;
+  push_notifications?: boolean;
+  sms_notifications?: boolean;
+}
+
+export interface ChangePasswordFormValues {
+  currentPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
+}
+
+export interface ResetPasswordFormValues {
+  email: string;
+}
+
+export interface ResetPasswordConfirmFormValues {
+  token: string;
+  password: string;
+  confirmPassword: string;
 }
 
 export interface CreateListingFormValues {

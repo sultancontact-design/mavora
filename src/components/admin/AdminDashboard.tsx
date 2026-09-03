@@ -3,1288 +3,528 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuthStore } from '@/stores/auth';
-import { useNavigationStore } from '@/stores/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import {
   ArrowLeft,
   Users,
   FileText,
-  Globe,
-  Grid3X3,
-  ShieldAlert,
+  DollarSign,
+  AlertTriangle,
   Loader2,
   Eye,
   Search,
   Check,
   X,
   Archive,
-  AlertTriangle,
-  UserCheck,
   Activity,
   ClipboardList,
   Settings as SettingsIcon,
-  HeartPulse,
-  Save,
-  Tag,
+  TrendingUp,
+  TrendingDown,
+  Package,
+  CreditCard,
+  Shield,
 } from 'lucide-react';
+import Link from 'next/link';
+import UserManagement from './UserManagement';
+import ListingManagement from './ListingManagement';
+import ReportManagement from './ReportManagement';
+import CategoryManagement from './CategoryManagement';
+import PaymentManagement from './PaymentManagement';
+import AuditLogViewer from './AuditLogViewer';
+import SettingsPanel from './SettingsPanel';
 import AdminCategoryFields from './AdminCategoryFields';
-import type { Listing, Locale, AuditLog } from '@/lib/types';
 
+// Types
 interface AdminStats {
-  total_users: number;
-  total_listings: number;
-  total_countries: number;
-  total_categories: number;
-}
-
-interface AdminUser {
-  id: string;
-  display_name: string;
-  email: string;
-  avatar_url: string | null;
-  is_verified: boolean;
-  is_suspended: boolean;
-  created_at: string;
-  listing_count: number;
-}
-
-interface PlatformSetting {
-  id: string;
-  key: string;
-  value: string;
-  value_type: 'string' | 'number' | 'boolean' | 'json';
-  description: string | null;
-  updated_by: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-interface HealthCheck {
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  checks: { database: boolean; storage: boolean; auth: boolean };
-  timestamp: string;
-  uptime: number;
-}
-
-interface AdminReport {
-  id: string;
-  reporter_id: string;
-  target_type: string;
-  target_id: string;
-  reason: string;
-  description: string | null;
-  status: string;
-  created_at: string;
-  reporter: { id: string; display_name: string; avatar_url: string | null } | null;
-  listing: { title: string; seller_id: string } | null;
-}
-
-function getLocalizedListingField(
-  listing: { title_ar?: string; title_fr?: string; title_en?: string },
-  locale: Locale
-): string {
-  switch (locale) {
-    case 'ar': return listing.title_ar || listing.title_en || listing.title_fr || '';
-    case 'fr': return listing.title_fr || listing.title_en || listing.title_ar || '';
-    default: return listing.title_en || listing.title_ar || listing.title_fr || '';
-  }
-}
-
-function getReasonDisplay(reason: string, t: (key: string) => string): string {
-  const map: Record<string, string> = {
-    scam: t('report.reason_scam_display'),
-    prohibited: t('report.reason_prohibited_display'),
-    duplicate: t('report.reason_duplicate_display'),
-    wrong_category: t('report.reason_wrong_category_display'),
-    other: t('report.reason_other_display'),
+  overview: {
+    total_users: number;
+    total_listings: number;
+    total_revenue: number;
+    pending_reports: number;
   };
-  return map[reason] ?? reason;
+  users: {
+    total: number;
+    today: number;
+    this_week: number;
+    this_month: number;
+  };
+  listings: {
+    today: number;
+    this_week: number;
+    this_month: number;
+    active: number;
+    pending: number;
+  };
+  charts: {
+    listings: { date: string; count: number }[];
+    users: { date: string; count: number }[];
+  };
 }
 
-function statusBadgeVariant(status: string): 'default' | 'secondary' | 'outline' | 'destructive' {
-  switch (status) {
-    case 'active': return 'default';
-    case 'draft': return 'secondary';
-    case 'archived': return 'outline';
-    case 'sold': return 'secondary';
-    case 'reserved': return 'outline';
-    case 'rejected': return 'destructive';
-    case 'pending_review': return 'outline';
-    default: return 'secondary';
-  }
+interface RecentListing {
+  id: string;
+  title: string;
+  status: string;
+  seller_name?: string;
+  created_at: string;
 }
 
-function formatDate(dateStr: string, locale: Locale): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString(locale === 'ar' ? 'ar-MA' : locale === 'fr' ? 'fr-MA' : 'en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+interface RecentReport {
+  id: string;
+  reason: string;
+  target_type: string;
+  reporter_name?: string;
+  created_at: string;
 }
 
 export default function AdminDashboard() {
   const { t, locale } = useTranslation();
-  const { user } = useAuthStore();
-  const { navigateHome } = useNavigationStore();
-
-  // Overview data
+  const { user, setUser } = useAuthStore();
   const [stats, setStats] = useState<AdminStats | null>(null);
-  const [recentListings, setRecentListings] = useState<Listing[]>([]);
-
-  // Listings tab data
-  const [allListings, setAllListings] = useState<Listing[]>([]);
-  const [listingsSearch, setListingsSearch] = useState('');
-  const [listingsLoading, setListingsLoading] = useState(false);
-
-  // Users tab data
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-
-  // Reports tab data
-  const [reports, setReports] = useState<AdminReport[]>([]);
-  const [reportsLoading, setReportsLoading] = useState(false);
-
-  // Audit tab data
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [auditLoading, setAuditLoading] = useState(false);
-
-  // Settings tab data
-  const [settings, setSettings] = useState<PlatformSetting[]>([]);
-  const [settingsLoading, setSettingsLoading] = useState(false);
-  const [healthData, setHealthData] = useState<HealthCheck | null>(null);
-  const [healthLoading, setHealthLoading] = useState(false);
-  const [editingKey, setEditingKey] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const [savingKey, setSavingKey] = useState<string | null>(null);
-
-  // General
+  const [recentListings, setRecentListings] = useState<RecentListing[]>([]);
+  const [recentReports, setRecentReports] = useState<RecentReport[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
 
-  const isRtl = locale === 'ar';
-
-  const fetchOverviewData = useCallback(async () => {
-    setLoading(true);
-    setError('');
+  const fetchStats = useCallback(async () => {
     try {
-      const [statsRes, listingsRes] = await Promise.all([
+      setLoading(true);
+      setError(null);
+
+      const [statsRes, listingsRes, reportsRes] = await Promise.all([
         fetch('/api/admin/stats'),
-        fetch('/api/listings?per_page=10&sort_by=newest'),
+        fetch('/api/admin/listings?per_page=5&status=pending_review'),
+        fetch('/api/admin/reports'),
       ]);
 
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        setStats(statsData);
+      if (!statsRes.ok) {
+        throw new Error('Failed to fetch stats');
       }
+
+      const statsData = await statsRes.json();
+      setStats(statsData);
 
       if (listingsRes.ok) {
         const listingsData = await listingsRes.json();
-        setRecentListings(listingsData.data || []);
+        setRecentListings(
+          (listingsData.data || []).map((l: Record<string, unknown>) => ({
+            id: l.id as string,
+            title: l.title as string,
+            status: l.status as string,
+            seller_name: ((l.seller as Record<string, unknown> | undefined)?.display_name) as string || undefined,
+            created_at: l.created_at as string,
+          }))
+        );
       }
-    } catch {
-      setError('Failed to load admin data');
+
+      if (reportsRes.ok) {
+        const reportsData = await reportsRes.json();
+        setRecentReports(
+          (reportsData.data || []).map((r: Record<string, unknown>) => ({
+            id: r.id as string,
+            reason: r.reason as string,
+            target_type: r.target_type as string,
+            reporter_name: ((r.reporter as Record<string, unknown> | undefined)?.display_name) as string || undefined,
+            created_at: r.created_at as string,
+          }))
+        );
+      }
+    } catch (err) {
+      console.error('Admin dashboard error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const fetchAllListings = useCallback(async (search?: string) => {
-    setListingsLoading(true);
-    try {
-      const params = new URLSearchParams({
-        per_page: '50',
-        sort_by: 'newest',
-      });
-      if (search) params.set('search', search);
-      // Fetch all statuses - use admin approach
-      const res = await fetch(`/api/admin/listings?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setAllListings(data.data || []);
-      } else {
-        // Fallback: use regular listings endpoint
-        const fallbackRes = await fetch(`/api/listings?${params.toString()}`);
-        if (fallbackRes.ok) {
-          const data = await fallbackRes.json();
-          setAllListings(data.data || []);
-        }
-      }
-    } catch {
-      // silent
-    } finally {
-      setListingsLoading(false);
-    }
-  }, []);
-
-  const fetchUsers = useCallback(async () => {
-    setUsersLoading(true);
-    try {
-      const res = await fetch('/api/admin/users');
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data.data || []);
-      }
-    } catch {
-      // silent
-    } finally {
-      setUsersLoading(false);
-    }
-  }, []);
-
-  const fetchReports = useCallback(async () => {
-    setReportsLoading(true);
-    try {
-      const res = await fetch('/api/admin/reports');
-      if (res.ok) {
-        const data = await res.json();
-        setReports(data.data || []);
-      }
-    } catch {
-      // silent
-    } finally {
-      setReportsLoading(false);
-    }
-  }, []);
-
-  const fetchAuditLogs = useCallback(async () => {
-    setAuditLoading(true);
-    try {
-      const res = await fetch('/api/admin/audit-logs?per_page=50');
-      if (res.ok) {
-        const data = await res.json();
-        setAuditLogs(data.data || []);
-      }
-    } catch {
-      // silent
-    } finally {
-      setAuditLoading(false);
-    }
-  }, []);
-
-  const fetchSettings = useCallback(async () => {
-    setSettingsLoading(true);
-    try {
-      const res = await fetch('/api/admin/settings');
-      if (res.ok) {
-        const data = await res.json();
-        setSettings(data.data || []);
-      }
-    } catch {
-      // silent
-    } finally {
-      setSettingsLoading(false);
-    }
-  }, []);
-
-  const fetchHealth = useCallback(async () => {
-    setHealthLoading(true);
-    try {
-      const res = await fetch('/api/health');
-      if (res.ok) {
-        const data = await res.json();
-        setHealthData(data);
-      }
-    } catch {
-      // silent
-    } finally {
-      setHealthLoading(false);
-    }
-  }, []);
-
-  const handleSaveSetting = async (key: string, value: string) => {
-    setSavingKey(key);
-    try {
-      const res = await fetch(`/api/admin/settings/${encodeURIComponent(key)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value }),
-      });
-      if (res.ok) {
-        setSettings((prev) =>
-          prev.map((s) => (s.key === key ? { ...s, value } : s))
-        );
-        setEditingKey(null);
-      }
-    } catch {
-      // silent
-    } finally {
-      setSavingKey(null);
-    }
-  };
-
   useEffect(() => {
-    fetchOverviewData();
-  }, [fetchOverviewData]);
-
-  useEffect(() => {
-    if (activeTab === 'listings') fetchAllListings(listingsSearch || undefined);
-  }, [activeTab, fetchAllListings, listingsSearch]);
-
-  useEffect(() => {
-    if (activeTab === 'users') fetchUsers();
-  }, [activeTab, fetchUsers]);
-
-  useEffect(() => {
-    if (activeTab === 'reports') fetchReports();
-  }, [activeTab, fetchReports]);
-
-  useEffect(() => {
-    if (activeTab === 'audit') fetchAuditLogs();
-  }, [activeTab, fetchAuditLogs]);
-
-  useEffect(() => {
-    if (activeTab === 'settings') {
-      fetchSettings();
-      fetchHealth();
+    if (user && ['admin', 'super_admin', 'moderator'].includes(user.role)) {
+      fetchStats();
     }
-  }, [activeTab, fetchSettings, fetchHealth]);
+  }, [user, fetchStats]);
 
-  const handleModerate = async (listingId: string, action: 'approve' | 'reject' | 'archive') => {
-    try {
-      const res = await fetch('/api/admin/moderate', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ listing_id: listingId, action }),
-      });
-      if (res.ok) {
-        setAllListings((prev) =>
-          prev.map((l) =>
-            l.id === listingId
-              ? { ...l, status: action === 'approve' ? 'active' : action === 'reject' ? 'rejected' : 'archived' }
-              : l
-          )
-        );
-        setRecentListings((prev) =>
-          prev.map((l) =>
-            l.id === listingId
-              ? { ...l, status: action === 'approve' ? 'active' : action === 'reject' ? 'rejected' : 'archived' }
-              : l
-          )
-        );
-      }
-    } catch {
-      // silent
-    }
-  };
-
-  const handleReportAction = async (reportId: string, action: 'resolve' | 'dismiss') => {
-    try {
-      const res = await fetch('/api/admin/reports', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ report_id: reportId, action }),
-      });
-      if (res.ok) {
-        setReports((prev) => prev.filter((r) => r.id !== reportId));
-      }
-    } catch {
-      // silent
-    }
-  };
-
-  // Auth guard
-  if (!user) {
+  // Check access
+  if (!user || !['admin', 'super_admin', 'moderator'].includes(user.role)) {
     return (
-      <div className="mx-auto flex min-h-[60vh] max-w-7xl flex-col items-center justify-center gap-4 px-4">
-        <ShieldAlert className="size-16 text-destructive" />
-        <p className="text-lg font-semibold text-foreground">{t('admin.access_denied')}</p>
-        <Button variant="outline" onClick={navigateHome}>
-          <ArrowLeft className={isRtl ? 'ms-2 rotate-180' : 'me-2'} />
-          {t('common.back')}
-        </Button>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center">
+            <Shield className="h-12 w-12 mx-auto text-red-500 mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              {t('admin.access_denied')}
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              You don&apos;t have permission to access this area.
+            </p>
+            <Link href="/">
+              <Button>
+                <ArrowLeft className="h-4 w-4 ml-2" />
+                {t('common.back')}
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  const statCards = [
-    {
-      label: t('admin.total_users'),
-      value: stats?.total_users ?? 0,
-      icon: Users,
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-500/10',
-    },
-    {
-      label: t('admin.total_listings'),
-      value: stats?.total_listings ?? 0,
-      icon: FileText,
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-500/10',
-    },
-    {
-      label: t('admin.total_countries'),
-      value: stats?.total_countries ?? 0,
-      icon: Globe,
-      color: 'text-amber-600',
-      bg: 'bg-amber-500/10',
-    },
-    {
-      label: t('admin.total_categories'),
-      value: stats?.total_categories ?? 0,
-      icon: Grid3X3,
-      color: 'text-violet-600',
-      bg: 'bg-violet-500/10',
-    },
-  ];
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString(locale === 'ar' ? 'ar-MA' : 'en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+      active: 'default',
+      pending_review: 'secondary',
+      rejected: 'destructive',
+      archived: 'outline',
+      draft: 'outline',
+    };
+    
+    const labels: Record<string, string> = {
+      active: t('common.active'),
+      pending_review: 'pending',
+      rejected: 'rejected',
+      archived: 'archived',
+      draft: t('common.draft'),
+    };
+
+    return (
+      <Badge variant={variants[status] || 'secondary'}>
+        {labels[status] || status}
+      </Badge>
+    );
+  };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${locale === 'ar' ? 'rtl' : 'ltr'}`}>
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={navigateHome}>
-            <ArrowLeft className={isRtl ? 'size-5 rotate-180' : 'size-5'} />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
-              {t('admin.title')}
-            </h1>
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                <Shield className="h-8 w-8 text-blue-600" />
+                {t('admin.title')}
+              </h1>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Platform management dashboard
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="text-sm">
+                {user.role}
+              </Badge>
+              <Link href="/">
+                <Button variant="outline" size="sm">
+                  <ArrowLeft className={`h-4 w-4 ${locale === 'ar' ? 'ml-2 mr-0' : 'mr-2 ml-0'}`} />
+                  {t('common.back')}
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
-        {loading && <Loader2 className="size-5 animate-spin text-muted-foreground" />}
       </div>
 
-      {error && (
-        <div className="mb-6 rounded-lg border border-destructive/20 bg-destructive/5 p-4">
-          <p className="text-sm text-destructive">{error}</p>
-        </div>
-      )}
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid grid-cols-4 lg:grid-cols-9 w-full h-auto gap-2">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm">
+              <Activity className="h-4 w-4 hidden sm:inline mr-1" />
+              {t('admin.overview')}
+            </TabsTrigger>
+            <TabsTrigger value="users" className="text-xs sm:text-sm">
+              <Users className="h-4 w-4 hidden sm:inline mr-1" />
+              {t('admin.users_tab')}
+            </TabsTrigger>
+            <TabsTrigger value="listings" className="text-xs sm:text-sm">
+              <FileText className="h-4 w-4 hidden sm:inline mr-1" />
+              {t('admin.listings_tab')}
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="text-xs sm:text-sm">
+              <AlertTriangle className="h-4 w-4 hidden sm:inline mr-1" />
+              {t('admin.reports_tab')}
+            </TabsTrigger>
+            <TabsTrigger value="categories" className="text-xs sm:text-sm">
+              <Package className="h-4 w-4 hidden sm:inline mr-1" />
+              Categories
+            </TabsTrigger>
+            <TabsTrigger value="category-fields" className="text-xs sm:text-sm">
+              Fields
+            </TabsTrigger>
+            <TabsTrigger value="payments" className="text-xs sm:text-sm">
+              <CreditCard className="h-4 w-4 hidden sm:inline mr-1" />
+              Payments
+            </TabsTrigger>
+            <TabsTrigger value="audit" className="text-xs sm:text-sm">
+              <ClipboardList className="h-4 w-4 hidden sm:inline mr-1" />
+              {t('admin.audit_tab')}
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="text-xs sm:text-sm">
+              <SettingsIcon className="h-4 w-4 hidden sm:inline mr-1" />
+              {t('admin.settings_tab')}
+            </TabsTrigger>
+          </TabsList>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6 flex w-full sm:w-fit">
-          <TabsTrigger value="overview" className="gap-1.5">
-            <Activity className="size-4" />
-            <span className="hidden sm:inline">{t('admin.overview')}</span>
-          </TabsTrigger>
-          <TabsTrigger value="listings" className="gap-1.5">
-            <FileText className="size-4" />
-            <span className="hidden sm:inline">{t('admin.listings_tab')}</span>
-          </TabsTrigger>
-          <TabsTrigger value="users" className="gap-1.5">
-            <Users className="size-4" />
-            <span className="hidden sm:inline">{t('admin.users_tab')}</span>
-          </TabsTrigger>
-          <TabsTrigger value="reports" className="gap-1.5">
-            <AlertTriangle className="size-4" />
-            <span className="hidden sm:inline">{t('admin.reports_tab')}</span>
-          </TabsTrigger>
-          <TabsTrigger value="audit" className="gap-1.5">
-            <ClipboardList className="size-4" />
-            <span className="hidden sm:inline">{t('audit.title')}</span>
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="gap-1.5">
-            <SettingsIcon className="size-4" />
-            <span className="hidden sm:inline">{t('admin.settings_tab')}</span>
-          </TabsTrigger>
-          <TabsTrigger value="category-fields" className="gap-1.5">
-            <Tag className="size-4" />
-            <span className="hidden sm:inline">{t('admin.category_fields_tab')}</span>
-          </TabsTrigger>
-        </TabsList>
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[...Array(4)].map((_, i) => (
+                  <Card key={i}>
+                    <CardContent className="pt-6">
+                      <Skeleton className="h-20 w-full" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : error ? (
+              <Card>
+                <CardContent className="pt-6 text-center text-red-500">
+                  {error}
+                  <Button variant="outline" className="mt-4" onClick={fetchStats}>
+                    {t('common.retry')}
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : stats ? (
+              <>
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <StatCard
+                    title={t('admin.total_users')}
+                    value={stats.users.total.toLocaleString()}
+                    subtitle={`${stats.users.today} today`}
+                    icon={<Users className="h-6 w-6 text-blue-600" />}
+                    trend={{ value: stats.users.this_week, positive: true }}
+                    color="blue"
+                  />
+                  <StatCard
+                    title={t('admin.total_listings')}
+                    value={stats.listings.active.toLocaleString()}
+                    subtitle={`${stats.listings.pending} pending review`}
+                    icon={<FileText className="h-6 w-6 text-green-600" />}
+                    trend={{ value: stats.listings.today, positive: true }}
+                    color="green"
+                  />
+                  <StatCard
+                    title="Revenue"
+                    value={`$${stats.overview.total_revenue.toFixed(2)}`}
+                    subtitle="Total revenue"
+                    icon={<DollarSign className="h-6 w-6 text-yellow-600" />}
+                    color="yellow"
+                  />
+                  <StatCard
+                    title="Pending Reports"
+                    value={stats.overview.pending_reports.toString()}
+                    subtitle="Need attention"
+                    icon={<AlertTriangle className="h-6 w-6 text-red-600" />}
+                    trend={{ value: stats.overview.pending_reports, positive: false }}
+                    color="red"
+                  />
+                </div>
 
-        {/* ======================== OVERVIEW TAB ======================== */}
-        <TabsContent value="overview">
-          {/* Stat Cards */}
-          <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {statCards.map((stat) => {
-              const Icon = stat.icon;
-              return (
-                <Card key={stat.label} className="overflow-hidden">
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="flex items-center gap-3">
-                      <div className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${stat.bg}`}>
-                        <Icon className={`size-5 ${stat.color}`} />
-                      </div>
-                      <div className="min-w-0">
-                        {loading ? (
-                          <Skeleton className="mb-1 h-4 w-16" />
-                        ) : (
-                          <p className="text-2xl font-bold text-foreground">{stat.value.toLocaleString()}</p>
-                        )}
-                        <p className="truncate text-xs text-muted-foreground sm:text-sm">{stat.label}</p>
-                      </div>
+                {/* Quick Stats Row */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Recent Pending Listings */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base font-medium flex items-center justify-between">
+                        <span>{t('admin.recent_listings')} - Pending Review</span>
+                        <Badge variant="secondary">{recentListings.length}</Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {recentListings.length === 0 ? (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+                          No pending listings
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {recentListings.map((listing) => (
+                            <div
+                              key={listing.id}
+                              className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                  {listing.title}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  {listing.seller_name} • {formatDate(listing.created_at)}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 ml-4">
+                                {getStatusBadge(listing.status)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Recent Reports */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base font-medium flex items-center justify-between">
+                        <span>{t('admin.reports_tab')}</span>
+                        <Badge variant="destructive">{recentReports.length}</Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {recentReports.length === 0 ? (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+                          {t('admin.no_reports')}
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {recentReports.map((report) => (
+                            <div
+                              key={report.id}
+                              className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">
+                                  {report.reason.replace(/_/g, ' ')}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  {report.target_type} • {report.reporter_name} • {formatDate(report.created_at)}
+                                </p>
+                              </div>
+                              <Badge variant="outline" className="ml-4 text-red-600 border-red-300">
+                                New
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Activity Chart Placeholder */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-medium flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-green-600" />
+                      {t('admin.recent_activity')} - Last 30 Days
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-64 flex items-end justify-around gap-1 px-4">
+                      {(stats.charts.listings || []).slice(-30).map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex-1 bg-blue-500 dark:bg-blue-400 rounded-t transition-all hover:bg-blue-600 dark:hover:bg-blue-300 min-h-[2px]"
+                          style={{ height: `${Math.max(2, (item.count / Math.max(...stats.charts.listings.map(l => l.count))) * 100)}%` }}
+                          title={`${item.date}: ${item.count} listings`}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400 px-4">
+                      <span>{stats.charts.listings[0]?.date || ''}</span>
+                      <span>{stats.charts.listings[stats.charts.listings.length - 1]?.date || ''}</span>
                     </div>
                   </CardContent>
                 </Card>
-              );
-            })}
-          </div>
+              </>
+            ) : null}
+          </TabsContent>
 
-          {/* Recent Activity */}
-          <Card>
-            <CardHeader className="bg-[#0f2b46] px-4 py-3 sm:px-6 sm:py-4">
-              <CardTitle className="text-base font-semibold text-white sm:text-lg">
-                {t('admin.recent_activity')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="divide-y">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-4 px-4 py-3 sm:px-6">
-                      <Skeleton className="h-4 w-48" />
-                      <Skeleton className="ms-auto h-4 w-20" />
-                      <Skeleton className="h-5 w-16 rounded-full" />
-                    </div>
-                  ))}
-                </div>
-              ) : recentListings.length === 0 ? (
-                <div className="px-4 py-12 text-center sm:px-6">
-                  <FileText className="mx-auto mb-3 size-10 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">{t('listings.no_listings')}</p>
-                </div>
-              ) : (
-                <div className="max-h-96 overflow-y-auto">
-                  <div className="hidden divide-y sm:block">
-                    <div className="grid grid-cols-[1fr_120px_100px_80px] gap-4 border-b bg-muted/30 px-6 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      <span>{t('admin.listing_title')}</span>
-                      <span>{t('common.price')}</span>
-                      <span>{t('admin.status')}</span>
-                      <span>{t('admin.views')}</span>
-                    </div>
-                    {recentListings.map((listing) => (
-                      <div
-                        key={listing.id}
-                        className="grid grid-cols-[1fr_120px_100px_80px] items-center gap-4 px-6 py-3 transition-colors hover:bg-muted/20"
-                      >
-                        <span className="truncate text-sm font-medium text-foreground">
-                          {getLocalizedListingField(listing, locale)}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          {listing.price
-                            ? `${listing.price.toLocaleString()} ${(listing.currency_code || 'MAD')}`
-                            : t('common.negotiable')}
-                        </span>
-                        <Badge variant={statusBadgeVariant(listing.status)} className="w-fit justify-center text-xs">
-                          {t(`listing.status_${listing.status}` as keyof typeof import('@/i18n/en.json'))}
-                        </Badge>
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Eye className="size-3" />
-                          {listing.view_count ?? 0}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="divide-y sm:hidden">
-                    {recentListings.map((listing) => (
-                      <div key={listing.id} className="space-y-2 px-4 py-3">
-                        <p className="truncate text-sm font-medium text-foreground">
-                          {getLocalizedListingField(listing, locale)}
-                        </p>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-semibold text-emerald-600">
-                            {listing.price
-                              ? `${listing.price.toLocaleString()} ${(listing.currency_code || 'MAD')}`
-                              : t('common.negotiable')}
-                          </span>
-                          <Badge variant={statusBadgeVariant(listing.status)} className="text-xs">
-                            {t(`listing.status_${listing.status}` as keyof typeof import('@/i18n/en.json'))}
-                          </Badge>
-                          <span className={isRtl ? 'ms-auto' : 'ms-auto flex items-center gap-1 text-xs text-muted-foreground'}>
-                            <Eye className="size-3" />
-                            {listing.view_count ?? 0}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+          {/* Other Tabs */}
+          <TabsContent value="users">
+            <UserManagement />
+          </TabsContent>
 
-        {/* ======================== LISTINGS TAB ======================== */}
-        <TabsContent value="listings">
-          <Card>
-            <CardHeader className="bg-[#0f2b46] px-4 py-3 sm:px-6 sm:py-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <CardTitle className="text-base font-semibold text-white sm:text-lg">
-                  {t('admin.listings_tab')}
-                </CardTitle>
-                <div className="relative w-full sm:w-64">
-                  <Search className={`absolute top-1/2 size-4 -translate-y-1/2 text-muted-foreground ${isRtl ? 'right-3' : 'left-3'}`} />
-                  <Input
-                    placeholder={t('admin.search')}
-                    value={listingsSearch}
-                    onChange={(e) => setListingsSearch(e.target.value)}
-                    className={`${isRtl ? 'pr-9' : 'pl-9'} h-9 bg-white/90 text-foreground placeholder:text-white/50`}
-                  />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {listingsLoading ? (
-                <div className="divide-y">
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-4 px-4 py-3 sm:px-6">
-                      <Skeleton className="h-4 flex-1" />
-                      <Skeleton className="h-4 w-20" />
-                      <Skeleton className="h-5 w-16 rounded-full" />
-                      <Skeleton className="h-8 w-24" />
-                    </div>
-                  ))}
-                </div>
-              ) : allListings.length === 0 ? (
-                <div className="px-4 py-12 text-center sm:px-6">
-                  <FileText className="mx-auto mb-3 size-10 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">{t('admin.no_listings_all')}</p>
-                </div>
-              ) : (
-                <div className="max-h-[500px] overflow-y-auto">
-                  {/* Desktop Table */}
-                  <div className="hidden divide-y sm:block">
-                    <div className="grid grid-cols-[1fr_100px_90px_70px_200px] gap-3 border-b bg-muted/30 px-6 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      <span>{t('admin.listing_title')}</span>
-                      <span>{t('admin.seller')}</span>
-                      <span>{t('admin.status')}</span>
-                      <span>{t('admin.views')}</span>
-                      <span className={isRtl ? 'text-left' : 'text-right'}>{t('admin.actions')}</span>
-                    </div>
-                    {allListings.map((listing) => (
-                      <div
-                        key={listing.id}
-                        className="grid grid-cols-[1fr_100px_90px_70px_200px] items-center gap-3 px-6 py-3 transition-colors hover:bg-muted/20"
-                      >
-                        <span className="truncate text-sm font-medium text-foreground">
-                          {getLocalizedListingField(listing, locale)}
-                        </span>
-                        <span className="truncate text-xs text-muted-foreground">
-                          {(listing.seller as Record<string, string>)?.display_name ?? '—'}
-                        </span>
-                        <Badge variant={statusBadgeVariant(listing.status)} className="w-fit justify-center text-xs">
-                          {t(`listing.status_${listing.status}` as keyof typeof import('@/i18n/en.json'))}
-                        </Badge>
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Eye className="size-3" />
-                          {listing.view_count ?? 0}
-                        </span>
-                        <div className={`flex items-center gap-1 ${isRtl ? 'justify-start' : 'justify-end'}`}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 gap-1 text-xs text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
-                            onClick={() => handleModerate(listing.id, 'approve')}
-                          >
-                            <Check className="size-3" />
-                            {t('admin.approve')}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 gap-1 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
-                            onClick={() => handleModerate(listing.id, 'reject')}
-                          >
-                            <X className="size-3" />
-                            {t('admin.reject')}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 gap-1 text-xs text-muted-foreground hover:bg-muted"
-                            onClick={() => handleModerate(listing.id, 'archive')}
-                          >
-                            <Archive className="size-3" />
-                            {t('admin.archive')}
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Mobile List */}
-                  <div className="divide-y sm:hidden">
-                    {allListings.map((listing) => (
-                      <div key={listing.id} className="space-y-2 px-4 py-3">
-                        <p className="truncate text-sm font-medium text-foreground">
-                          {getLocalizedListingField(listing, locale)}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant={statusBadgeVariant(listing.status)} className="text-xs">
-                            {t(`listing.status_${listing.status}` as keyof typeof import('@/i18n/en.json'))}
-                          </Badge>
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Eye className="size-3" />{listing.view_count ?? 0}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {(listing.seller as Record<string, string>)?.display_name ?? '—'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1 pt-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 gap-1 text-xs text-emerald-600"
-                            onClick={() => handleModerate(listing.id, 'approve')}
-                          >
-                            <Check className="size-3" />{t('admin.approve')}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 gap-1 text-xs text-red-600"
-                            onClick={() => handleModerate(listing.id, 'reject')}
-                          >
-                            <X className="size-3" />{t('admin.reject')}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 gap-1 text-xs"
-                            onClick={() => handleModerate(listing.id, 'archive')}
-                          >
-                            <Archive className="size-3" />{t('admin.archive')}
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <TabsContent value="listings">
+            <ListingManagement />
+          </TabsContent>
 
-        {/* ======================== USERS TAB ======================== */}
-        <TabsContent value="users">
-          <Card>
-            <CardHeader className="bg-[#0f2b46] px-4 py-3 sm:px-6 sm:py-4">
-              <CardTitle className="text-base font-semibold text-white sm:text-lg">
-                {t('admin.users_tab')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {usersLoading ? (
-                <div className="divide-y">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-4 px-4 py-3 sm:px-6">
-                      <Skeleton className="size-8 rounded-full" />
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="ms-auto h-4 w-16" />
-                      <Skeleton className="h-4 w-24" />
-                    </div>
-                  ))}
-                </div>
-              ) : users.length === 0 ? (
-                <div className="px-4 py-12 text-center sm:px-6">
-                  <Users className="mx-auto mb-3 size-10 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">{t('admin.no_users')}</p>
-                </div>
-              ) : (
-                <div className="max-h-[500px] overflow-y-auto">
-                  <div className="hidden divide-y sm:block">
-                    <div className="grid grid-cols-[1fr_80px_100px_120px] gap-4 border-b bg-muted/30 px-6 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      <span>{t('auth.display_name')}</span>
-                      <span>{t('admin.listing_count')}</span>
-                      <span>{t('admin.status')}</span>
-                      <span>{t('admin.registered')}</span>
-                    </div>
-                    {users.map((u) => (
-                      <div
-                        key={u.id}
-                        className="grid grid-cols-[1fr_80px_100px_120px] items-center gap-4 px-6 py-3 transition-colors hover:bg-muted/20"
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-700">
-                            {u.display_name?.charAt(0)?.toUpperCase() ?? '?'}
-                          </div>
-                          <span className="truncate text-sm font-medium text-foreground">{u.display_name}</span>
-                        </div>
-                        <span className="text-sm text-muted-foreground">{u.listing_count}</span>
-                        <div className="flex items-center gap-1.5">
-                          {u.is_verified && <Badge variant="default" className="bg-emerald-600 text-xs">✓</Badge>}
-                          {u.is_suspended && <Badge variant="destructive" className="text-xs">✗</Badge>}
-                          {!u.is_verified && !u.is_suspended && <Badge variant="secondary" className="text-xs">—</Badge>}
-                        </div>
-                        <span className="text-xs text-muted-foreground">{formatDate(u.created_at, locale)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="divide-y sm:hidden">
-                    {users.map((u) => (
-                      <div key={u.id} className="space-y-2 px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-700">
-                            {u.display_name?.charAt(0)?.toUpperCase() ?? '?'}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-foreground">{u.display_name}</p>
-                            <p className="text-xs text-muted-foreground">{formatDate(u.created_at, locale)}</p>
-                          </div>
-                          <div className="ms-auto flex items-center gap-1">
-                            {u.is_verified && <Badge variant="default" className="bg-emerald-600 text-xs">✓</Badge>}
-                            {u.is_suspended && <Badge variant="destructive" className="text-xs">✗</Badge>}
-                          </div>
-                        </div>
-                        <span className="text-xs text-muted-foreground">{u.listing_count} {t('admin.listing_count')}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <TabsContent value="reports">
+            <ReportManagement onActionComplete={fetchStats} />
+          </TabsContent>
 
-        {/* ======================== REPORTS TAB ======================== */}
-        <TabsContent value="reports">
-          <Card>
-            <CardHeader className="bg-[#0f2b46] px-4 py-3 sm:px-6 sm:py-4">
-              <CardTitle className="text-base font-semibold text-white sm:text-lg">
-                {t('admin.reports_tab')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {reportsLoading ? (
-                <div className="divide-y">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-4 px-4 py-3 sm:px-6">
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="ms-auto h-8 w-40" />
-                    </div>
-                  ))}
-                </div>
-              ) : reports.length === 0 ? (
-                <div className="px-4 py-12 text-center sm:px-6">
-                  <AlertTriangle className="mx-auto mb-3 size-10 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">{t('admin.no_reports')}</p>
-                </div>
-              ) : (
-                <div className="max-h-[500px] overflow-y-auto">
-                  <div className="hidden divide-y sm:block">
-                    <div className="grid grid-cols-[1fr_120px_120px_140px] gap-3 border-b bg-muted/30 px-6 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      <span>{t('admin.target')}</span>
-                      <span>{t('admin.reason')}</span>
-                      <span>{t('admin.reporter')}</span>
-                      <span className={isRtl ? 'text-left' : 'text-right'}>{t('admin.actions')}</span>
-                    </div>
-                    {reports.map((report) => (
-                      <div
-                        key={report.id}
-                        className="grid grid-cols-[1fr_120px_120px_140px] items-center gap-3 px-6 py-3 transition-colors hover:bg-muted/20"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-foreground">
-                            {report.listing?.title ?? report.target_id}
-                          </p>
-                          <p className="text-xs text-muted-foreground">{report.target_type}</p>
-                        </div>
-                        <Badge variant="outline" className="w-fit text-xs">
-                          {getReasonDisplay(report.reason, t)}
-                        </Badge>
-                        <span className="truncate text-xs text-muted-foreground">
-                          {report.reporter?.display_name ?? '—'}
-                        </span>
-                        <div className={`flex items-center gap-1 ${isRtl ? 'justify-start' : 'justify-end'}`}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 gap-1 text-xs text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
-                            onClick={() => handleReportAction(report.id, 'resolve')}
-                          >
-                            <UserCheck className="size-3" />
-                            {t('admin.resolve')}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 gap-1 text-xs text-muted-foreground hover:bg-muted"
-                            onClick={() => handleReportAction(report.id, 'dismiss')}
-                          >
-                            <X className="size-3" />
-                            {t('admin.dismiss')}
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="divide-y sm:hidden">
-                    {reports.map((report) => (
-                      <div key={report.id} className="space-y-2 px-4 py-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="truncate text-sm font-medium text-foreground">
-                            {report.listing?.title ?? report.target_id}
-                          </p>
-                          <Badge variant="outline" className="shrink-0 text-xs">
-                            {getReasonDisplay(report.reason, t)}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {t('admin.reporter')}: {report.reporter?.display_name ?? '—'}
-                        </p>
-                        {report.description && (
-                          <p className="text-xs text-muted-foreground/80 italic">{report.description}</p>
-                        )}
-                        <div className="flex items-center gap-1 pt-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 gap-1 text-xs text-emerald-600"
-                            onClick={() => handleReportAction(report.id, 'resolve')}
-                          >
-                            <UserCheck className="size-3" />{t('admin.resolve')}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 gap-1 text-xs"
-                            onClick={() => handleReportAction(report.id, 'dismiss')}
-                          >
-                            <X className="size-3" />{t('admin.dismiss')}
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <TabsContent value="categories">
+            <CategoryManagement />
+          </TabsContent>
 
-        {/* ======================== AUDIT TAB ======================== */}
-        <TabsContent value="audit">
-          <Card>
-            <CardHeader className="bg-[#0f2b46] px-4 py-3 sm:px-6 sm:py-4">
-              <CardTitle className="text-base font-semibold text-white sm:text-lg">
-                {t('audit.title')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {auditLoading ? (
-                <div className="divide-y">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-4 px-4 py-3 sm:px-6">
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="ms-auto h-4 w-28" />
-                      <Skeleton className="h-4 w-20" />
-                    </div>
-                  ))}
-                </div>
-              ) : auditLogs.length === 0 ? (
-                <div className="px-4 py-12 text-center sm:px-6">
-                  <ClipboardList className="mx-auto mb-3 size-10 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">{t('admin.no_audit_logs')}</p>
-                </div>
-              ) : (
-                <div className="max-h-[32rem] overflow-y-auto">
-                  {/* Desktop table */}
-                  <div className="hidden divide-y sm:block">
-                    <div className="grid grid-cols-[1fr_140px_120px_140px_100px] gap-4 border-b bg-muted/30 px-6 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      <span>{t('audit.actor')}</span>
-                      <span>{t('audit.action')}</span>
-                      <span>{t('audit.resource')}</span>
-                      <span>{t('audit.ip')}</span>
-                      <span>{t('admin.created_at')}</span>
-                    </div>
-                    {auditLogs.map((log) => (
-                      <div
-                        key={log.id}
-                        className="grid grid-cols-[1fr_140px_120px_140px_100px] items-center gap-4 px-6 py-3 transition-colors hover:bg-muted/20"
-                      >
-                        <span className="truncate text-sm font-medium text-foreground">
-                          {log.actor?.display_name || '—'}
-                        </span>
-                        <span className="text-sm text-muted-foreground">{log.action}</span>
-                        <span className="truncate text-sm text-muted-foreground">
-                          {log.resource_type}{log.resource_id ? ` / ${log.resource_id.slice(0, 8)}…` : ''}
-                        </span>
-                        <span className="text-xs font-mono text-muted-foreground">
-                          {log.ip_address || '—'}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          {formatDate(log.created_at, locale)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Mobile cards */}
-                  <div className="divide-y sm:hidden">
-                    {auditLogs.map((log) => (
-                      <div key={log.id} className="space-y-1 px-4 py-3">
-                        <div className="flex items-center justify-between">
-                          <span className="truncate text-sm font-medium text-foreground">
-                            {log.actor?.display_name || '—'}
-                          </span>
-                          <span className="shrink-0 text-xs text-muted-foreground">
-                            {formatDate(log.created_at, locale)}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {t('audit.action')}: {log.action}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {t('audit.resource')}: {log.resource_type}
-                        </p>
-                        {log.ip_address && (
-                          <p className="text-xs font-mono text-muted-foreground/70">
-                            {t('audit.ip')}: {log.ip_address}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <TabsContent value="category-fields">
+            <AdminCategoryFields />
+          </TabsContent>
 
-        {/* ======================== SETTINGS TAB ======================== */}
-        <TabsContent value="settings">
-          {/* Health Status Card */}
-          <Card className="mb-6">
-            <CardHeader className="bg-[#0f2b46] px-4 py-3 sm:px-6 sm:py-4">
-              <div className="flex items-center gap-2">
-                <HeartPulse className="size-5 text-white" />
-                <CardTitle className="text-base font-semibold text-white sm:text-lg">
-                  {t('admin.health_status')}
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 sm:p-6">
-              {healthLoading ? (
-                <div className="flex gap-6">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-20 flex-1 rounded-lg" />
-                  ))}
-                </div>
-              ) : healthData ? (
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-                  {/* Status */}
-                  <div className="flex flex-col items-center justify-center rounded-lg border p-3">
-                    <span
-                      className={`mb-1 text-sm font-bold ${healthData.status === 'healthy' ? 'text-emerald-600' : healthData.status === 'degraded' ? 'text-amber-600' : 'text-red-600'}`}
-                    >
-                      {t(`admin.health_${healthData.status}`)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">Status</span>
-                  </div>
-                  {/* Database */}
-                  <div className="flex flex-col items-center justify-center rounded-lg border p-3">
-                    <Check className={`mb-1 size-5 ${healthData.checks.database ? 'text-emerald-600' : 'text-red-600'}`} />
-                    <span className="text-xs text-muted-foreground">{t('admin.health_database')}</span>
-                  </div>
-                  {/* Storage */}
-                  <div className="flex flex-col items-center justify-center rounded-lg border p-3">
-                    <Check className={`mb-1 size-5 ${healthData.checks.storage ? 'text-emerald-600' : 'text-red-600'}`} />
-                    <span className="text-xs text-muted-foreground">{t('admin.health_storage')}</span>
-                  </div>
-                  {/* Auth */}
-                  <div className="flex flex-col items-center justify-center rounded-lg border p-3">
-                    <Check className={`mb-1 size-5 ${healthData.checks.auth ? 'text-emerald-600' : 'text-red-600'}`} />
-                    <span className="text-xs text-muted-foreground">{t('admin.health_auth')}</span>
-                  </div>
-                  {/* Uptime */}
-                  <div className="col-span-2 flex flex-col items-center justify-center rounded-lg border p-3 lg:col-span-1">
-                    <span className="mb-1 text-sm font-semibold text-foreground">
-                      {Math.floor(healthData.uptime / 3600)}h {Math.floor((healthData.uptime % 3600) / 60)}m
-                    </span>
-                    <span className="text-xs text-muted-foreground">{t('admin.health_uptime')}</span>
-                  </div>
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
+          <TabsContent value="payments">
+            <PaymentManagement />
+          </TabsContent>
 
-          {/* Settings Table */}
-          <Card>
-            <CardHeader className="bg-[#0f2b46] px-4 py-3 sm:px-6 sm:py-4">
-              <CardTitle className="text-base font-semibold text-white sm:text-lg">
-                {t('admin.settings_tab')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {settingsLoading ? (
-                <div className="divide-y">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-4 px-4 py-3 sm:px-6">
-                      <Skeleton className="h-4 w-36" />
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="ms-auto h-8 w-20" />
-                    </div>
-                  ))}
-                </div>
-              ) : settings.length === 0 ? (
-                <div className="px-4 py-12 text-center sm:px-6">
-                  <SettingsIcon className="mx-auto mb-3 size-10 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">{t('admin.no_settings')}</p>
-                </div>
-              ) : (
-                <div className="max-h-[500px] overflow-y-auto">
-                  {/* Desktop table */}
-                  <div className="hidden divide-y sm:block">
-                    <div className="grid grid-cols-[160px_1fr_100px_1fr_100px] gap-3 border-b bg-muted/30 px-6 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      <span>{t('admin.setting_key')}</span>
-                      <span>{t('admin.setting_value')}</span>
-                      <span>{t('admin.setting_type')}</span>
-                      <span>{t('admin.setting_description')}</span>
-                      <span className={isRtl ? 'text-left' : 'text-right'}>{t('admin.actions')}</span>
-                    </div>
-                    {settings.map((setting) => (
-                      <div
-                        key={setting.id}
-                        className="grid grid-cols-[160px_1fr_100px_1fr_100px] items-center gap-3 px-6 py-3 transition-colors hover:bg-muted/20"
-                      >
-                        <span className="truncate text-sm font-mono font-medium text-foreground">{setting.key}</span>
-                        {editingKey === setting.key ? (
-                          <div className="flex items-center gap-2">
-                            {setting.value_type === 'boolean' ? (
-                              <Switch
-                                checked={editValue === 'true'}
-                                onCheckedChange={(checked) => setEditValue(String(checked))}
-                              />
-                            ) : setting.value_type === 'json' ? (
-                              <Textarea
-                                className="min-h-[60px] text-sm"
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                              />
-                            ) : (
-                              <Input
-                                type={setting.value_type === 'number' ? 'number' : 'text'}
-                                className="h-8 text-sm"
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') handleSaveSetting(setting.key, editValue);
-                                }}
-                              />
-                            )}
-                          </div>
-                        ) : (
-                          <span className="truncate text-sm text-muted-foreground">{setting.value}</span>
-                        )}
-                        <Badge variant="outline" className="w-fit text-xs">{setting.value_type}</Badge>
-                        <span className="truncate text-xs text-muted-foreground">{setting.description ?? '—'}</span>
-                        <div className={`flex items-center gap-1 ${isRtl ? 'justify-start' : 'justify-end'}`}>
-                          {editingKey === setting.key ? (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 gap-1 text-xs text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
-                                disabled={savingKey === setting.key}
-                                onClick={() => handleSaveSetting(setting.key, editValue)}
-                              >
-                                {savingKey === setting.key ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
-                                {t('common.save')}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 gap-1 text-xs text-muted-foreground hover:bg-muted"
-                                onClick={() => setEditingKey(null)}
-                              >
-                                <X className="size-3" />
-                              </Button>
-                            </>
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 gap-1 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                              onClick={() => { setEditingKey(setting.key); setEditValue(setting.value); }}
-                            >
-                              {t('admin.edit')}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Mobile cards */}
-                  <div className="divide-y sm:hidden">
-                    {settings.map((setting) => (
-                      <div key={setting.id} className="space-y-2 px-4 py-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="truncate text-sm font-mono font-medium text-foreground">{setting.key}</span>
-                          <Badge variant="outline" className="shrink-0 text-xs">{setting.value_type}</Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground">{setting.description ?? ''}</p>
-                        {editingKey === setting.key ? (
-                          <div className="space-y-2">
-                            {setting.value_type === 'boolean' ? (
-                              <div className="flex items-center gap-2">
-                                <Switch
-                                  checked={editValue === 'true'}
-                                  onCheckedChange={(checked) => setEditValue(String(checked))}
-                                />
-                                <span className="text-sm text-muted-foreground">{editValue}</span>
-                              </div>
-                            ) : setting.value_type === 'json' ? (
-                              <Textarea
-                                className="min-h-[60px] text-sm"
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                              />
-                            ) : (
-                              <Input
-                                type={setting.value_type === 'number' ? 'number' : 'text'}
-                                className="h-8 text-sm"
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                              />
-                            )}
-                            <div className="flex items-center gap-1 pt-1">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 gap-1 text-xs text-emerald-600"
-                                disabled={savingKey === setting.key}
-                                onClick={() => handleSaveSetting(setting.key, editValue)}
-                              >
-                                {savingKey === setting.key ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
-                                {t('common.save')}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 gap-1 text-xs"
-                                onClick={() => setEditingKey(null)}
-                              >
-                                <X className="size-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-between">
-                            <span className="truncate text-sm text-foreground">{setting.value}</span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 gap-1 text-xs text-blue-600"
-                              onClick={() => { setEditingKey(setting.key); setEditValue(setting.value); }}
-                            >
-                              {t('admin.edit')}
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <TabsContent value="audit">
+            <AuditLogViewer />
+          </TabsContent>
 
-        {/* ======================== CATEGORY FIELDS TAB ======================== */}
-        <TabsContent value="category-fields">
-          <AdminCategoryFields />
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="settings">
+            <SettingsPanel />
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }
+
+// Stat Card Component
+interface StatCardProps {
+  title: string;
+  value: string;
+  subtitle: string;
+  icon: React.ReactNode;
+  trend?: { value: number; positive: boolean };
+  color: 'blue' | 'green' | 'yellow' | 'red';
+}
+
+function StatCard({ title, value, subtitle, icon, trend, color }: StatCardProps) {
+  const colorClasses = {
+    blue: 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30',
+    green: 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30',
+    yellow: 'border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/30',
+    red: 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30',
+  };
+
+  return (
+    <Card className={`border-2 ${colorClasses[color]}`}>
+      <CardContent className="pt-6">
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-white">{value}</p>
+            <div className="flex items-center gap-2">
+              {trend && (
+                <span className={`flex items-center text-xs ${trend.positive ? 'text-green-600' : 'text-red-600'}`}>
+                  {trend.positive ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
+                  +{trend.value}
+                </span>
+              )}
+              <span className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</span>
+            </div>
+          </div>
+          <div className="p-3 rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+            {icon}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export type { AdminStats };

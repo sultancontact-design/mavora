@@ -1,0 +1,1574 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState, useCallback } from 'react';
+     4→import Header from '@/components/layout/Header';
+     5→import Footer from '@/components/footer/Footer';
+     6→import HeroSection from '@/components/marketplace/HeroSection';
+     7→import CategoryGrid from '@/components/marketplace/CategoryGrid';
+     8→import CreateListingForm from '@/components/listing/CreateListingForm';
+     9→import ProfilePage from '@/components/profile/ProfilePage';
+    10→import FavoritesPage from '@/components/favorites/FavoritesPage';
+    11→import ConversationsPage from '@/components/messages/ConversationsPage';
+    12→import AdminDashboard from '@/components/admin/AdminDashboard';
+    13→import SellerProfilePage from '@/components/seller/SellerProfilePage';
+    14→import OrganizationPage from '@/components/organization/OrganizationPage';
+    15→import WalletPage from '@/components/wallet/WalletPage';
+    16→import InvoicesPage from '@/components/invoices/InvoicesPage';
+    17→import { useTranslation } from '@/hooks/useTranslation';
+    18→import { useNavigationStore } from '@/stores/navigation';
+    19→import type { Category, Listing, PaginatedResponse, Locale, Country, City, Currency, ListingFieldValue } from '@/lib/types';
+    20→import FilterSidebar from '@/components/marketplace/FilterSidebar';
+    21→
+    22→import {
+    23→  Search,
+    24→  ArrowLeft,
+    25→  Eye,
+    26→  EyeOff,
+    27→  MapPin,
+    28→  Clock,
+    29→  Star,
+    30→  ChevronRight,
+    31→  ChevronDown,
+    32→  X,
+    33→  Loader2,
+    34→  Inbox,
+    35→  Database,
+    36→  CheckCircle2,
+    37→  Shield,
+    38→  Camera,
+    39→  Heart,
+    40→  RefreshCw,
+    41→  ExternalLink,
+    42→  Globe,
+    43→ Zap,
+    44→  AlertCircle,
+    45→  Info,
+    46→  Share2,
+    47→  Flag,
+    48→  Pencil,
+    49→  Trash2,
+    50→  Settings2,
+    51→  Play,
+    52→} from 'lucide-react';
+    53→import { motion } from 'framer-motion';
+    54→import MavoraLogo from '@/components/common/MavoraLogo';
+    55→import ReportDialog from '@/components/common/ReportDialog';
+    56→import ReviewsSection from '@/components/listing/ReviewsSection';
+    57→import { Button } from '@/components/ui/button';
+    58→import { Badge } from '@/components/ui/badge';
+    59→import { Skeleton } from '@/components/ui/skeleton';
+    60→import { Input } from '@/components/ui/input';
+    61→import { Label } from '@/components/ui/label';
+    62→import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+    63→import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+    64→import { getCategoryIcon } from '@/lib/category-icons';
+    65→import { toast } from 'sonner';
+    66→import { useAuthStore } from '@/stores/auth';
+    67→
+    68→// ─── Helpers ────────────────────────────────────────────────────────
+    69→
+    70→function getLocalizedName(item: { name_ar: string; name_fr: string; name_en: string }, locale: Locale): string {
+    71→  switch (locale) {
+    72→    case 'ar': return item.name_ar;
+    73→    case 'fr': return item.name_fr;
+    74→    default: return item.name_en;
+    75→  }
+    76→}
+    77→
+    78→function getVideoEmbedUrl(url: string): string | null {
+    79→  let match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    80→  if (match) return `https://www.youtube.com/embed/${match[1]}`;
+    81→  match = url.match(/vimeo\.com\/(\d+)/);
+    82→  if (match) return `https://player.vimeo.com/video/${match[1]}`;
+    83→  return null;
+    84→}
+    85→
+    86→function timeAgo(dateStr: string, locale: Locale): string {
+    87→  const now = Date.now();
+    88→  const date = new Date(dateStr).getTime();
+    89→  const diffMs = now - date;
+    90→  const minutes = Math.floor(diffMs / 60000);
+    91→  const hours = Math.floor(diffMs / 3600000);
+    92→  const days = Math.floor(diffMs / 86400000);
+    93→  const months = Math.floor(days / 30);
+    94→
+    95→  if (locale === 'ar') {
+    96→    if (minutes < 1) return 'الآن';
+    97→    if (minutes < 60) return `منذ ${minutes} دقيقة`;
+    98→    if (hours < 24) return `منذ ${hours} ساعة`;
+    99→    if (days < 30) return `منذ ${days} يوم`;
+   100→    return `منذ ${months} شهر`;
+   101→  }
+   102→  if (locale === 'fr') {
+   103→    if (minutes < 1) return 'à l\'instant';
+   104→    if (minutes < 60) return `il y a ${minutes} min`;
+   105→    if (hours < 24) return `il y a ${hours}h`;
+   106→    if (days < 30) return `il y a ${days}j`;
+   107→    return `il y a ${months}m`;
+   108→  }
+   109→  if (minutes < 1) return 'just now';
+   110→  if (minutes < 60) return `${minutes}m ago`;
+   111→  if (hours < 24) return `${hours}h ago`;
+   112→  if (days < 30) return `${days}d ago`;
+   113→  return `${months}mo ago`;
+   114→}
+   115→
+   116→// ─── Setup View ─────────────────────────────────────────────────────
+   117→
+   118→function SetupView() {
+   119→  const { t, locale } = useTranslation();
+   120→  const { setDbConfigured, navigateHome } = useNavigationStore();
+   121→  const [checking, setChecking] = useState(false);
+   122→  const [configured, setConfigured] = useState(false);
+   123→
+   124→  // Auto-migration state
+   125→  const [autoOpen, setAutoOpen] = useState(false);
+   126→  const [token, setToken] = useState('');
+   127→  const [showToken, setShowToken] = useState(false);
+   128→  const [migrating, setMigrating] = useState(false);
+   129→  const [migrateSuccess, setMigrateSuccess] = useState(false);
+   130→  const [migrateError, setMigrateError] = useState('');
+   131→
+   132→  const handleCheck = useCallback(async () => {
+   133→    setChecking(true);
+   134→    try {
+   135→      const res = await fetch('/api/setup/check');
+   136→      const data = await res.json();
+   137→      if (data.configured) {
+   138→        setConfigured(true);
+   139→        setDbConfigured(true);
+   140→        setTimeout(() => navigateHome(), 1500);
+   141→      }
+   142→    } catch {
+   143→      // still not configured
+   144→    } finally {
+   145→      setChecking(false);
+   146→    }
+   147→  }, [setDbConfigured, navigateHome]);
+   148→
+   149→  const handleAutoMigrate = useCallback(async () => {
+   150→    if (!token.trim()) {
+   151→      setMigrateError(t('setup.enter_token_first'));
+   152→      return;
+   153→    }
+   154→    setMigrating(true);
+   155→    setMigrateError('');
+   156→    setMigrateSuccess(false);
+   157→    try {
+   158→      const res = await fetch('/api/setup/migrate', {
+   159→        method: 'POST',
+   160→        headers: { 'Content-Type': 'application/json' },
+   161→        body: JSON.stringify({ access_token: token.trim() }),
+   162→      });
+   163→      const data = await res.json();
+   164→      if (res.ok && data.success) {
+   165→        setMigrateSuccess(true);
+   166→        // Auto-trigger the check after successful migration
+   167→        setTimeout(() => handleCheck(), 1000);
+   168→      } else {
+   169→        setMigrateError(data.error || data.message || t('setup.migrate_error'));
+   170→      }
+   171→    } catch {
+   172→      setMigrateError(t('setup.migrate_error'));
+   173→    } finally {
+   174→      setMigrating(false);
+   175→    }
+   176→  }, [token, t, handleCheck]);
+   177→
+   178→  const features = [
+   179→    { icon: Shield, key: 'setup.feature_auth' },
+   180→    { icon: Search, key: 'setup.feature_listings' },
+   181→    { icon: Globe, key: 'setup.feature_categories' },
+   182→    { icon: Camera, key: 'setup.feature_media' },
+   183→    { icon: Heart, key: 'setup.feature_favorites' },
+   184→  ];
+   185→
+   186→  return (
+   187→    <div className="flex flex-1 items-center justify-center px-4 py-12 md:py-20">
+   188→      <div className="w-full max-w-2xl">
+   189→        {/* Logo */}
+   190→        <motion.div
+   191→          className="flex justify-center mb-8"
+   192→          initial={{ opacity: 0, y: -20 }}
+   193→          animate={{ opacity: 1, y: 0 }}
+   194→          transition={{ duration: 0.5 }}
+   195→        >
+   196→          <MavoraLogo size="lg" className="justify-center" />
+   197→        </motion.div>
+   198→
+   199→        {/* Welcome heading */}
+   200→        <motion.div
+   201→          className="text-center mb-8"
+   202→          initial={{ opacity: 0, y: -10 }}
+   203→          animate={{ opacity: 1, y: 0 }}
+   204→          transition={{ duration: 0.5, delay: 0.1 }}
+   205→        >
+   206→          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
+   207→            {t('setup.welcome_title')}
+   208→          </h1>
+   209→          <p className="text-lg text-muted-foreground">
+   210→            {t('setup.setup_subtitle')}
+   211→          </p>
+   212→        </motion.div>
+   213→
+   214→        {/* Main card */}
+   215→        <motion.div
+   216→          className="rounded-2xl border border-border bg-white shadow-lg overflow-hidden"
+   217→          initial={{ opacity: 0, y: 20 }}
+   218→          animate={{ opacity: 1, y: 0 }}
+   219→          transition={{ duration: 0.6, delay: 0.2 }}
+   220→        >
+   221→          {/* Card header with icon */}
+   222→          <div className="relative overflow-hidden px-6 py-8 md:px-10 md:py-10">
+   223→            {/* Decorative gradient blobs */}
+   224→            <div className="pointer-events-none absolute -top-20 -start-20 h-40 w-40 rounded-full bg-emerald-500/10 blur-3xl" />
+   225→            <div className="pointer-events-none absolute -bottom-16 -end-16 h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
+   226→
+   227→            <div className="relative flex flex-col items-center text-center">
+   228→              {/* Large styled Database icon */}
+   229→              <div className="mb-5 flex size-20 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 ring-1 ring-emerald-500/20">
+   230→                <Database className="size-10 text-emerald-500" />
+   231→              </div>
+   232→
+   233→              <h2 className="text-xl md:text-2xl font-bold text-foreground mb-3">
+   234→                {locale === 'ar' ? 'تهيئة المنصة' : locale === 'fr' ? 'Configuration de la plateforme' : 'Platform Setup'}
+   235→              </h2>
+   236→
+   237→              <p className="max-w-lg text-sm leading-relaxed text-muted-foreground">
+   238→                {t('setup.description')}
+   239→              </p>
+   240→            </div>
+   241→          </div>
+   242→
+   243→          {/* Divider */}
+   244→          <div className="h-px bg-border" />
+   245→
+   246→          {/* Auto-migration collapsible section */}
+   247→          <div className="px-6 py-5 md:px-10">
+   248→            <Collapsible open={autoOpen} onOpenChange={setAutoOpen}>
+   249→              <CollapsibleTrigger asChild>
+   250→                <button
+   251→                  className="flex w-full items-center justify-between gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-start transition-all hover:bg-emerald-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+   252→                >
+   253→                  <div className="flex items-center gap-3">
+   254→                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15">
+   255→                      <Zap className="size-4 text-emerald-500" />
+   256→                    </div>
+   257→                    <div>
+   258→                      <p className="text-sm font-semibold text-foreground">
+   259→                        {t('setup.auto_migrate_title')}
+   260→                      </p>
+   261→                      <p className="text-xs text-muted-foreground mt-0.5">
+   262→                        {t('setup.auto_migrate_desc')}
+   263→                      </p>
+   264→                    </div>
+   265→                  </div>
+   266→                  <ChevronDown
+   267→                    className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ${autoOpen ? 'rotate-180' : ''}`}
+   268→                  />
+   269→                </button>
+   270→              </CollapsibleTrigger>
+   271→
+   272→              <CollapsibleContent className="mt-3">
+   273→                <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-4">
+   274→                  {/* Token input */}
+   275→                  <div className="space-y-2">
+   276→                    <Label htmlFor="access-token" className="text-sm font-medium text-foreground">
+   277→                      {t('setup.token_label')}
+   278→                    </Label>
+   279→                    <div className="relative">
+   280→                      <Input
+   281→                        id="access-token"
+   282→                        type={showToken ? 'text' : 'password'}
+   283→                        placeholder={t('setup.token_placeholder')}
+   284→                        value={token}
+   285→                        onChange={(e) => { setToken(e.target.value); setMigrateError(''); }}
+   286→                        disabled={migrating}
+   287→                        className="pe-10"
+   288→                      />
+   289→                      <button
+   290→                        type="button"
+   291→                        onClick={() => setShowToken(!showToken)}
+   292→                        className="absolute end-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+   293→                        tabIndex={-1}
+   294→                        aria-label={showToken ? t('setup.hide_token') : t('setup.show_token')}
+   295→                      >
+   296→                        {showToken ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+   297→                      </button>
+   298→                    </div>
+   299→                  </div>
+   300→
+   301→                  {/* How to get token info */}
+   302→                  <Alert className="border-blue-200/60 bg-blue-50/50">
+   303→                    <Info className="size-4 text-blue-500" />
+   304→                    <AlertTitle className="text-xs font-semibold text-blue-700">
+   305→                      {t('setup.get_token')}
+   306→                    </AlertTitle>
+   307→                    <AlertDescription className="text-xs text-blue-600">
+   308→                      {t('setup.get_token_steps')}
+   309→                    </AlertDescription>
+   310→                  </Alert>
+   311→
+   312→                  {/* Error display */}
+   313→                  {migrateError && (
+   314→                    <motion.div
+   315→                      initial={{ opacity: 0, y: -5 }}
+   316→                      animate={{ opacity: 1, y: 0 }}
+   317→                    >
+   318→                      <Alert variant="destructive">
+   319→                        <AlertCircle className="size-4" />
+   320→                        <AlertTitle className="text-xs font-semibold">
+   321→                          {t('setup.migrate_error')}
+   322→                        </AlertTitle>
+   323→                        <AlertDescription className="text-xs">
+   324→                          {migrateError}
+   325→                        </AlertDescription>
+   326→                      </Alert>
+   327→                    </motion.div>
+   328→                  )}
+   329→
+   330→                  {/* Success display */}
+   331→                  {migrateSuccess && (
+   332→                    <motion.div
+   333→                      initial={{ opacity: 0, y: -5 }}
+   334→                      animate={{ opacity: 1, y: 0 }}
+   335→                    >
+   336→                      <Alert className="border-emerald-200/60 bg-emerald-50/50">
+   337→                        <CheckCircle2 className="size-4 text-emerald-500" />
+   338→                        <AlertDescription className="text-xs text-emerald-700 font-medium">
+   339→                          {t('setup.migrate_success')}
+   340→                        </AlertDescription>
+   341→                      </Alert>
+   342→                    </motion.div>
+   343→                  )}
+   344→
+   345→                  {/* Run auto migration button */}
+   346→                  <button
+   347→                    onClick={handleAutoMigrate}
+   348→                    disabled={migrating || configured}
+   349→                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-600 hover:shadow-md active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+   350→                  >
+   351→                    {migrating ? (
+   352→                      <>
+   353→                        <Loader2 className="size-4 animate-spin" />
+   354→                        {t('setup.running')}
+   355→                      </>
+   356→                    ) : (
+   357→                      <>
+   358→                        <Zap className="size-4" />
+   359→                        {t('setup.run_auto')}
+   360→                      </>
+   361→                    )}
+   362→                  </button>
+   363→                </div>
+   364→              </CollapsibleContent>
+   365→            </Collapsible>
+   366→          </div>
+   367→
+   368→          {/* Divider */}
+   369→          <div className="h-px bg-border" />
+   370→
+   371→          {/* Manual migration fallback */}
+   372→          <div className="px-6 py-5 md:px-10">
+   373→            <div className="flex items-center gap-2 mb-3">
+   374→              <div className="h-px flex-1 bg-border" />
+   375→              <span className="text-xs font-medium text-muted-foreground">
+   376→                {t('setup.manual_fallback')}
+   377→              </span>
+   378→              <div className="h-px flex-1 bg-border" />
+   379→            </div>
+   380→            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+   381→              {t('setup.open_dashboard')}
+   382→            </p>
+   383→            <div className="rounded-lg bg-muted/60 px-4 py-3 text-sm text-muted-foreground leading-relaxed">
+   384→              {t('setup.run_sql_steps')}
+   385→            </div>
+   386→          </div>
+   387→
+   388→          {/* Divider */}
+   389→          <div className="h-px bg-border" />
+   390→
+   391→          {/* Features list */}
+   392→          <div className="px-6 py-6 md:px-10">
+   393→            <p className="text-sm font-semibold text-foreground mb-4">
+   394→              {t('setup.features')}
+   395→            </p>
+   396→            <div className="grid gap-3 sm:grid-cols-2">
+   397→              {features.map((feat, idx) => (
+   398→                <motion.div
+   399→                  key={feat.key}
+   400→                  className="flex items-center gap-3 rounded-lg bg-muted/40 px-4 py-3"
+   401→                  initial={{ opacity: 0, x: locale === 'ar' ? 20 : -20 }}
+   402→                  animate={{ opacity: 1, x: 0 }}
+   403→                  transition={{ duration: 0.4, delay: 0.35 + idx * 0.08 }}
+   404→                >
+   405→                  <feat.icon className="size-4 shrink-0 text-emerald-500" />
+   406→                  <span className="text-sm text-foreground">{t(feat.key)}</span>
+   407→                </motion.div>
+   408→              ))}
+   409→            </div>
+   410→          </div>
+   411→
+   412→          {/* Divider */}
+   413→          <div className="h-px bg-border" />
+   414→
+   415→          {/* Action buttons */}
+   416→          <div className="px-6 py-6 md:px-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+   417→            <a
+   418→              href="https://supabase.com/dashboard/project/kyanecjjautqmuowbtvy/sql"
+   419→              target="_blank"
+   420→              rel="noopener noreferrer"
+   421→              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-600 hover:shadow-md active:scale-[0.98]"
+   422→            >
+   423→              {t('setup.run_migration')}
+   424→              <ExternalLink className="size-4" />
+   425→            </a>
+   426→
+   427→            <button
+   428→              onClick={handleCheck}
+   429→              disabled={checking || configured}
+   430→              className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-white px-6 py-3 text-sm font-semibold text-foreground shadow-sm transition-all hover:bg-muted/60 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+   431→            >
+   432→              {checking ? (
+   433→                <>
+   434→                  <Loader2 className="size-4 animate-spin" />
+   435→                  {t('setup.checking')}
+   436→                </>
+   437→              ) : configured ? (
+   438→                <>
+   439→                  <CheckCircle2 className="size-4 text-emerald-500" />
+   440→                  {t('setup.configured_msg')}
+   441→                </>
+   442→              ) : (
+   443→                <>
+   444→                  <RefreshCw className="size-4" />
+   445→                  {t('setup.check_status')}
+   446→                </>
+   447→              )}
+   448→            </button>
+   449→          </div>
+   450→        </motion.div>
+   451→
+   452→        {/* Subtle branding footer inside setup */}
+   453→        <motion.p
+   454→          className="mt-6 text-center text-xs text-muted-foreground/60"
+   455→          initial={{ opacity: 0 }}
+   456→          animate={{ opacity: 1 }}
+   457→          transition={{ duration: 0.6, delay: 0.8 }}
+   458→        >
+   459→          MAVORA — {t('app.tagline')}
+   460→        </motion.p>
+   461→      </div>
+   462→    </div>
+   463→  );
+   464→}
+   465→
+   466→// ─── Home View ──────────────────────────────────────────────────────
+   467→
+   468→function HomeView({
+   469→  categories,
+   470→  categoriesLoading,
+   471→  onSearch,
+   472→  onSelectCategory,
+   473→  onSelectListing,
+   474→}: {
+   475→  categories: Category[] | null;
+   476→  categoriesLoading: boolean;
+   477→  onSearch: (query: string) => void;
+   478→  onSelectCategory: (id: string) => void;
+   479→  onSelectListing: (id: string) => void;
+   480→}) {
+   481→  const { t } = useTranslation();
+   482→  const [listings, setListings] = useState<PaginatedResponse<Listing> | null>(null);
+   483→  const [listingsLoading, setListingsLoading] = useState(true);
+   484→
+   485→  useEffect(() => {
+   486→    async function fetchListings() {
+   487→      try {
+   488→        const params = new URLSearchParams({
+   489→          sort_by: 'newest',
+   490→          page: '1',
+   491→          per_page: '8',
+   492→        });
+   493→        const res = await fetch(`/api/listings?${params}`);
+   494→        if (res.ok) {
+   495→          const data = await res.json();
+   496→          setListings(data);
+   497→        }
+   498→      } catch {
+   499→        // Silently fail — just show empty state
+   500→      } finally {
+   501→        setListingsLoading(false);
+   502→      }
+   503→    }
+   504→    fetchListings();
+   505→  }, []);
+   506→
+   507→  return (
+   508→    <>
+   509→      {/* Hidden but accessible SEO heading for search engines */}
+   510→      <h1 className="sr-only">
+   511→        MAVORA — سوقك الإلكتروني الموثوق في المغرب وشمال إفريقيا. اشترِ وبِع السيارات والعقارات والإلكترونيات والأزياء والمزيد.
+   512→      </h1>
+   513→      <HeroSection onSearch={onSearch} />
+   514→      <CategoryGrid
+   515→        categories={categories}
+   516→        isLoading={categoriesLoading}
+   517→        onSelectCategory={onSelectCategory}
+   518→      />
+   519→
+   520→      {/* Latest Listings */}
+   521→      <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+   522→        <div className="mb-6 flex items-center justify-between">
+   523→          <h2 className="text-xl font-bold text-foreground sm:text-2xl">
+   524→            {t('listings.latest')}
+   525→          </h2>
+   526→        </div>
+   527→
+   528→        {listingsLoading ? (
+   529→          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   530→            {Array.from({ length: 8 }).map((_, i) => (
+   531→              <div key={i} className="overflow-hidden rounded-xl border border-border">
+   532→                <Skeleton className="aspect-[4/3] w-full" />
+   533→                <div className="p-3">
+   534→                  <Skeleton className="mb-2 h-4 w-3/4" />
+   535→                  <Skeleton className="mb-1 h-3 w-1/2" />
+   536→                  <Skeleton className="h-3 w-1/3" />
+   537→                </div>
+   538→              </div>
+   539→            ))}
+   540→          </div>
+   541→        ) : listings && listings.data.length > 0 ? (
+   542→          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   543→            {listings.data.map((listing) => (
+   544→              <ListingCard
+   545→                key={listing.id}
+   546→                listing={listing}
+   547→                onClick={() => onSelectListing(listing.id)}
+   548→              />
+   549→            ))}
+   550→          </div>
+   551→        ) : (
+   552→          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16">
+   553→            <Inbox className="mb-3 size-10 text-muted-foreground/50" />
+   554→            <p className="text-sm text-muted-foreground">{t('listings.no_listings')}</p>
+   555→            <p className="mt-1 text-xs text-muted-foreground/70">{t('listings.no_listings_subtitle')}</p>
+   556→          </div>
+   557→        )}
+   558→      </section>
+   559→    </>
+   560→  );
+   561→}
+   562→
+   563→// ─── Listing Card ───────────────────────────────────────────────────
+   564→
+   565→function ListingCard({ listing, onClick, isFavorited }: { listing: Listing; onClick: () => void; isFavorited?: boolean }) {
+   566→  const { t, locale } = useTranslation();
+   567→  const { user } = useAuthStore();
+   568→  const [favorited, setFavorited] = useState(isFavorited ?? false);
+   569→  const [toggling, setToggling] = useState(false);
+   570→  const primaryImage = listing.media?.find((m) => m.is_primary) ?? listing.media?.[0];
+   571→  const categoryName = listing.category
+   572→    ? getLocalizedName(listing.category, locale)
+   573→    : '';
+   574→
+   575→  const handleToggleFavorite = useCallback(async (e: React.MouseEvent) => {
+   576→    e.stopPropagation();
+   577→    if (!user) {
+   578→      toast.error(t('favorites.login_required'));
+   579→      return;
+   580→    }
+   581→    setToggling(true);
+   582→    try {
+   583→      const res = await fetch(`/api/listings/${listing.id}/favorite`, { method: 'POST' });
+   584→      if (res.ok) {
+   585→        const data = await res.json();
+   586→        setFavorited(data.favorited);
+   587→        toast.success(data.favorited ? t('favorites.added') : t('favorites.removed'));
+   588→      }
+   589→    } catch {
+   590→      toast.error(t('common.error'));
+   591→    } finally {
+   592→      setToggling(false);
+   593→    }
+   594→  }, [user, listing.id, t]);
+   595→
+   596→  return (
+   597→    <button
+   598→      onClick={onClick}
+   599→      className="group overflow-hidden rounded-xl border border-border bg-card text-start transition-all duration-200 hover:border-emerald/40 hover:shadow-lg hover:shadow-emerald/5"
+   600→    >
+   601→      {/* Image */}
+   602→      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+   603→        {primaryImage ? (
+   604→          <img
+   605→            src={primaryImage.url}
+   606→            alt={listing.title}
+   607→            className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+   608→          />
+   609→        ) : (
+   610→          <div className="flex size-full items-center justify-center text-muted-foreground/30">
+   611→            <Search className="size-10" />
+   612→          </div>
+   613→        )}
+   614→        {/* Badges */}
+   615→        <div className="absolute start-2 top-2 flex gap-1.5">
+   616→          {listing.is_featured && (
+   617→            <Badge className="border-0 bg-gold text-primary text-[10px] font-semibold">
+   618→              {t('common.featured')}
+   619→            </Badge>
+   620→          )}
+   621→          {listing.is_urgent && (
+   622→            <Badge className="border-0 bg-destructive text-white text-[10px] font-semibold">
+   623→              {t('common.urgent')}
+   624→            </Badge>
+   625→          )}
+   626→        </div>
+   627→        {/* Heart button */}
+   628→        <button
+   629→          onClick={handleToggleFavorite}
+   630→          disabled={toggling}
+   631→          className="absolute end-2 top-2 z-10 flex size-8 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur-sm transition-all hover:bg-white hover:scale-110 disabled:opacity-50"
+   632→          aria-label={favorited ? t('listing.detail.remove_from_favorites') : t('listing.detail.add_to_favorites')}
+   633→        >
+   634→          {toggling ? (
+   635→            <Loader2 className="size-4 animate-spin text-muted-foreground" />
+   636→          ) : (
+   637→            <Heart className={`size-4 transition-colors ${favorited ? 'fill-red-500 text-red-500' : 'text-muted-foreground hover:text-red-400'}`} />
+   638→          )}
+   639→        </button>
+   640→        {/* Price overlay */}
+   641→        {listing.price != null && listing.currency && (
+   642→          <div className="absolute bottom-0 end-0 start-0 bg-gradient-to-t from-black/60 to-transparent px-3 pb-2 pt-6">
+   643→            <span className="text-base font-bold text-white">
+   644→              {listing.currency.symbol}{listing.price.toLocaleString(locale)}
+   645→            </span>
+   646→          </div>
+   647→        )}
+   648→      </div>
+   649→
+   650→      {/* Content */}
+   651→      <div className="p-3">
+   652→        <h3 className="mb-1 line-clamp-2 text-sm font-semibold leading-snug text-foreground group-hover:text-emerald">
+   653→          {listing.title}
+   654→        </h3>
+   655→        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+   656→          {categoryName && (
+   657→            <span className="truncate">{categoryName}</span>
+   658→          )}
+   659→        </div>
+   660→        <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground/70">
+   661→          <span className="flex items-center gap-1">
+   662→            <Clock className="size-3" />
+   663→            {timeAgo(listing.created_at, locale)}
+   664→          </span>
+   665→          <span className="flex items-center gap-1">
+   666→            <Eye className="size-3" />
+   667→            {listing.view_count}
+   668→          </span>
+   669→        </div>
+   670→      </div>
+   671→    </button>
+   672→  );
+   673→}
+   674→
+   675→// ─── Browse View ────────────────────────────────────────────────────
+   676→
+   677→function BrowseView({
+   678→  categories,
+   679→  categoriesLoading,
+   680→}: {
+   681→  categories: Category[] | null;
+   682→  categoriesLoading: boolean;
+   683→}) {
+   684→  const { t, locale } = useTranslation();
+   685→  const { selectedCategoryId, searchQuery, navigateHome, navigateDetail } = useNavigationStore();
+   686→  const [listings, setListings] = useState<PaginatedResponse<Listing> | null>(null);
+   687→  const [listingsLoading, setListingsLoading] = useState(true);
+   688→  const [sortBy, setSortBy] = useState('newest');
+   689→  const [page, setPage] = useState(1);
+   690→
+   691→  // Filter states
+   692→  const [countries, setCountries] = useState<Country[] | null>(null);
+   693→  const [cities, setCities] = useState<City[] | null>(null);
+   694→  const [currencies, setCurrencies] = useState<Currency[] | null>(null);
+   695→  const [selectedCountryId, setSelectedCountryId] = useState<string | null>(null);
+   696→  const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
+   697→  const [minPrice, setMinPrice] = useState('');
+   698→  const [maxPrice, setMaxPrice] = useState('');
+   699→
+   700→  // Fetch countries & currencies on mount
+   701→  useEffect(() => {
+   702→    Promise.all([
+   703→      fetch('/api/countries').then((r) => r.ok ? r.json() : []),
+   704→      fetch('/api/currencies').then((r) => r.ok ? r.json() : []),
+   705→    ]).then(([countriesData, currenciesData]) => {
+   706→      setCountries(countriesData);
+   707→      setCurrencies(currenciesData);
+   708→    });
+   709→  }, []);
+   710→
+   711→  // Fetch cities when country changes
+   712→  useEffect(() => {
+   713→    if (!selectedCountryId) {
+   714→      setCities(null);
+   715→      return;
+   716→    }
+   717→    fetch(`/api/cities?country_id=${selectedCountryId}`)
+   718→      .then((r) => r.ok ? r.json() : [])
+   719→      .then((data) => setCities(data));
+   720→  }, [selectedCountryId]);
+   721→
+   722→  // Compute active filter count
+   723→  const activeFilterCount = [
+   724→    selectedCountryId,
+   725→    selectedCityId,
+   726→    minPrice,
+   727→    maxPrice,
+   728→  ].filter(Boolean).length;
+   729→
+   730→  const fetchListings = useCallback(async () => {
+   731→    setListingsLoading(true);
+   732→    try {
+   733→      const params = new URLSearchParams({
+   734→        sort_by: sortBy,
+   735→        page: String(page),
+   736→        per_page: '12',
+   737→      });
+   738→      if (selectedCategoryId) params.set('category_id', selectedCategoryId);
+   739→      if (searchQuery) params.set('search', searchQuery);
+   740→      if (selectedCountryId) params.set('country_id', selectedCountryId);
+   741→      if (selectedCityId) params.set('city_id', selectedCityId);
+   742→      if (minPrice) params.set('min_price', minPrice);
+   743→      if (maxPrice) params.set('max_price', maxPrice);
+   744→
+   745→      const res = await fetch(`/api/listings?${params}`);
+   746→      if (res.ok) {
+   747→        const data = await res.json();
+   748→        setListings(data);
+   749→      }
+   750→    } catch {
+   751→      // silent
+   752→    } finally {
+   753→      setListingsLoading(false);
+   754→    }
+   755→  }, [selectedCategoryId, searchQuery, sortBy, page, selectedCountryId, selectedCityId, minPrice, maxPrice]);
+   756→
+   757→  useEffect(() => {
+   758→    fetchListings();
+   759→  }, [fetchListings]);
+   760→
+   761→  // Reset page on filter change
+   762→  useEffect(() => {
+   763→    setPage(1);
+   764→  }, [selectedCategoryId, searchQuery, sortBy, selectedCountryId, selectedCityId, minPrice, maxPrice]);
+   765→
+   766→  const handleClearAllFilters = useCallback(() => {
+   767→    setSelectedCountryId(null);
+   768→    setSelectedCityId(null);
+   769→    setMinPrice('');
+   770→    setMaxPrice('');
+   771→  }, []);
+   772→
+   773→  const selectedCategory = categories?.find((c) => c.id === selectedCategoryId);
+   774→
+   775→  return (
+   776→    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+   777→      {/* Back + Title */}
+   778→      <div className="mb-6 flex items-center gap-3">
+   779→        <Button
+   780→          variant="ghost"
+   781→          size="sm"
+   782→          onClick={navigateHome}
+   783→          className="gap-1.5 text-muted-foreground hover:text-foreground"
+   784→        >
+   785→          <ArrowLeft className="size-4" />
+   786→          {t('common.back')}
+   787→        </Button>
+   788→      </div>
+   789→
+   790→      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   791→        <div className="flex items-center gap-2">
+   792→          <h1 className="text-xl font-bold text-foreground sm:text-2xl">
+   793→            {searchQuery
+   794→              ? `${t('listings.search_results')} "${searchQuery}"`
+   795→              : selectedCategory
+   796→                ? getLocalizedName(selectedCategory, locale)
+   797→                : t('listings.latest')}
+   798→          </h1>
+   799→          {listings && (
+   800→            <Badge variant="secondary" className="text-xs">
+   801→              {listings.total}
+   802→            </Badge>
+   803→          )}
+   804→        </div>
+   805→
+   806→        {/* Sort */}
+   807→        <div className="flex items-center gap-2">
+   808→          <select
+   809→            value={sortBy}
+   810→            onChange={(e) => setSortBy(e.target.value)}
+   811→            className="h-9 rounded-lg border border-border bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald"
+   812→          >
+   813→            <option value="newest">{t('filters.sort_newest')}</option>
+   814→            <option value="oldest">{t('filters.sort_oldest')}</option>
+   815→            <option value="price_asc">{t('filters.sort_price_low')}</option>
+   816→            <option value="price_desc">{t('filters.sort_price_high')}</option>
+   817→          </select>
+   818→        </div>
+   819→      </div>
+   820→
+   821→      {/* Active filter badges */}
+   822→      {activeFilterCount > 0 && (
+   823→        <div className="mb-4 flex flex-wrap items-center gap-2">
+   824→          {selectedCountryId && countries && (
+   825→            <Badge
+   826→              variant="secondary"
+   827→              className="cursor-pointer gap-1.5 hover:bg-destructive/10"
+   828→              onClick={() => setSelectedCountryId(null)}
+   829→            >
+   830→              {countries.find((c) => c.id === selectedCountryId)?.flag_emoji}{' '}
+   831→              {getLocalizedName(countries.find((c) => c.id === selectedCountryId)!, locale)}
+   832→              <X className="size-3" />
+   833→            </Badge>
+   834→          )}
+   835→          {selectedCityId && cities && (
+   836→            <Badge
+   837→              variant="secondary"
+   838→              className="cursor-pointer gap-1.5 hover:bg-destructive/10"
+   839→              onClick={() => setSelectedCityId(null)}
+   840→            >
+   841→              {getLocalizedName(cities.find((c) => c.id === selectedCityId)!, locale)}
+   842→              <X className="size-3" />
+   843→            </Badge>
+   844→          )}
+   845→          {minPrice && (
+   846→            <Badge
+   847→              variant="secondary"
+   848→              className="cursor-pointer gap-1.5 hover:bg-destructive/10"
+   849→              onClick={() => setMinPrice('')}
+   850→            >
+   851→              {t('filters.min_price')}: {minPrice}
+   852→              <X className="size-3" />
+   853→            </Badge>
+   854→          )}
+   855→          {maxPrice && (
+   856→            <Badge
+   857→              variant="secondary"
+   858→              className="cursor-pointer gap-1.5 hover:bg-destructive/10"
+   859→              onClick={() => setMaxPrice('')}
+   860→            >
+   861→              {t('filters.max_price')}: {maxPrice}
+   862→              <X className="size-3" />
+   863→            </Badge>
+   864→          )}
+   865→          <button
+   866→            onClick={handleClearAllFilters}
+   867→            className="text-xs font-medium text-emerald hover:text-emerald/80 transition-colors"
+   868→          >
+   869→            {t('filters.clear_all')}
+   870→          </button>
+   871→        </div>
+   872→      )}
+   873→
+   874→      {/* Subcategories if a parent is selected */}
+   875→      {selectedCategory && selectedCategory.children && selectedCategory.children.length > 0 && (
+   876→        <div className="mb-6 flex flex-wrap gap-2">
+   877→          {selectedCategory.children.map((child) => {
+   878→            const Icon = getCategoryIcon(child.slug);
+   879→            return (
+   880→              <button
+   881→                key={child.id}
+   882→                onClick={() => useNavigationStore.getState().navigateBrowse(child.id, searchQuery)}
+   883→                className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm text-foreground transition-all hover:border-emerald/50 hover:bg-emerald/5"
+   884→              >
+   885→                <Icon className="size-4 text-emerald" />
+   886→                {getLocalizedName(child, locale)}
+   887→                <ChevronRight className="size-3 text-muted-foreground" />
+   888→              </button>
+   889→            );
+   890→          })}
+   891→        </div>
+   892→      )}
+   893→
+   894→      {/* Main content: filter sidebar + listings grid */}
+   895→      <div className="flex flex-col gap-6 lg:flex-row">
+   896→        {/* Filter Sidebar (desktop) */}
+   897→        <div className="hidden lg:block">
+   898→          <FilterSidebar
+   899→            countries={countries}
+   900→            cities={cities}
+   901→            currencies={currencies}
+   902→            selectedCountryId={selectedCountryId}
+   903→            selectedCityId={selectedCityId}
+   904→            minPrice={minPrice}
+   905→            maxPrice={maxPrice}
+   906→            onCountryChange={setSelectedCountryId}
+   907→            onCityChange={setSelectedCityId}
+   908→            onMinPriceChange={setMinPrice}
+   909→            onMaxPriceChange={setMaxPrice}
+   910→            onClearAll={handleClearAllFilters}
+   911→            activeFilterCount={activeFilterCount}
+   912→          />
+   913→        </div>
+   914→
+   915→        {/* Listings Grid */}
+   916→        <div className="min-w-0 flex-1">
+   917→          {listingsLoading ? (
+   918→            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+   919→              {Array.from({ length: 6 }).map((_, i) => (
+   920→                <div key={i} className="overflow-hidden rounded-xl border border-border">
+   921→                  <Skeleton className="aspect-[4/3] w-full" />
+   922→                  <div className="p-3">
+   923→                    <Skeleton className="mb-2 h-4 w-3/4" />
+   924→                    <Skeleton className="mb-1 h-3 w-1/2" />
+   925→                    <Skeleton className="h-3 w-1/3" />
+   926→                  </div>
+   927→                </div>
+   928→              ))}
+   929→            </div>
+   930→          ) : listings && listings.data.length > 0 ? (
+   931→            <>
+   932→              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+   933→                {listings.data.map((listing) => (
+   934→                  <ListingCard
+   935→                    key={listing.id}
+   936→                    listing={listing}
+   937→                    onClick={() => navigateDetail(listing.id)}
+   938→                  />
+   939→                ))}
+   940→              </div>
+   941→
+   942→              {/* Pagination */}
+   943→              {listings.total_pages > 1 && (
+   944→                <div className="mt-8 flex items-center justify-center gap-2">
+   945→                  <Button
+   946→                    variant="outline"
+   947→                    size="sm"
+   948→                    disabled={page <= 1}
+   949→                    onClick={() => setPage((p) => p - 1)}
+   950→                  >
+   951→                    {t('common.previous')}
+   952→                  </Button>
+   953→                  <span className="px-3 text-sm text-muted-foreground">
+   954→                    {page} / {listings.total_pages}
+   955→                  </span>
+   956→                  <Button
+   957→                    variant="outline"
+   958→                    size="sm"
+   959→                    disabled={page >= listings.total_pages}
+   960→                    onClick={() => setPage((p) => p + 1)}
+   961→                  >
+   962→                    {t('common.next')}
+   963→                  </Button>
+   964→                </div>
+   965→              )}
+   966→            </>
+   967→          ) : (
+   968→            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20">
+   969→              <Inbox className="mb-3 size-12 text-muted-foreground/40" />
+   970→              <p className="text-sm text-muted-foreground">
+   971→                {searchQuery ? t('listings.search_no_results') : t('listings.no_listings')}
+   972→              </p>
+   973→            </div>
+   974→          )}
+   975→        </div>
+   976→      </div>
+   977→
+   978→      {/* Mobile Filter Sidebar (rendered separately for the floating button) */}
+   979→      <div className="lg:hidden">
+   980→        <FilterSidebar
+   981→          countries={countries}
+   982→          cities={cities}
+   983→          currencies={currencies}
+   984→          selectedCountryId={selectedCountryId}
+   985→          selectedCityId={selectedCityId}
+   986→          minPrice={minPrice}
+   987→          maxPrice={maxPrice}
+   988→          onCountryChange={setSelectedCountryId}
+   989→          onCityChange={setSelectedCityId}
+   990→          onMinPriceChange={setMinPrice}
+   991→          onMaxPriceChange={setMaxPrice}
+   992→          onClearAll={handleClearAllFilters}
+   993→          activeFilterCount={activeFilterCount}
+   994→        />
+   995→      </div>
+   996→    </div>
+   997→  );
+   998→}
+   999→
+  1000→// ─── Detail View ────────────────────────────────────────────────────
+  1001→
+  1002→function DetailView() {
+  1003→  const { t, locale } = useTranslation();
+  1004→  const { selectedListingId, navigateBrowse, navigateHome, navigateEditListing, navigateMessages, navigateSeller, selectListing } = useNavigationStore();
+  1005→  const { user } = useAuthStore();
+  1006→  const [listing, setListing] = useState<Listing | null>(null);
+  1007→  const [favorited, setFavorited] = useState(false);
+  1008→  const [togglingFav, setTogglingFav] = useState(false);
+  1009→  const [deleting, setDeleting] = useState(false);
+  1010→  const [listingFields, setListingFields] = useState<ListingFieldValue[]>([]);
+  1011→
+  1012→  useEffect(() => {
+  1013→    if (!selectedListingId) return;
+  1014→    let cancelled = false;
+  1015→    fetch(`/api/listings/${selectedListingId}`)
+  1016→      .then((res) => (res.ok ? res.json() : null))
+  1017→      .then((data) => { if (!cancelled) setListing(data); })
+  1018→      .catch(() => { if (!cancelled) setListing(null); });
+  1019→    return () => { cancelled = true; };
+  1020→  }, [selectedListingId]);
+  1021→
+  1022→  // Fetch listing dynamic field values
+  1023→  useEffect(() => {
+  1024→    if (!selectedListingId) return;
+  1025→    let cancelled = false;
+  1026→    setListingFields([]);
+  1027→    fetch(`/api/listings/${selectedListingId}/fields`)
+  1028→      .then((res) => (res.ok ? res.json() : []))
+  1029→      .then((data) => { if (!cancelled) setListingFields(Array.isArray(data) ? data : []); })
+  1030→      .catch(() => { if (!cancelled) setListingFields([]); });
+  1031→    return () => { cancelled = true; };
+  1032→  }, [selectedListingId]);
+  1033→
+  1034→  const handleToggleFavorite = useCallback(async () => {
+  1035→    if (!user || !listing) {
+  1036→      toast.error(t('favorites.login_required'));
+  1037→      return;
+  1038→    }
+  1039→    setTogglingFav(true);
+  1040→    try {
+  1041→      const res = await fetch(`/api/listings/${listing.id}/favorite`, { method: 'POST' });
+  1042→      if (res.ok) {
+  1043→        const data = await res.json();
+  1044→        setFavorited(data.favorited);
+  1045→        toast.success(data.favorited ? t('favorites.added') : t('favorites.removed'));
+  1046→      }
+  1047→    } catch {
+  1048→      toast.error(t('common.error'));
+  1049→    } finally {
+  1050→      setTogglingFav(false);
+  1051→    }
+  1052→  }, [user, listing, t]);
+  1053→
+  1054→  const handleShare = useCallback(async () => {
+  1055→    try {
+  1056→      await navigator.clipboard.writeText(window.location.href);
+  1057→      toast.success(locale === 'ar' ? 'تم نسخ الرابط' : locale === 'fr' ? 'Lien copié !' : 'Link copied!');
+  1058→    } catch {
+  1059→      toast.error(t('common.error'));
+  1060→    }
+  1061→  }, [locale, t]);
+  1062→
+  1063→  const [contacting, setContacting] = useState(false);
+  1064→  const [reportOpen, setReportOpen] = useState(false);
+  1065→
+  1066→  const handleContact = useCallback(async () => {
+  1067→    if (!user) {
+  1068→      toast.error(t('favorites.login_required'));
+  1069→      return;
+  1070→    }
+  1071→    if (!listing) return;
+  1072→    if (listing.seller_id === user.id) {
+  1073→      toast.error(locale === 'ar' ? 'لا يمكنك التواصل مع نفسك' : locale === 'fr' ? 'Vous ne pouvez pas vous contacter' : 'You cannot contact yourself');
+  1074→      return;
+  1075→    }
+  1076→    setContacting(true);
+  1077→    try {
+  1078→      const res = await fetch('/api/conversations', {
+  1079→        method: 'POST',
+  1080→        headers: { 'Content-Type': 'application/json' },
+  1081→        body: JSON.stringify({ listing_id: listing.id }),
+  1082→      });
+  1083→      if (res.ok) {
+  1084→        const data = await res.json();
+  1085→        if (data.id) {
+  1086→          selectListing(null);
+  1087→          navigateMessages();
+  1088→        }
+  1089→      } else {
+  1090→        const err = await res.json().catch(() => ({ error: t('common.error') }));
+  1091→        toast.error(err.error || t('common.error'));
+  1092→      }
+  1093→    } catch {
+  1094→      toast.error(t('common.error'));
+  1095→    } finally {
+  1096→      setContacting(false);
+  1097→    }
+  1098→  }, [user, listing, t, locale, navigateMessages]);
+  1099→
+  1100→  const handleReport = useCallback(() => {
+  1101→    if (!user) {
+  1102→      toast.error(t('report.login_required'));
+  1103→      return;
+  1104→    }
+  1105→    setReportOpen(true);
+  1106→  }, [user, t]);
+  1107→
+  1108→  const handleDelete = useCallback(async () => {
+  1109→    if (!listing) return;
+  1110→    if (!window.confirm(t('listing.confirm_delete'))) return;
+  1111→    setDeleting(true);
+  1112→    try {
+  1113→      const res = await fetch(`/api/listings/${listing.id}`, { method: 'DELETE' });
+  1114→      if (res.ok) {
+  1115→        toast.success(t('listing.deleted'));
+  1116→        navigateHome();
+  1117→      } else {
+  1118→        toast.error(t('common.error'));
+  1119→      }
+  1120→    } catch {
+  1121→      toast.error(t('common.error'));
+  1122→    } finally {
+  1123→      setDeleting(false);
+  1124→    }
+  1125→  }, [listing, t, navigateHome]);
+  1126→
+  1127→  if (listing === null) {
+  1128→    return (
+  1129→      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+  1130→        <Button variant="ghost" size="sm" className="mb-6 gap-1.5" onClick={navigateHome}>
+  1131→          <ArrowLeft className="size-4" />
+  1132→          {t('common.back')}
+  1133→        </Button>
+  1134→        <div className="grid gap-8 lg:grid-cols-5">
+  1135→          <div className="lg:col-span-3">
+  1136→            <Skeleton className="aspect-[4/3] w-full rounded-xl" />
+  1137→          </div>
+  1138→          <div className="lg:col-span-2">
+  1139→            <Skeleton className="mb-4 h-8 w-3/4" />
+  1140→            <Skeleton className="mb-4 h-10 w-1/3" />
+  1141→            <Skeleton className="h-32 w-full" />
+  1142→          </div>
+  1143→        </div>
+  1144→      </div>
+  1145→    );
+  1146→  }
+  1147→
+  1148→  if (!listing) {
+  1149→    return (
+  1150→      <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-20">
+  1151→        <p className="text-sm text-muted-foreground">{t('error.not_found')}</p>
+  1152→        <Button variant="outline" onClick={navigateHome}>
+  1153→          {t('common.back')}
+  1154→        </Button>
+  1155→      </div>
+  1156→    );
+  1157→  }
+  1158→
+  1159→  const primaryImage = listing.media?.find((m) => m.is_primary) ?? listing.media?.[0];
+  1160→  const sellerName = listing.seller?.display_name ?? '';
+  1161→  const categoryName = listing.category
+  1162→    ? getLocalizedName(listing.category, locale)
+  1163→    : '';
+  1164→  const currencySymbol = listing.currency?.symbol ?? '';
+  1165→
+  1166→  return (
+  1167→    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+  1168→      <Button
+  1169→        variant="ghost"
+  1170→        size="sm"
+  1171→        onClick={() => navigateBrowse(listing.category_id)}
+  1172→        className="mb-6 gap-1.5 text-muted-foreground hover:text-foreground"
+  1173→      >
+  1174→        <ArrowLeft className="size-4" />
+  1175→        {t('common.back')}
+  1176→      </Button>
+  1177→
+  1178→      <div className="grid gap-8 lg:grid-cols-5">
+  1179→        {/* Images */}
+  1180→        <div className="lg:col-span-3">
+  1181→          <div className="overflow-hidden rounded-xl border border-border bg-muted">
+  1182→            {primaryImage ? (
+  1183→              <div className="relative aspect-[4/3]">
+  1184→                <img
+  1185→                  src={primaryImage.url}
+  1186→                  alt={listing.title}
+  1187→                  className="size-full object-cover"
+  1188→                />
+  1189→                {listing.video_url && (
+  1190→                  <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+  1191→                    <div className="flex size-16 items-center justify-center rounded-full bg-black/50 text-white">
+  1192→                      <Play className="size-8" />
+  1193→                    </div>
+  1194→                  </div>
+  1195→                )}
+  1196→              </div>
+  1197→            ) : (
+  1198→              <div className="flex aspect-[4/3] items-center justify-center text-muted-foreground/30">
+  1199→                <Search className="size-16" />
+  1200→              </div>
+  1201→            )}
+  1202→          </div>
+  1203→          {/* Thumbnails */}
+  1204→          {listing.media && listing.media.length > 1 && (
+  1205→            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+  1206→              {listing.media.map((m) => (
+  1207→                <div
+  1208→                  key={m.id}
+  1209→                  className={`size-16 flex-shrink-0 overflow-hidden rounded-lg border-2 ${
+  1210→                    m.is_primary ? 'border-emerald' : 'border-border'
+  1211→                  }`}
+  1212→                >
+  1213→                  <img src={m.url} alt="" className="size-full object-cover" />
+  1214→                </div>
+  1215→              ))}
+  1216→            </div>
+  1217→          )}
+  1218→
+  1219→          {/* Video Embed */}
+  1220→          {listing.video_url && (() => {
+  1221→            const embedUrl = getVideoEmbedUrl(listing.video_url);
+  1222→            if (!embedUrl) return null;
+  1223→            return (
+  1224→              <div className="mt-4">
+  1225→                <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-muted">
+  1226→                  <iframe
+  1227→                    src={embedUrl}
+  1228→                    className="size-full"
+  1229→                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  1230→                    allowFullScreen
+  1231→                    title="Listing video"
+  1232→                  />
+  1233→                </div>
+  1234→              </div>
+  1235→            );
+  1236→          })()}
+  1237→
+  1238→          {/* Description */}
+  1239→          <div className="mt-6">
+  1240→            <h2 className="mb-3 text-lg font-bold text-foreground">
+  1241→              {t('listing.detail.description')}
+  1242→            </h2>
+  1243→            <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+  1244→              {listing.description}
+  1245→            </p>
+  1246→          </div>
+  1247→
+  1248→          {/* Dynamic Fields (Properties) */}
+  1249→          {listingFields.length > 0 && (
+  1250→            <div className="mt-6">
+  1251→              <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-foreground">
+  1252→                <Settings2 className="size-5 text-[#0E9F6E]" />
+  1253→                {t('listing.dynamic_fields')}
+  1254→              </h2>
+  1255→              <div className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2">
+  1256→                {listingFields.map((fv) => {
+  1257→                  if (!fv.field) return null;
+  1258→                  const fieldName = getLocalizedName(fv.field, locale);
+  1259→                  const unit = locale === 'ar'
+  1260→                    ? fv.field.unit_ar ?? ''
+  1261→                    : locale === 'fr'
+  1262→                      ? fv.field.unit_fr ?? ''
+  1263→                      : fv.field.unit_en ?? '';
+  1264→                  let displayValue = fv.value;
+  1265→
+  1266→                  // For boolean fields
+  1267→                  if (fv.field.field_type === 'boolean') {
+  1268→                    displayValue = fv.value === 'true' ? t('common.yes') : t('common.no');
+  1269→                  }
+  1270→                  // For select fields, resolve option name
+  1271→                  else if (fv.field.field_type === 'select' && fv.field.options) {
+  1272→                    const opt = fv.field.options.find((o) => o.id === fv.value);
+  1273→                    if (opt) {
+  1274→                      displayValue = locale === 'ar'
+  1275→                        ? opt.value_ar
+  1276→                        : locale === 'fr'
+  1277→                          ? opt.value_fr
+  1278→                          : opt.value_en;
+  1279→                    }
+  1280→                  }
+  1281→                  // For multiselect fields, resolve option names
+  1282→                  else if (fv.field.field_type === 'multiselect' && fv.field.options) {
+  1283→                    const ids = fv.value.split(',').filter(Boolean);
+  1284→                    const names = ids
+  1285→                      .map((id) => {
+  1286→                        const opt = fv.field!.options!.find((o) => o.id === id);
+  1287→                        if (!opt) return null;
+  1288→                        return locale === 'ar'
+  1289→                          ? opt.value_ar
+  1290→                          : locale === 'fr'
+  1291→                            ? opt.value_fr
+  1292→                            : opt.value_en;
+  1293→                      })
+  1294→                      .filter(Boolean);
+  1295→                    displayValue = names.join(', ');
+  1296→                  }
+  1297→                  // For number fields, append unit
+  1298→                  else if (fv.field.field_type === 'number' && unit) {
+  1299→                    displayValue = `${fv.value} ${unit}`;
+  1300→                  }
+  1301→
+  1302→                  return (
+  1303→                    <div key={fv.id} className="flex flex-col gap-1 rounded-lg bg-muted/40 px-3 py-2.5">
+  1304→                      <span className="text-xs font-medium text-muted-foreground">{fieldName}</span>
+  1305→                      <span className="text-sm font-semibold text-foreground">{displayValue}</span>
+  1306→                    </div>
+  1307→                  );
+  1308→                })}
+  1309→              </div>
+  1310→            </div>
+  1311→          )}
+  1312→
+  1313→          {/* Reviews */}
+  1314→          <ReviewsSection listingId={listing.id} />
+  1315→        </div>
+  1316→
+  1317→        {/* Info Sidebar */}
+  1318→        <div className="lg:col-span-2">
+  1319→          <div className="sticky top-24 space-y-6">
+  1320→            {/* Badges */}
+  1321→            <div className="flex flex-wrap gap-2">
+  1322→              {listing.is_featured && (
+  1323→                <Badge className="border-0 bg-gold text-primary">
+  1324→                  <Star className="me-1 size-3" />
+  1325→                  {t('common.featured')}
+  1326→                </Badge>
+  1327→              )}
+  1328→              {listing.is_urgent && (
+  1329→                <Badge className="border-0 bg-destructive text-white">
+  1330→                  {t('common.urgent')}
+  1331→                </Badge>
+  1332→              )}
+  1333→              {categoryName && (
+  1334→                <Badge variant="secondary">{categoryName}</Badge>
+  1335→              )}
+  1336→            </div>
+  1337→
+  1338→            {/* Title */}
+  1339→            <h1 className="text-2xl font-bold leading-tight text-foreground">
+  1340→              {listing.title}
+  1341→            </h1>
+  1342→
+  1343→            {/* Price */}
+  1344→            {listing.price != null && (
+  1345→              <div className="text-3xl font-bold text-emerald">
+  1346→                {currencySymbol}{listing.price.toLocaleString(locale)}
+  1347→              </div>
+  1348→            )}
+  1349→
+  1350→            {/* Meta */}
+  1351→            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+  1352→              <span className="flex items-center gap-1.5">
+  1353→                <Eye className="size-4" />
+  1354→                {listing.view_count} {t('listings.views')}
+  1355→              </span>
+  1356→              <span className="flex items-center gap-1.5">
+  1357→                <Clock className="size-4" />
+  1358→                {timeAgo(listing.created_at, locale)}
+  1359→              </span>
+  1360→            </div>
+  1361→
+  1362→            {/* Owner actions */}
+  1363→            {user && listing.seller_id === user.id && (
+  1364→              <div className="flex gap-2">
+  1365→                <Button
+  1366→                  variant="outline"
+  1367→                  size="sm"
+  1368→                  className="flex-1 gap-2"
+  1369→                  onClick={() => navigateEditListing(listing.id)}
+  1370→                >
+  1371→                  <Pencil className="size-4" />
+  1372→                  {t('listing.edit')}
+  1373→                </Button>
+  1374→                <Button
+  1375→                  variant="outline"
+  1376→                  size="sm"
+  1377→                  className="flex-1 gap-2 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
+  1378→                  onClick={handleDelete}
+  1379→                  disabled={deleting}
+  1380→                >
+  1381→                  {deleting ? (
+  1382→                    <Loader2 className="size-4 animate-spin" />
+  1383→                  ) : (
+  1384→                    <Trash2 className="size-4" />
+  1385→                  )}
+  1386→                  {t('listing.delete')}
+  1387→                </Button>
+  1388→              </div>
+  1389→            )}
+  1390→
+  1391→            {/* Contact Button + Favorite, Share, Report */}
+  1392→            <div className="flex gap-2">
+  1393→              <Button
+  1394→                className="flex-1 bg-emerald text-white hover:bg-emerald/90"
+  1395→                size="lg"
+  1396→                onClick={handleContact}
+  1397→                disabled={contacting}
+  1398→              >
+  1399→                {contacting ? <Loader2 className="me-2 size-4 animate-spin" /> : null}
+  1400→                {t('listings.contact_seller')}
+  1401→              </Button>
+  1402→              <Button
+  1403→                variant="outline"
+  1404→                size="lg"
+  1405→                className="shrink-0"
+  1406→                onClick={handleToggleFavorite}
+  1407→                disabled={togglingFav}
+  1408→                aria-label={favorited ? t('listing.detail.remove_from_favorites') : t('listing.detail.add_to_favorites')}
+  1409→              >
+  1410→                {togglingFav ? (
+  1411→                  <Loader2 className="size-5 animate-spin" />
+  1412→                ) : (
+  1413→                  <Heart className={`size-5 ${favorited ? 'fill-red-500 text-red-500' : ''}`} />
+  1414→                )}
+  1415→              </Button>
+  1416→            </div>
+  1417→            <div className="flex gap-2">
+  1418→              <Button variant="outline" size="sm" className="flex-1 gap-2" onClick={handleShare}>
+  1419→                <Share2 className="size-4" />
+  1420→                {t('listing.detail.share')}
+  1421→              </Button>
+  1422→              <Button variant="outline" size="sm" className="flex-1 gap-2" onClick={handleReport}>
+  1423→                <Flag className="size-4" />
+  1424→                {t('listing.detail.report')}
+  1425→              </Button>
+  1426→            </div>
+  1427→
+  1428→            {listing && (
+  1429→              <ReportDialog
+  1430→                listingId={listing.id}
+  1431→                open={reportOpen}
+  1432→                onOpenChange={setReportOpen}
+  1433→              />
+  1434→            )}
+  1435→
+  1436→            {/* Seller Card */}
+  1437→            {listing.seller && (
+  1438→              <button
+  1439→                type="button"
+  1440→                onClick={() => navigateSeller(listing.seller_id)}
+  1441→                className="w-full cursor-pointer rounded-xl border border-border p-4 text-start transition-colors hover:border-emerald/30 hover:bg-accent/50"
+  1442→              >
+  1443→                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+  1444→                  {t('listing.detail.seller')}
+  1445→                </p>
+  1446→                <div className="flex items-center gap-3">
+  1447→                  <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+  1448→                    {sellerName.charAt(0).toUpperCase()}
+  1449→                  </div>
+  1450→                  <div>
+  1451→                    <p className="text-sm font-semibold text-foreground">{sellerName}</p>
+  1452→                    <p className="text-xs text-muted-foreground">
+  1453→                      {listing.seller.is_verified && (
+  1454→                        <span className="inline-flex items-center gap-1 text-emerald">
+  1455→                          <Star className="size-3" />
+  1456→                          {t('common.active')}
+  1457→                        </span>
+  1458→                      )}
+  1459→                    </p>
+  1460→                  </div>
+  1461→                </div>
+  1462→              </button>
+  1463→            )}
+  1464→          </div>
+  1465→        </div>
+  1466→      </div>
+  1467→    </div>
+  1468→  );
+  1469→}
+  1470→
+  1471→// ─── Main Page ──────────────────────────────────────────────────────
+  1472→
+  1473→export default function Home() {
+  1474→  const { locale } = useTranslation();
+  1475→  const { view, selectedListingId, selectedSellerId, dbConfigured, setDbConfigured, navigateBrowse, navigateDetail, navigateHome } =
+  1476→    useNavigationStore();
+  1477→
+  1478→  const [categories, setCategories] = useState<Category[] | null>(null);
+  1479→  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  1480→
+  1481→  // Sync locale direction
+  1482→  useEffect(() => {
+  1483→    const dir = locale === 'ar' ? 'rtl' : 'ltr';
+  1484→    document.documentElement.lang = locale;
+  1485→    document.documentElement.dir = dir;
+  1486→  }, [locale]);
+  1487→
+  1488→  // Check DB setup
+  1489→  useEffect(() => {
+  1490→    fetch('/api/setup/check')
+  1491→      .then((res) => res.json())
+  1492→      .then((data) => setDbConfigured(data.configured ?? false))
+  1493→      .catch(() => setDbConfigured(false));
+  1494→  }, [setDbConfigured]);
+  1495→
+  1496→  // Fetch categories
+  1497→  useEffect(() => {
+  1498→    async function fetchCategories() {
+  1499→      try {
+  1500→        const res = await fetch('/api/categories');
+  1501→        if (res.ok) {
+  1502→          const data = await res.json();
+  1503→          setCategories(data);
+  1504→        }
+  1505→      } catch {
+  1506→        // silent
+  1507→      } finally {
+  1508→        setCategoriesLoading(false);
+  1509→      }
+  1510→    }
+  1511→    fetchCategories();
+  1512→  }, []);
+  1513→
+  1514→  // Navigation handlers
+  1515→  const handleSearch = useCallback(
+  1516→    (query: string) => {
+  1517→      navigateBrowse(null, query);
+  1518→    },
+  1519→    [navigateBrowse]
+  1520→  );
+  1521→
+  1522→  const handleSelectCategory = useCallback(
+  1523→    (categoryId: string) => {
+  1524→      navigateBrowse(categoryId);
+  1525→    },
+  1526→    [navigateBrowse]
+  1527→  );
+  1528→
+  1529→  // Show setup view if DB not configured
+  1530→  if (dbConfigured === false && view === 'home') {
+  1531→    return (
+  1532→      <>
+  1533→        <Header />
+  1534→        <SetupView />
+  1535→        <Footer />
+  1536→      </>
+  1537→    );
+  1538→  }
+  1539→
+  1540→  return (
+  1541→    <>
+  1542→      <Header />
+  1543→      <main className="flex-1">
+  1544→        {view === 'home' && (
+  1545→          <HomeView
+  1546→            categories={categories}
+  1547→            categoriesLoading={categoriesLoading}
+  1548→            onSearch={handleSearch}
+  1549→            onSelectCategory={handleSelectCategory}
+  1550→            onSelectListing={navigateDetail}
+  1551→          />
+  1552→        )}
+  1553→        {view === 'browse' && (
+  1554→          <BrowseView
+  1555→            categories={categories}
+  1556→            categoriesLoading={categoriesLoading}
+  1557→          />
+  1558→        )}
+  1559→        {view === 'detail' && selectedListingId && <DetailView key={selectedListingId} />}
+  1560→        {view === 'create-listing' && <CreateListingForm />}
+  1561→        {view === 'profile' && <ProfilePage />}
+  1562→        {view === 'favorites' && <FavoritesPage />}
+  1563→        {view === 'messages' && <ConversationsPage />}
+  1564→        {view === 'admin' && <AdminDashboard />}
+  1565→        {view === 'seller' && selectedSellerId && <SellerProfilePage key={selectedSellerId} />}
+  1566→        {view === 'organization' && <OrganizationPage />}
+  1567→        {view === 'wallet' && <WalletPage />}
+  1568→        {view === 'invoices' && <InvoicesPage />}
+  1569→      </main>
+  1570→      <Footer />
+  1571→    </>
+  1572→  );
+  1573→}
+  1574→

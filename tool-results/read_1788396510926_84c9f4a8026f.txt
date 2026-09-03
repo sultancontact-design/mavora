@@ -1,0 +1,1008 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState, useCallback } from 'react';
+     4→import { useForm, Controller } from 'react-hook-form';
+     5→import { zodResolver } from '@hookform/resolvers/zod';
+     6→import { z } from 'zod';
+     7→import { toast } from 'sonner';
+     8→import { ArrowLeft, Loader2, FileText, MapPin, Tag, Type, ImageIcon, Eye, VideoIcon } from 'lucide-react';
+     9→import { Button } from '@/components/ui/button';
+    10→import { Input } from '@/components/ui/input';
+    11→import { Textarea } from '@/components/ui/textarea';
+    12→import { Label } from '@/components/ui/label';
+    13→import {
+    14→  Select,
+    15→  SelectContent,
+    16→  SelectItem,
+    17→  SelectTrigger,
+    18→  SelectValue,
+    19→} from '@/components/ui/select';
+    20→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+    21→import { Skeleton } from '@/components/ui/skeleton';
+    22→import { useTranslation } from '@/hooks/useTranslation';
+    23→import { useAuthStore } from '@/stores/auth';
+    24→import { useNavigationStore } from '@/stores/navigation';
+    25→import type { Category, Country, City, Currency, Locale, ListingStatus } from '@/lib/types';
+    26→import ImageUploader from '@/components/media/ImageUploader';
+    27→import ListingPreview from '@/components/listing/ListingPreview';
+    28→import DynamicFieldsForm from '@/components/listing/DynamicFieldsForm';
+    29→
+    30→// ─── Schema ────────────────────────────────────────────────────────
+    31→
+    32→const VIDEO_URL_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|vimeo\.com\/)/;
+    33→
+    34→const createListingSchema = z.object({
+    35→  title: z.string().min(3).max(200),
+    36→  description: z.string().min(20).max(5000),
+    37→  category_id: z.string().min(1),
+    38→  subcategory_id: z.string().optional(),
+    39→  country_id: z.string().min(1),
+    40→  city_id: z.string().min(1),
+    41→  price: z.string().optional(),
+    42→  currency_id: z.string().optional(),
+    43→  video_url: z.string().optional().refine(
+    44→    (val) => !val || VIDEO_URL_REGEX.test(val),
+    45→    () => ({ message: 'invalid_video_url' })
+    46→  ),
+    47→});
+    48→
+    49→type FormData = z.infer<typeof createListingSchema>;
+    50→
+    51→// ─── Helpers ───────────────────────────────────────────────────────
+    52→
+    53→function getLocalizedName(
+    54→  item: { name_ar: string; name_fr: string; name_en: string },
+    55→  locale: Locale
+    56→): string {
+    57→  switch (locale) {
+    58→    case 'ar': return item.name_ar;
+    59→    case 'fr': return item.name_fr;
+    60→    default: return item.name_en;
+    61→  }
+    62→}
+    63→
+    64→// ─── Edit Status Options ────────────────────────────────────────────
+    65→
+    66→const EDIT_STATUS_OPTIONS: { value: ListingStatus; labelKey: string }[] = [
+    67→  { value: 'active', labelKey: 'listing.status_active' },
+    68→  { value: 'draft', labelKey: 'listing.status_draft' },
+    69→  { value: 'archived', labelKey: 'listing.status_archived' },
+    70→  { value: 'sold', labelKey: 'listing.status_sold' },
+    71→  { value: 'reserved', labelKey: 'listing.status_reserved' },
+    72→];
+    73→
+    74→// ─── Video Embed Helper ─────────────────────────────────────────
+    75→
+    76→function getVideoEmbedUrl(url: string): string | null {
+    77→  // YouTube: youtube.com/watch?v=ID
+    78→  let match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    79→  if (match) return `https://www.youtube.com/embed/${match[1]}`;
+    80→  // Vimeo: vimeo.com/ID
+    81→  match = url.match(/vimeo\.com\/(\d+)/);
+    82→  if (match) return `https://player.vimeo.com/video/${match[1]}`;
+    83→  return null;
+    84→}
+    85→
+    86→function VideoEmbed({ url }: { url: string }) {
+    87→  const embedUrl = getVideoEmbedUrl(url);
+    88→  if (!embedUrl) return null;
+    89→  return (
+    90→    <iframe
+    91→      src={embedUrl}
+    92→      className="size-full"
+    93→      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+    94→      allowFullScreen
+    95→      title="Video preview"
+    96→    />
+    97→  );
+    98→}
+    99→
+   100→// ─── Component ──────────────────────────────────────────────────────
+   101→
+   102→export default function CreateListingForm() {
+   103→  const { t, locale } = useTranslation();
+   104→  const { user } = useAuthStore();
+   105→  const { navigateHome, navigateDetail, editingListingId, clearEditingListing } = useNavigationStore();
+   106→  const isEditMode = !!editingListingId;
+   107→
+   108→  const [isSubmitting, setIsSubmitting] = useState(false);
+   109→  const [submittingAs, setSubmittingAs] = useState<'active' | 'draft' | null>(null);
+   110→  const [editStatus, setEditStatus] = useState<ListingStatus>('active');
+   111→  const [showPreview, setShowPreview] = useState(false);
+   112→
+   113→  // ── Dynamic fields state ──
+   114→  const [dynamicFieldValues, setDynamicFieldValues] = useState<Record<string, string>>({});
+   115→
+   116→  // ── Images state ──
+   117→  const [images, setImages] = useState<Array<{ id?: string; url: string; is_primary: boolean }>>([]);
+   118→
+   119→  // ── Fetch dropdown data ──
+   120→  const [categories, setCategories] = useState<Category[]>([]);
+   121→  const [countries, setCountries] = useState<Country[]>([]);
+   122→  const [cities, setCities] = useState<City[]>([]);
+   123→  const [currencies, setCurrencies] = useState<Currency[]>([]);
+   124→  const [dataLoading, setDataLoading] = useState(true);
+   125→  const [listingLoading, setListingLoading] = useState(isEditMode);
+   126→
+   127→  // ── Form ──
+   128→  const {
+   129→    register,
+   130→    control,
+   131→    handleSubmit,
+   132→    watch,
+   133→    setValue,
+   134→    reset,
+   135→    formState: { errors },
+   136→  } = useForm<FormData>({
+   137→    resolver: zodResolver(createListingSchema),
+   138→    defaultValues: {
+   139→      title: '',
+   140→      description: '',
+   141→      category_id: '',
+   142→      subcategory_id: '',
+   143→      country_id: '',
+   144→      city_id: '',
+   145→      price: '',
+   146→      currency_id: '',
+   147→      video_url: '',
+   148→    },
+   149→  });
+   150→
+   151→  const watchedCountry = watch('country_id');
+   152→  const watchedCategory = watch('category_id');
+   153→  const watchedDescription = watch('description') ?? '';
+   154→  const allFormValues = watch();
+   155→
+   156→  // ── Fetch initial data (dropdowns) ──
+   157→  useEffect(() => {
+   158→    async function fetchData() {
+   159→      try {
+   160→        const [catRes, countryRes, currencyRes] = await Promise.all([
+   161→          fetch('/api/categories'),
+   162→          fetch('/api/countries'),
+   163→          fetch('/api/currencies'),
+   164→        ]);
+   165→
+   166→        if (catRes.ok) setCategories(await catRes.json());
+   167→        if (countryRes.ok) setCountries(await countryRes.json());
+   168→        if (currencyRes.ok) setCurrencies(await currencyRes.json());
+   169→      } catch {
+   170→        // silent
+   171→      } finally {
+   172→        setDataLoading(false);
+   173→      }
+   174→    }
+   175→    fetchData();
+   176→  }, []);
+   177→
+   178→  // ── Fetch existing listing in edit mode ──
+   179→  useEffect(() => {
+   180→    if (!editingListingId) return;
+   181→
+   182→    async function fetchListing() {
+   183→      setListingLoading(true);
+   184→      try {
+   185→        const res = await fetch(`/api/listings/${editingListingId}?edit=1`);
+   186→        if (!res.ok) {
+   187→          toast.error(t('common.error'));
+   188→          navigateHome();
+   189→          return;
+   190→        }
+   191→        const data = await res.json();
+   192→
+   193→        // Set edit status
+   194→        setEditStatus(data.status || 'active');
+   195→
+   196→        // Pre-fill form fields
+   197→        // Determine parent category and subcategory
+   198→        let parentCategoryId = data.category_id;
+   199→        let subcategoryId = '';
+   200→
+   201→        if (data.category) {
+   202→          const cat = data.category;
+   203→          if (cat.parent_id && cat.parent_id !== cat.id) {
+   204→            // This is a subcategory, find the parent
+   205→            subcategoryId = cat.id;
+   206→            parentCategoryId = cat.parent_id;
+   207→          }
+   208→        }
+   209→
+   210→        reset({
+   211→          title: data.title || '',
+   212→          description: data.description || '',
+   213→          category_id: parentCategoryId,
+   214→          subcategory_id: subcategoryId,
+   215→          country_id: data.country_id || '',
+   216→          city_id: data.city_id || '',
+   217→          price: data.price != null ? String(data.price) : '',
+   218→          currency_id: data.currency_id || '',
+   219→          video_url: data.video_url || '',
+   220→        });
+   221→
+   222→        // Pre-fill images from existing media
+   223→        if (data.media && Array.isArray(data.media)) {
+   224→          setImages(
+   225→            data.media.map((m: { id: string; url: string; is_primary: boolean }) => ({
+   226→              id: m.id,
+   227→              url: m.url,
+   228→              is_primary: m.is_primary,
+   229→            }))
+   230→          );
+   231→        }
+   232→
+   233→        // Pre-fill dynamic field values
+   234→        try {
+   235→          const fieldsRes = await fetch(`/api/listings/${editingListingId}/fields`);
+   236→          if (fieldsRes.ok) {
+   237→            const fieldsData = await fieldsRes.json();
+   238→            if (Array.isArray(fieldsData)) {
+   239→              const prefill: Record<string, string> = {};
+   240→              fieldsData.forEach((fv: { field_id: string; value: string }) => {
+   241→                prefill[fv.field_id] = fv.value;
+   242→              });
+   243→              setDynamicFieldValues(prefill);
+   244→            }
+   245→          }
+   246→        } catch {
+   247→          // Silent — dynamic fields are optional
+   248→        }
+   249→      } catch {
+   250→        toast.error(t('common.error'));
+   251→        navigateHome();
+   252→      } finally {
+   253→        setListingLoading(false);
+   254→      }
+   255→    }
+   256→    fetchListing();
+   257→  }, [editingListingId, t, reset, navigateHome]);
+   258→
+   259→  // ── Fetch cities when country changes ──
+   260→  useEffect(() => {
+   261→    if (!watchedCountry) {
+   262→      setCities([]);
+   263→      setValue('city_id', '');
+   264→      return;
+   265→    }
+   266→
+   267→    let cancelled = false;
+   268→    fetch(`/api/cities?country_id=${watchedCountry}`)
+   269→      .then((res) => (res.ok ? res.json() : []))
+   270→      .then((data) => {
+   271→        if (!cancelled) {
+   272→          setCities(data);
+   273→          // Only reset city if we're not in the middle of pre-filling for edit mode
+   274→          if (!listingLoading) {
+   275→            setValue('city_id', '');
+   276→          }
+   277→        }
+   278→      })
+   279→      .catch(() => { if (!cancelled) setCities([]); });
+   280→    return () => { cancelled = true; };
+   281→  }, [watchedCountry, setValue, listingLoading]);
+   282→
+   283→  // ── Set default currency when country changes ──
+   284→  useEffect(() => {
+   285→    if (!watchedCountry) return;
+   286→    const selectedCountry = countries.find((c) => c.id === watchedCountry);
+   287→    if (selectedCountry?.currency_code) {
+   288→      const currency = currencies.find((c) => c.code === selectedCountry.currency_code);
+   289→      if (currency) {
+   290→        setValue('currency_id', currency.id);
+   291→      }
+   292→    }
+   293→  }, [watchedCountry, countries, currencies, setValue]);
+   294→
+   295→  // ── Reset subcategory when parent category changes ──
+   296→  useEffect(() => {
+   297→    if (!listingLoading) {
+   298→      setValue('subcategory_id', '');
+   299→    }
+   300→  }, [watchedCategory, setValue, listingLoading]);
+   301→
+   302→  // ── Get subcategories ──
+   303→  const selectedParentCategory = categories.find((c) => c.id === watchedCategory);
+   304→  const subcategories = selectedParentCategory?.children ?? [];
+   305→
+   306→  // ── Derived preview data ──
+   307→  const previewCategory = allFormValues.subcategory_id
+   308→    ? subcategories.find((c) => c.id === allFormValues.subcategory_id)
+   309→    : null;
+   310→  const previewParentCategory = selectedParentCategory ?? null;
+   311→  const previewCountry = countries.find((c) => c.id === allFormValues.country_id) ?? null;
+   312→  const previewCity = cities.find((c) => c.id === allFormValues.city_id) ?? null;
+   313→  const previewCurrency = currencies.find((c) => c.id === allFormValues.currency_id) ?? null;
+   314→
+   315→  // ── Preview handler ──
+   316→  const handlePreview = useCallback(() => {
+   317→    // Validate the form before showing preview
+   318→    handleSubmit(() => {
+   319→      setShowPreview(true);
+   320→    })();
+   321→  }, [handleSubmit]);
+   322→
+   323→  // ── Submit handler ──
+   324→  const onSubmit = useCallback(
+   325→    async (data: FormData, status: 'active' | 'draft') => {
+   326→      setIsSubmitting(true);
+   327→      setSubmittingAs(status);
+   328→
+   329→      try {
+   330→        // Use subcategory if selected, otherwise parent
+   331→        const finalCategoryId = data.subcategory_id || data.category_id;
+   332→
+   333→        const body = {
+   334→          title: data.title,
+   335→          description: data.description,
+   336→          category_id: finalCategoryId,
+   337→          country_id: data.country_id,
+   338→          city_id: data.city_id,
+   339→          price: data.price ? Number(data.price) : null,
+   340→          currency_id: data.currency_id || null,
+   341→          video_url: data.video_url?.trim() || null,
+   342→          status,
+   343→        };
+   344→
+   345→        if (isEditMode && editingListingId) {
+   346→          // ── Edit mode: PATCH ──
+   347→          const editBody = {
+   348→            ...body,
+   349→            status: editStatus,
+   350→          };
+   351→
+   352→          const res = await fetch(`/api/listings/${editingListingId}`, {
+   353→            method: 'PATCH',
+   354→            headers: { 'Content-Type': 'application/json' },
+   355→            body: JSON.stringify(editBody),
+   356→          });
+   357→
+   358→          if (!res.ok) {
+   359→            const errData = await res.json().catch(() => ({}));
+   360→            throw new Error(errData.error || 'Failed to update listing');
+   361→          }
+   362→
+   363→          // Upload new images (only those without an existing DB id)
+   364→          const newImages = images.filter((img) => !img.id && !img._uploading);
+   365→          for (let i = 0; i < newImages.length; i++) {
+   366→            const img = newImages[i];
+   367→            try {
+   368→              await fetch(`/api/listings/${editingListingId}/media`, {
+   369→                method: 'POST',
+   370→                headers: { 'Content-Type': 'application/json' },
+   371→                body: JSON.stringify({
+   372→                  url: img.url,
+   373→                  type: 'image',
+   374→                  sort_order: images.indexOf(img),
+   375→                  is_primary: img.is_primary,
+   376→                }),
+   377→              });
+   378→            } catch {
+   379→              // Continue with other images
+   380→            }
+   381→          }
+   382→
+   383→          // Save dynamic field values
+   384→          const fieldEntries = Object.entries(dynamicFieldValues).filter(([, v]) => v);
+   385→          if (fieldEntries.length > 0) {
+   386→            try {
+   387→              await fetch(`/api/listings/${editingListingId}/fields`, {
+   388→                method: 'PATCH',
+   389→                headers: { 'Content-Type': 'application/json' },
+   390→                body: JSON.stringify({
+   391→                  fields: fieldEntries.map(([field_id, val]) => ({ field_id, value: val })),
+   392→                }),
+   393→              });
+   394→            } catch {
+   395→              // Non-critical — listing was saved
+   396→            }
+   397→          }
+   398→
+   399→          setImages([]);
+   400→          clearEditingListing();
+   401→          toast.success(t('listing.edit_success'));
+   402→          navigateDetail(editingListingId);
+   403→        } else {
+   404→          // ── Create mode: POST ──
+   405→          const res = await fetch('/api/listings', {
+   406→            method: 'POST',
+   407→            headers: { 'Content-Type': 'application/json' },
+   408→            body: JSON.stringify(body),
+   409→          });
+   410→
+   411→          if (!res.ok) {
+   412→            const errData = await res.json().catch(() => ({}));
+   413→            throw new Error(errData.error || 'Failed to create listing');
+   414→          }
+   415→
+   416→          const createdListing = await res.json();
+   417→
+   418→          // Save dynamic field values
+   419→          const fieldEntries = Object.entries(dynamicFieldValues).filter(([, v]) => v);
+   420→          if (fieldEntries.length > 0) {
+   421→            try {
+   422→              await fetch(`/api/listings/${createdListing.id}/fields`, {
+   423→                method: 'PATCH',
+   424→                headers: { 'Content-Type': 'application/json' },
+   425→                body: JSON.stringify({
+   426→                  fields: fieldEntries.map(([field_id, val]) => ({ field_id, value: val })),
+   427→                }),
+   428→              });
+   429→            } catch {
+   430→              // Non-critical — listing was created
+   431→            }
+   432→          }
+   433→
+   434→          // Upload images and create media records
+   435→          const validImages = images.filter((img) => !img._uploading);
+   436→          for (let i = 0; i < validImages.length; i++) {
+   437→            const img = validImages[i];
+   438→            try {
+   439→              await fetch(`/api/listings/${createdListing.id}/media`, {
+   440→                method: 'POST',
+   441→                headers: { 'Content-Type': 'application/json' },
+   442→                body: JSON.stringify({
+   443→                  url: img.url,
+   444→                  type: 'image',
+   445→                  sort_order: i,
+   446→                  is_primary: img.is_primary,
+   447→                }),
+   448→              });
+   449→            } catch {
+   450→              // Continue with other images even if one fails
+   451→            }
+   452→          }
+   453→
+   454→          setImages([]);
+   455→          if (status === 'active') {
+   456→            toast.success(t('create.success_published'));
+   457→            reset();
+   458→            navigateDetail(createdListing.id);
+   459→          } else {
+   460→            toast.success(t('create.success_draft'));
+   461→            reset();
+   462→            navigateHome();
+   463→          }
+   464→        }
+   465→      } catch (error) {
+   466→        toast.error(t('create.error_title'));
+   467→        console.error(isEditMode ? 'Edit listing error:' : 'Create listing error:', error);
+   468→      } finally {
+   469→        setIsSubmitting(false);
+   470→        setSubmittingAs(null);
+   471→      }
+   472→    },
+   473→    [isEditMode, editingListingId, editStatus, images, dynamicFieldValues, t, reset, navigateHome, navigateDetail, clearEditingListing]
+   474→  );
+   475→
+   476→  const handlePublish = handleSubmit((data) => onSubmit(data, 'active'));
+   477→  const handleDraft = handleSubmit((data) => onSubmit(data, 'draft'));
+   478→
+   479→  // ── Back button handler: clear editing state ──
+   480→  const handleBack = useCallback(() => {
+   481→    if (isEditMode) {
+   482→      clearEditingListing();
+   483→    }
+   484→    navigateHome();
+   485→  }, [isEditMode, clearEditingListing, navigateHome]);
+   486→
+   487→  // ── Cancel button handler: go back to the detail view if editing ──
+   488→  const handleCancel = useCallback(() => {
+   489→    if (isEditMode && editingListingId) {
+   490→      clearEditingListing();
+   491→      navigateDetail(editingListingId);
+   492→    } else {
+   493→      navigateHome();
+   494→    }
+   495→  }, [isEditMode, editingListingId, clearEditingListing, navigateHome, navigateDetail]);
+   496→
+   497→  // ── Not logged in guard ──
+   498→  if (!user) {
+   499→    return (
+   500→      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+   501→        <Button
+   502→          variant="ghost"
+   503→          size="sm"
+   504→          className="mb-6 gap-1.5 text-muted-foreground hover:text-foreground"
+   505→          onClick={handleBack}
+   506→        >
+   507→          <ArrowLeft className="size-4" />
+   508→          {t('common.back')}
+   509→        </Button>
+   510→        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20">
+   511→          <p className="text-sm text-muted-foreground">{t('create.login_required')}</p>
+   512→        </div>
+   513→      </div>
+   514→    );
+   515→  }
+   516→
+   517→  // ── Loading skeleton (initial data or editing listing) ──
+   518→  if (dataLoading || listingLoading) {
+   519→    return (
+   520→      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+   521→        <div className="mb-8">
+   522→          <div className="mb-2 h-8 w-48 animate-pulse rounded bg-muted" />
+   523→          <div className="h-4 w-72 animate-pulse rounded bg-muted" />
+   524→        </div>
+   525→        <div className="space-y-6">
+   526→          {Array.from({ length: isEditMode ? 4 : 3 }).map((_, i) => (
+   527→            <div key={i} className="rounded-xl border border-border p-6">
+   528→              <div className="mb-4 h-5 w-32 animate-pulse rounded bg-muted" />
+   529→              <div className="space-y-3">
+   530→                <div className="h-10 animate-pulse rounded bg-muted" />
+   531→                <div className="h-24 animate-pulse rounded bg-muted" />
+   532→              </div>
+   533→            </div>
+   534→          ))}
+   535→        </div>
+   536→      </div>
+   537→    );
+   538→  }
+   539→
+   540→  return (
+   541→    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+   542→      {/* Back + Header */}
+   543→      <Button
+   544→        variant="ghost"
+   545→        size="sm"
+   546→        className="mb-6 gap-1.5 text-muted-foreground hover:text-foreground"
+   547→        onClick={handleBack}
+   548→      >
+   549→        <ArrowLeft className="size-4" />
+   550→        {t('common.back')}
+   551→      </Button>
+   552→
+   553→      <div className="mb-8">
+   554→        <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
+   555→          {isEditMode ? t('listing.edit_title') : t('create.title')}
+   556→        </h1>
+   557→        <p className="mt-2 text-sm text-muted-foreground">
+   558→          {isEditMode ? t('listing.edit_title') : t('create.subtitle')}
+   559→        </p>
+   560→      </div>
+   561→
+   562→      <form className="space-y-6">
+   563→        {/* ── Status Section (edit mode only) ── */}
+   564→        {isEditMode && (
+   565→          <Card className="overflow-hidden border-border">
+   566→            <CardHeader className="border-b border-border bg-muted/30 px-6 py-4">
+   567→              <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+   568→                <Tag className="size-5 text-[#0E9F6E]" />
+   569→                {t('listing.status_label')}
+   570→              </CardTitle>
+   571→            </CardHeader>
+   572→            <CardContent className="p-6">
+   573→              <Select
+   574→                value={editStatus}
+   575→                onValueChange={(val) => setEditStatus(val as ListingStatus)}
+   576→              >
+   577→                <SelectTrigger className="w-full">
+   578→                  <SelectValue />
+   579→                </SelectTrigger>
+   580→                <SelectContent>
+   581→                  {EDIT_STATUS_OPTIONS.map((opt) => (
+   582→                    <SelectItem key={opt.value} value={opt.value}>
+   583→                      {t(opt.labelKey)}
+   584→                    </SelectItem>
+   585→                  ))}
+   586→                </SelectContent>
+   587→              </Select>
+   588→            </CardContent>
+   589→          </Card>
+   590→        )}
+   591→
+   592→        {/* ── Details Section ── */}
+   593→        <Card className="overflow-hidden border-border">
+   594→          <CardHeader className="border-b border-border bg-muted/30 px-6 py-4">
+   595→            <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+   596→              <FileText className="size-5 text-[#0E9F6E]" />
+   597→              {t('create.section_details')}
+   598→            </CardTitle>
+   599→          </CardHeader>
+   600→          <CardContent className="space-y-5 p-6">
+   601→            {/* Title */}
+   602→            <div className="space-y-2">
+   603→              <Label htmlFor="title" className="text-sm font-medium">
+   604→                {t('create.title_label')} <span className="text-destructive">*</span>
+   605→              </Label>
+   606→              <div className="relative">
+   607→                <Type className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+   608→                <Input
+   609→                  id="title"
+   610→                  placeholder={t('create.title_placeholder')}
+   611→                  className="ps-10"
+   612→                  {...register('title')}
+   613→                />
+   614→              </div>
+   615→              {errors.title && (
+   616→                <p className="text-xs text-destructive">
+   617→                  {errors.title.message}
+   618→                </p>
+   619→              )}
+   620→            </div>
+   621→
+   622→            {/* Description */}
+   623→            <div className="space-y-2">
+   624→              <Label htmlFor="description" className="text-sm font-medium">
+   625→                {t('create.description_label')} <span className="text-destructive">*</span>
+   626→                <span className="ms-2 text-xs text-muted-foreground">
+   627→                  {watchedDescription.length} / 5000 {t('create.characters_count')}
+   628→                </span>
+   629→              </Label>
+   630→              <Textarea
+   631→                id="description"
+   632→                placeholder={t('create.description_placeholder')}
+   633→                rows={6}
+   634→                className="resize-none"
+   635→                {...register('description')}
+   636→              />
+   637→              {errors.description && (
+   638→                <p className="text-xs text-destructive">
+   639→                  {errors.description.message}
+   640→                </p>
+   641→              )}
+   642→            </div>
+   643→
+   644→            {/* Category */}
+   645→            <div className="space-y-2">
+   646→              <Label className="text-sm font-medium">
+   647→                {t('create.category_label')} <span className="text-destructive">*</span>
+   648→              </Label>
+   649→              <Controller
+   650→                name="category_id"
+   651→                control={control}
+   652→                render={({ field }) => (
+   653→                  <Select
+   654→                    value={field.value}
+   655→                    onValueChange={field.onChange}
+   656→                  >
+   657→                    <SelectTrigger className="w-full">
+   658→                      <SelectValue placeholder={t('create.category_placeholder')} />
+   659→                    </SelectTrigger>
+   660→                    <SelectContent className="max-h-64 overflow-y-auto">
+   661→                      {categories.map((cat) => (
+   662→                        <SelectItem key={cat.id} value={cat.id}>
+   663→                          {getLocalizedName(cat, locale)}
+   664→                        </SelectItem>
+   665→                      ))}
+   666→                    </SelectContent>
+   667→                  </Select>
+   668→                )}
+   669→              />
+   670→              {errors.category_id && (
+   671→                <p className="text-xs text-destructive">
+   672→                  {t('create.category_label')}
+   673→                </p>
+   674→              )}
+   675→            </div>
+   676→
+   677→            {/* Subcategory (only when parent has children) */}
+   678→            {subcategories.length > 0 && (
+   679→              <div className="space-y-2">
+   680→                <Label className="text-sm font-medium">
+   681→                  {t('create.subcategory_label')}
+   682→                </Label>
+   683→                <Controller
+   684→                  name="subcategory_id"
+   685→                  control={control}
+   686→                  render={({ field }) => (
+   687→                    <Select
+   688→                      value={field.value}
+   689→                      onValueChange={field.onChange}
+   690→                    >
+   691→                      <SelectTrigger className="w-full">
+   692→                        <SelectValue placeholder={t('create.subcategory_placeholder')} />
+   693→                      </SelectTrigger>
+   694→                      <SelectContent className="max-h-64 overflow-y-auto">
+   695→                        {subcategories.map((sub) => (
+   696→                          <SelectItem key={sub.id} value={sub.id}>
+   697→                            {getLocalizedName(sub, locale)}
+   698→                          </SelectItem>
+   699→                        ))}
+   700→                      </SelectContent>
+   701→                    </Select>
+   702→                  )}
+   703→                />
+   704→              </div>
+   705→            )}
+   706→          </CardContent>
+   707→        </Card>
+   708→
+   709→        {/* ── Dynamic Fields Section ── */}
+   710→        <DynamicFieldsForm
+   711→          categoryId={allFormValues.subcategory_id || allFormValues.category_id}
+   712→          value={dynamicFieldValues}
+   713→          onChange={(fieldId, val) =>
+   714→            setDynamicFieldValues((prev) => ({ ...prev, [fieldId]: val }))
+   715→          }
+   716→          disabled={isSubmitting}
+   717→        />
+   718→
+   719→        {/* ── Video Section ── */}
+   720→        <Card className="overflow-hidden border-border">
+   721→          <CardHeader className="border-b border-border bg-muted/30 px-6 py-4">
+   722→            <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+   723→              <VideoIcon className="size-5 text-[#0E9F6E]" />
+   724→              {t('listing.video_url')}
+   725→            </CardTitle>
+   726→          </CardHeader>
+   727→          <CardContent className="space-y-4 p-6">
+   728→            <div className="space-y-2">
+   729→              <Label htmlFor="video_url" className="text-sm font-medium">
+   730→                {t('listing.video_url')}
+   731→              </Label>
+   732→              <Input
+   733→                id="video_url"
+   734→                placeholder={t('listing.video_url_placeholder')}
+   735→                {...register('video_url')}
+   736→              />
+   737→              <p className="text-xs text-muted-foreground">
+   738→                {t('listing.video_url_help')}
+   739→              </p>
+   740→              {errors.video_url && (
+   741→                <p className="text-xs text-destructive">
+   742→                  {t('listing.invalid_video_url')}
+   743→                </p>
+   744→              )}
+   745→            </div>
+   746→            {allFormValues.video_url && VIDEO_URL_REGEX.test(allFormValues.video_url) && (
+   747→              <div className="space-y-2">
+   748→                <p className="text-sm font-medium text-foreground">
+   749→                  {t('listing.video_preview')}
+   750→                </p>
+   751→                <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-border bg-muted">
+   752→                  <VideoEmbed url={allFormValues.video_url} />
+   753→                </div>
+   754→              </div>
+   755→            )}
+   756→          </CardContent>
+   757→        </Card>
+   758→
+   759→        {/* ── Images Section ── */}
+   760→        <Card className="overflow-hidden border-border">
+   761→          <CardHeader className="border-b border-border bg-muted/30 px-6 py-4">
+   762→            <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+   763→              <ImageIcon className="size-5 text-[#0E9F6E]" />
+   764→              {t('listing.upload_images')}
+   765→            </CardTitle>
+   766→          </CardHeader>
+   767→          <CardContent className="p-6">
+   768→            <p className="mb-4 text-sm text-muted-foreground">
+   769→              {t('listing.upload_images_hint')}
+   770→            </p>
+   771→            <ImageUploader
+   772→              listingId={editingListingId ?? undefined}
+   773→              images={images}
+   774→              onImagesChange={setImages}
+   775→              disabled={isSubmitting}
+   776→            />
+   777→          </CardContent>
+   778→        </Card>
+   779→
+   780→        {/* ── Location Section ── */}
+   781→        <Card className="overflow-hidden border-border">
+   782→          <CardHeader className="border-b border-border bg-muted/30 px-6 py-4">
+   783→            <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+   784→              <MapPin className="size-5 text-[#0E9F6E]" />
+   785→              {t('create.section_location')}
+   786→            </CardTitle>
+   787→          </CardHeader>
+   788→          <CardContent className="space-y-5 p-6">
+   789→            {/* Country */}
+   790→            <div className="space-y-2">
+   791→              <Label className="text-sm font-medium">
+   792→                {t('create.country_label')} <span className="text-destructive">*</span>
+   793→              </Label>
+   794→              <Controller
+   795→                name="country_id"
+   796→                control={control}
+   797→                render={({ field }) => (
+   798→                  <Select
+   799→                    value={field.value}
+   800→                    onValueChange={field.onChange}
+   801→                  >
+   802→                    <SelectTrigger className="w-full">
+   803→                      <SelectValue placeholder={t('create.country_placeholder')} />
+   804→                    </SelectTrigger>
+   805→                    <SelectContent className="max-h-64 overflow-y-auto">
+   806→                      {countries.map((country) => (
+   807→                        <SelectItem key={country.id} value={country.id}>
+   808→                          {country.flag_emoji} {getLocalizedName(country, locale)}
+   809→                        </SelectItem>
+   810→                      ))}
+   811→                    </SelectContent>
+   812→                  </Select>
+   813→                )}
+   814→              />
+   815→              {errors.country_id && (
+   816→                <p className="text-xs text-destructive">
+   817→                  {t('create.country_label')}
+   818→                </p>
+   819→              )}
+   820→            </div>
+   821→
+   822→            {/* City */}
+   823→            <div className="space-y-2">
+   824→              <Label className="text-sm font-medium">
+   825→                {t('create.city_label')} <span className="text-destructive">*</span>
+   826→              </Label>
+   827→              <Controller
+   828→                name="city_id"
+   829→                control={control}
+   830→                render={({ field }) => (
+   831→                  <Select
+   832→                    value={field.value}
+   833→                    onValueChange={field.onChange}
+   834→                    disabled={!watchedCountry}
+   835→                  >
+   836→                    <SelectTrigger className="w-full">
+   837→                      <SelectValue placeholder={t('create.city_placeholder')} />
+   838→                    </SelectTrigger>
+   839→                    <SelectContent className="max-h-64 overflow-y-auto">
+   840→                      {cities.map((city) => (
+   841→                        <SelectItem key={city.id} value={city.id}>
+   842→                          {getLocalizedName(city, locale)}
+   843→                        </SelectItem>
+   844→                      ))}
+   845→                    </SelectContent>
+   846→                  </Select>
+   847→                )}
+   848→              />
+   849→              {errors.city_id && (
+   850→                <p className="text-xs text-destructive">
+   851→                  {t('create.city_label')}
+   852→                </p>
+   853→              )}
+   854→            </div>
+   855→          </CardContent>
+   856→        </Card>
+   857→
+   858→        {/* ── Pricing Section ── */}
+   859→        <Card className="overflow-hidden border-border">
+   860→          <CardHeader className="border-b border-border bg-muted/30 px-6 py-4">
+   861→            <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+   862→              <Tag className="size-5 text-[#0E9F6E]" />
+   863→              {t('create.section_pricing')}
+   864→            </CardTitle>
+   865→          </CardHeader>
+   866→          <CardContent className="space-y-5 p-6">
+   867→            {/* Price & Currency on same row on desktop */}
+   868→            <div className="grid gap-5 sm:grid-cols-2">
+   869→              {/* Price */}
+   870→              <div className="space-y-2">
+   871→                <Label htmlFor="price" className="text-sm font-medium">
+   872→                  {t('create.price_label')}
+   873→                </Label>
+   874→                <Input
+   875→                  id="price"
+   876→                  type="number"
+   877→                  min="0"
+   878→                  step="0.01"
+   879→                  placeholder={t('create.price_placeholder')}
+   880→                  {...register('price')}
+   881→                />
+   882→                <p className="text-xs text-muted-foreground">
+   883→                  {t('create.price_optional')}
+   884→                </p>
+   885→              </div>
+   886→
+   887→              {/* Currency */}
+   888→              <div className="space-y-2">
+   889→                <Label className="text-sm font-medium">
+   890→                  {t('create.currency_label')}
+   891→                </Label>
+   892→                <Controller
+   893→                  name="currency_id"
+   894→                  control={control}
+   895→                  render={({ field }) => (
+   896→                    <Select
+   897→                      value={field.value}
+   898→                      onValueChange={field.onChange}
+   899→                    >
+   900→                      <SelectTrigger className="w-full">
+   901→                        <SelectValue placeholder={t('create.currency_placeholder')} />
+   902→                      </SelectTrigger>
+   903→                      <SelectContent className="max-h-64 overflow-y-auto">
+   904→                        {currencies.map((curr) => (
+   905→                          <SelectItem key={curr.id} value={curr.id}>
+   906→                            {curr.symbol} — {getLocalizedName(curr, locale)}
+   907→                          </SelectItem>
+   908→                        ))}
+   909→                      </SelectContent>
+   910→                    </Select>
+   911→                  )}
+   912→                />
+   913→              </div>
+   914→            </div>
+   915→          </CardContent>
+   916→        </Card>
+   917→
+   918→        {/* ── Actions ── */}
+   919→        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+   920→          <Button
+   921→            type="button"
+   922→            variant="outline"
+   923→            className="order-1 sm:order-none"
+   924→            onClick={handleCancel}
+   925→            disabled={isSubmitting}
+   926→          >
+   927→            {t('create.cancel')}
+   928→          </Button>
+   929→          {!isEditMode && (
+   930→            <Button
+   931→              type="button"
+   932→              variant="outline"
+   933→              className="border-[#F2B84B] text-[#F2B84B] hover:bg-[#F2B84B]/10"
+   934→              onClick={handlePreview}
+   935→              disabled={isSubmitting}
+   936→            >
+   937→              <Eye className="me-2 size-4" />
+   938→              {t('listing.preview')}
+   939→            </Button>
+   940→          )}
+   941→          {isEditMode ? (
+   942→            <Button
+   943→              type="button"
+   944→              className="bg-[#0E9F6E] text-white hover:bg-[#0E9F6E]/90"
+   945→              onClick={handlePublish}
+   946→              disabled={isSubmitting}
+   947→            >
+   948→              {isSubmitting ? (
+   949→                <Loader2 className="me-2 size-4 animate-spin" />
+   950→              ) : null}
+   951→              {isSubmitting
+   952→                ? t('listing.editing')
+   953→                : t('listing.edit_title')}
+   954→            </Button>
+   955→          ) : (
+   956→            <>
+   957→              <Button
+   958→                type="button"
+   959→                variant="outline"
+   960→                className="border-[#0E9F6E] text-[#0E9F6E] hover:bg-[#0E9F6E]/10"
+   961→                onClick={handleDraft}
+   962→                disabled={isSubmitting}
+   963→              >
+   964→                {isSubmitting && submittingAs === 'draft' ? (
+   965→                  <Loader2 className="me-2 size-4 animate-spin" />
+   966→                ) : null}
+   967→                {isSubmitting && submittingAs === 'draft'
+   968→                  ? t('create.saving')
+   969→                  : t('create.save_draft')}
+   970→              </Button>
+   971→              <Button
+   972→                type="button"
+   973→                className="bg-[#0E9F6E] text-white hover:bg-[#0E9F6E]/90"
+   974→                onClick={handlePublish}
+   975→                disabled={isSubmitting}
+   976→              >
+   977→                {isSubmitting && submittingAs === 'active' ? (
+   978→                  <Loader2 className="me-2 size-4 animate-spin" />
+   979→                ) : null}
+   980→                {isSubmitting && submittingAs === 'active'
+   981→                  ? t('create.publishing')
+   982→                  : t('create.publish')}
+   983→              </Button>
+   984→            </>
+   985→          )}
+   986→        </div>
+   987→      </form>
+   988→
+   989→      {/* ── Preview View ── */}
+   990→      {showPreview && (
+   991→        <ListingPreview
+   992→          title={allFormValues.title}
+   993→          description={allFormValues.description}
+   994→          category={previewCategory}
+   995→          parentCategory={previewParentCategory}
+   996→          country={previewCountry}
+   997→          city={previewCity}
+   998→          price={allFormValues.price}
+   999→          currency={previewCurrency}
+  1000→          images={images}
+  1001→          onEdit={() => setShowPreview(false)}
+  1002→          onPublish={handlePublish}
+  1003→        />
+  1004→      )}
+  1005→    </div>
+  1006→  );
+  1007→}
+  1008→

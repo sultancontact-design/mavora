@@ -4,7 +4,19 @@ import { useState, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Mail, Lock, User, Loader2, ArrowLeft, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { 
+  Mail, 
+  Lock, 
+  User, 
+  Loader2, 
+  ArrowLeft, 
+  Eye, 
+  EyeOff, 
+  ShieldCheck,
+  KeyRound,
+  CheckCircle,
+  AlertCircle
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -30,12 +42,24 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { useAuthStore } from '@/stores/auth';
 
 // ============================================================
+// Types
+// ============================================================
+
+export type AuthView = 'login' | 'signup' | 'forgot-password' | 'success';
+
+interface AuthModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  defaultView?: AuthView;
+}
+
+// ============================================================
 // Schemas
 // ============================================================
 
 const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
+  email: z.string().email('auth.invalid_email'),
+  password: z.string().min(1, 'auth.password_required'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -43,8 +67,12 @@ type LoginFormData = z.infer<typeof loginSchema>;
 const signupSchema = z
   .object({
     display_name: z.string().min(2).max(50),
-    email: z.string().email(),
-    password: z.string().min(8),
+    email: z.string().email('auth.invalid_email'),
+    password: z
+      .string()
+      .min(8, 'auth.password_too_short')
+      .regex(/[a-z]/, 'auth.password_needs_lowercase')
+      .regex(/[0-9]/, 'auth.password_needs_number'),
     confirmPassword: z.string().min(8),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -54,12 +82,18 @@ const signupSchema = z
 
 type SignupFormData = z.infer<typeof signupSchema>;
 
+const forgotPasswordSchema = z.object({
+  email: z.string().email('auth.invalid_email'),
+});
+
+type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
+
 // ============================================================
-// Password Strength
+// Password Strength Calculator
 // ============================================================
 
 function getPasswordStrength(password: string): {
-  score: number; // 0-4
+  score: number;
   labelKey: string;
   color: string;
   width: string;
@@ -74,14 +108,14 @@ function getPasswordStrength(password: string): {
     { labelKey: 'auth.password_weak', color: 'bg-red-500', width: 'w-1/4' },
     { labelKey: 'auth.password_fair', color: 'bg-orange-500', width: 'w-2/4' },
     { labelKey: 'auth.password_good', color: 'bg-yellow-500', width: 'w-3/4' },
-    { labelKey: 'auth.password_strong', color: 'bg-emerald', width: 'w-full' },
+    { labelKey: 'auth.password_strong', color: 'bg-emerald-500', width: 'w-full' },
   ];
 
   return { score, ...levels[score] };
 }
 
 // ============================================================
-// Password Input with Toggle
+// Password Input Component with Toggle
 // ============================================================
 
 function PasswordInput({
@@ -122,14 +156,16 @@ function PasswordInput({
 }
 
 // ============================================================
-// Login Form
+// Login Form Component
 // ============================================================
 
 function LoginForm({
   onSwitchToSignup,
+  onSwitchToForgotPassword,
   onSuccess,
 }: {
   onSwitchToSignup: () => void;
+  onSwitchToForgotPassword: () => void;
   onSuccess: () => void;
 }) {
   const { t } = useTranslation();
@@ -153,11 +189,20 @@ function LoginForm({
       const data = await res.json();
 
       if (!res.ok) {
+        // Handle rate limiting specifically
+        if (res.status === 429) {
+          toast.error(t('auth.too_many_attempts'));
+          return;
+        }
+        
         toast.error(t(data.error) || t('common.error'));
         return;
       }
 
-      setUser(data.user);
+      if (data.user) {
+        setUser(data.user);
+      }
+      
       toast.success(t('auth.login_success'));
       onSuccess();
     } catch {
@@ -202,9 +247,7 @@ function LoginForm({
                 <FormLabel className="text-sm font-medium">{t('auth.password')}</FormLabel>
                 <button
                   type="button"
-                  onClick={() => {
-                    toast.info('Password reset will be available soon.');
-                  }}
+                  onClick={onSwitchToForgotPassword}
                   className="text-xs text-emerald hover:text-emerald/80 font-medium transition-colors"
                 >
                   {t('auth.forgot_password')}
@@ -254,7 +297,7 @@ function LoginForm({
 }
 
 // ============================================================
-// Signup Form
+// Signup Form Component
 // ============================================================
 
 function SignupForm({
@@ -307,7 +350,14 @@ function SignupForm({
       if (data.user) {
         setUser(data.user);
       }
-      toast.success(t('auth.signup_success'));
+      
+      // Show different message based on email verification requirement
+      if (data.emailConfirmationRequired) {
+        toast.info(t('auth.verify_email_sent') || 'Please check your email to verify your account');
+      } else {
+        toast.success(t('auth.signup_success'));
+      }
+      
       onSuccess();
     } catch {
       toast.error(t('auth.error_occurred'));
@@ -445,18 +495,155 @@ function SignupForm({
 }
 
 // ============================================================
-// Auth Modal (exported)
+// Forgot Password Form Component
 // ============================================================
 
-export type AuthView = 'login' | 'signup';
+function ForgotPasswordForm({
+  onBackToLogin,
+  onSuccess,
+}: {
+  onBackToLogin: () => void;
+  onSuccess: () => void;
+}) {
+  const { t } = useTranslation();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEmailSent, setIsEmailSent] = useState(false);
 
-interface AuthModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  defaultView?: AuthView;
+  const form = useForm<ForgotPasswordFormData>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: { email: '' },
+  });
+
+  const onSubmit = async (values: ForgotPasswordFormData) => {
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok && !data.rateLimited) {
+        toast.error(t(data.error) || t('common.error'));
+        return;
+      }
+
+      // Always show success for security (prevent email enumeration)
+      setIsEmailSent(true);
+      toast.success(t('auth.reset_email_sent'));
+      
+      // Auto-close after showing success
+      setTimeout(() => {
+        onSuccess();
+      }, 2000);
+    } catch {
+      toast.error(t('auth.error_occurred'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isEmailSent) {
+    return (
+      <div className="space-y-4 text-center py-4">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-emerald/10">
+          <CheckCircle className="size-6 text-emerald" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-lg">{t('auth.email_sent_title') || 'Check Your Email'}</h3>
+          <p className="text-sm text-muted-foreground mt-2">
+            {t('auth.reset_email_instructions') || 'We\'ve sent you a password reset link. Please check your inbox.'}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          onClick={onBackToLogin}
+          className="w-full"
+        >
+          <ArrowLeft className="size-4 me-2" />
+          {t('common.back_to_login') || 'Back to Login'}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="flex items-start gap-3 p-3 rounded-lg bg-amber/10 border border-amber/20">
+          <AlertCircle className="size-5 text-amber shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-dark">
+            {t('auth.reset_password_help') || 'Enter your email address and we\'ll send you a link to reset your password.'}
+          </p>
+        </div>
+
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium">{t('auth.email')}</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="email"
+                    placeholder="name@example.com"
+                    className="ps-10"
+                    autoComplete="email"
+                    {...field}
+                  />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-11 text-sm font-semibold"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              <span className="ms-2">{t('auth.sending') || 'Sending...'}</span>
+            </>
+          ) : (
+            <>
+              <KeyRound className="size-4 me-2" />
+              {t('auth.send_reset_link') || 'Send Reset Link'}
+            </>
+          )}
+        </Button>
+
+        <p className="text-center text-sm text-muted-foreground">
+          <button
+            type="button"
+            onClick={onBackToLogin}
+            className="font-semibold text-emerald hover:text-emerald/80 transition-colors inline-flex items-center"
+          >
+            <ArrowLeft className="size-4 me-1" />
+            {t('auth.back_to_login') || 'Back to Login'}
+          </button>
+        </p>
+      </form>
+    </Form>
+  );
 }
 
-export default function AuthModal({ open, onOpenChange, defaultView = 'login' }: AuthModalProps) {
+// ============================================================
+// Main Auth Modal Component
+// ============================================================
+
+export default function AuthModal({ 
+  open, 
+  onOpenChange, 
+  defaultView = 'login' 
+}: AuthModalProps) {
   const { t, locale } = useTranslation();
   const [view, setView] = useState<AuthView>(defaultView);
   const direction = locale === 'ar' ? 'rtl' : 'ltr';
@@ -477,14 +664,19 @@ export default function AuthModal({ open, onOpenChange, defaultView = 'login' }:
   }, [onOpenChange]);
 
   const isLogin = view === 'login';
+  const isSignup = view === 'signup';
+  const isForgotPassword = view === 'forgot-password';
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md p-0 overflow-hidden">
-        {/* Navy header bar */}
+      <DialogContent 
+        className="sm:max-w-md p-0 overflow-hidden"
+        dir={direction}
+      >
+        {/* Header */}
         <div className="bg-primary px-6 py-5 text-primary-foreground">
           <DialogHeader className="text-start">
-            {isLogin ? (
+            {isLogin && (
               <>
                 <DialogTitle className="text-xl font-bold flex items-center gap-2">
                   <ShieldCheck className="size-5" />
@@ -494,7 +686,9 @@ export default function AuthModal({ open, onOpenChange, defaultView = 'login' }:
                   {t('auth.welcome_subtitle')}
                 </DialogDescription>
               </>
-            ) : (
+            )}
+            
+            {isSignup && (
               <>
                 <DialogTitle className="text-xl font-bold flex items-center gap-2">
                   <User className="size-5" />
@@ -505,19 +699,41 @@ export default function AuthModal({ open, onOpenChange, defaultView = 'login' }:
                 </DialogDescription>
               </>
             )}
+
+            {isForgotPassword && (
+              <>
+                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                  <KeyRound className="size-5" />
+                  {t('auth.forgot_password') || 'Forgot Password?'}
+                </DialogTitle>
+                <DialogDescription className="text-primary-foreground/70 text-sm mt-1">
+                  {t('auth.reset_password_subtitle') || "Don't worry, we'll help you get back in."}
+                </DialogDescription>
+              </>
+            )}
           </DialogHeader>
         </div>
 
-        {/* Form area */}
+        {/* Form Area */}
         <div className="px-6 py-5">
-          {isLogin ? (
+          {isLogin && (
             <LoginForm
               onSwitchToSignup={() => setView('signup')}
+              onSwitchToForgotPassword={() => setView('forgot-password')}
               onSuccess={handleSuccess}
             />
-          ) : (
+          )}
+
+          {isSignup && (
             <SignupForm
               onSwitchToLogin={() => setView('login')}
+              onSuccess={handleSuccess}
+            />
+          )}
+
+          {isForgotPassword && (
+            <ForgotPasswordForm
+              onBackToLogin={() => setView('login')}
               onSuccess={handleSuccess}
             />
           )}

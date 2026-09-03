@@ -40,7 +40,7 @@ import {
   RefreshCw,
   ExternalLink,
   Globe,
- Zap,
+  Zap,
   AlertCircle,
   Info,
   Share2,
@@ -49,6 +49,18 @@ import {
   Trash2,
   Settings2,
   Play,
+  // New icons for homepage sections
+  ArrowRight,
+  Users,
+  TrendingUp,
+  Smartphone,
+  Download,
+  Quote,
+  Sparkles,
+  Target,
+  MessageSquare,
+  Gift,
+  Award,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import MavoraLogo from '@/components/common/MavoraLogo';
@@ -478,9 +490,10 @@ function HomeView({
   onSelectCategory: (id: string) => void;
   onSelectListing: (id: string) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [listings, setListings] = useState<PaginatedResponse<Listing> | null>(null);
   const [listingsLoading, setListingsLoading] = useState(true);
+  const isRtl = locale === 'ar';
 
   useEffect(() => {
     async function fetchListings() {
@@ -510,51 +523,501 @@ function HomeView({
       <h1 className="sr-only">
         MAVORA — سوقك الإلكتروني الموثوق في المغرب وشمال إفريقيا. اشترِ وبِع السيارات والعقارات والإلكترونيات والأزياء والمزيد.
       </h1>
+      
+      {/* Hero Section with Search */}
       <HeroSection onSearch={onSearch} />
+      
+      {/* Categories Grid */}
       <CategoryGrid
         categories={categories}
         isLoading={categoriesLoading}
         onSelectCategory={onSelectCategory}
       />
 
-      {/* Latest Listings */}
-      <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-foreground sm:text-2xl">
-            {t('listings.latest')}
-          </h2>
-        </div>
+      {/* Featured Listings Section */}
+      <section id="featured" className="bg-muted/30 py-14 lg:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {/* Section Header */}
+          <div className="mb-10 flex items-end justify-between">
+            <div>
+              <Badge variant="secondary" className="mb-3 bg-gold/10 text-gold hover:bg-gold/15">
+                <Sparkles className="me-1.5 size-3" />
+                {t('common.featured')}
+              </Badge>
+              <h2 className="text-h2 text-foreground">
+                {t('listings.featured')}
+              </h2>
+              <p className="mt-2 max-w-lg text-sm text-muted-foreground">
+                {locale === 'ar' 
+                  ? 'إعلانات مميزة من أفضل البائعين في المنطقة'
+                  : locale === 'fr'
+                    ? 'Annonces en vedette des meilleurs vendeurs de la région'
+                    : 'Featured listings from top sellers in the region'}
+              </p>
+            </div>
+            <Button 
+              variant="ghost" 
+              className="hidden gap-1.5 text-emerald sm:inline-flex"
+              onClick={() => window.location.hash = '#all-listings'}
+            >
+              {t('common.view_all')}
+              <ArrowRight className={`size-4 ${isRtl ? 'rotate-180' : ''}`} />
+            </Button>
+          </div>
 
-        {listingsLoading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="overflow-hidden rounded-xl border border-border">
-                <Skeleton className="aspect-[4/3] w-full" />
-                <div className="p-3">
-                  <Skeleton className="mb-2 h-4 w-3/4" />
-                  <Skeleton className="mb-1 h-3 w-1/2" />
-                  <Skeleton className="h-3 w-1/3" />
+          {/* Featured Listings Grid */}
+          {listingsLoading ? (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="overflow-hidden rounded-2xl border border-border bg-card">
+                  <Skeleton className="aspect-[4/3] w-full" />
+                  <div className="p-4">
+                    <Skeleton className="mb-2 h-5 w-3/4" />
+                    <Skeleton className="mb-2 h-4 w-1/2" />
+                    <Skeleton className="h-4 w-1/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : listings && listings.data.length > 0 ? (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {listings.data.slice(0, 4).map((listing) => (
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  onClick={() => onSelectListing(listing.id)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-16">
+              <Inbox className="mb-3 size-12 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">{t('listings.no_listings')}</p>
+              <p className="mt-1 text-xs text-muted-foreground/70">{t('listings.no_listings_subtitle')}</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section id="about" className="py-14 lg:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {/* Section Header */}
+          <div className="mb-12 text-center">
+            <Badge variant="secondary" className="mb-4 bg-primary/10 text-primary hover:bg-primary/15">
+              <Target className="me-1.5 size-3" />
+              {locale === 'ar' ? 'كيف يعمل' : locale === 'fr' ? 'Comment ça marche' : 'How It Works'}
+            </Badge>
+            <h2 className="text-h2 mb-3 text-foreground">
+              {locale === 'ar' ? 'ابدأ في دقائق معدودة' : locale === 'fr' ? 'Commencez en quelques minutes' : 'Get Started in Minutes'}
+            </h2>
+            <p className="mx-auto max-w-xl text-muted-foreground">
+              {locale === 'ar'
+                ? 'ثلاث خطوات بسيطة للبيع أو الشراء على مافورا'
+                : locale === 'fr'
+                  ? 'Trois étapes simples pour acheter ou vendre sur MAVORA'
+                  : 'Three simple steps to buy or sell on MAVORA'}
+            </p>
+          </div>
+
+          {/* Steps Grid */}
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+            {/* Step 1 */}
+            <div className="group relative text-center">
+              <div className="mx-auto mb-6 flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald/15 to-emerald/5 text-emerald transition-all group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-emerald/20">
+                <Search className="size-7" strokeWidth={1.5} />
+              </div>
+              <div className="mb-2 inline-flex items-center justify-center size-8 rounded-full bg-emerald/10 text-xs font-bold text-emerald">
+                1
+              </div>
+              <h3 className="mb-2 text-lg font-semibold text-foreground">
+                {locale === 'ar' ? 'ابحث' : locale === 'fr' ? 'Rechercher' : 'Search'}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {locale === 'ar'
+                  ? 'ابحث عن ما تريده من بين آلاف الإعلانات'
+                  : locale === 'fr'
+                    ? 'Cherchez ce que vous voulez parmi des milliers d\'annonces'
+                    : 'Browse thousands of listings to find what you need'}
+              </p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="group relative text-center">
+              <div className="mx-auto mb-6 flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-gold/15 to-gold/5 text-gold transition-all group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-gold/20">
+                <MessageSquare className="size-7" strokeWidth={1.5} />
+              </div>
+              <div className="mb-2 inline-flex items-center justify-center size-8 rounded-full bg-gold/10 text-xs font-bold text-gold">
+                2
+              </div>
+              <h3 className="mb-2 text-lg font-semibold text-foreground">
+                {locale === 'ar' ? 'تواصل' : locale === 'fr' ? 'Contacter' : 'Connect'}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {locale === 'ar'
+                  ? 'تواصل مباشرة مع البائع واتفق على التفاصيل'
+                  : locale === 'fr'
+                    ? 'Contactez directement le vendeur et convenez des détails'
+                    : 'Contact sellers directly and agree on details'}
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="group relative text-center">
+              <div className="mx-auto mb-6 flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 text-primary transition-all group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-primary/20">
+                <CheckCircle2 className="size-7" strokeWidth={1.5} />
+              </div>
+              <div className="mb-2 inline-flex items-center justify-center size-8 rounded-full bg-primary/10 text-xs font-bold text-primary">
+                3
+              </div>
+              <h3 className="mb-2 text-lg font-semibold text-foreground">
+                {locale === 'ar' ? 'تداول' : locale === 'fr' ? 'Échanger' : 'Trade'}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {locale === 'ar'
+                  ? 'أتمم الصفقة بأمان واستلم مشترياتك'
+                  : locale === 'fr'
+                    ? 'Finalisez la transaction en toute sécurité et recevez vos achats'
+                    : 'Complete the deal safely and receive your items'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Statistics Section */}
+      <section className="relative overflow-hidden bg-primary py-14 lg:py-20">
+        {/* Background Pattern */}
+        <div className="pointer-events-none absolute inset-0 opacity-5">
+          <div className="absolute inset-0" style={{
+            backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
+            backgroundSize: '24px 24px',
+          }} />
+        </div>
+        
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+            {/* Stat 1 */}
+            <div className="text-center">
+              <div className="mb-2 text-4xl font-bold text-white md:text-5xl">100K+</div>
+              <div className="text-sm text-white/70">
+                {locale === 'ar' ? 'إعلان نشط' : locale === 'fr' ? 'Annonces actives' : 'Active Listings'}
+              </div>
+            </div>
+            
+            {/* Stat 2 */}
+            <div className="text-center">
+              <div className="mb-2 text-4xl font-bold text-white md:text-5xl">50K+</div>
+              <div className="text-sm text-white/70">
+                {locale === 'ar' ? 'مستخدم مسجل' : locale === 'fr' ? 'Utilisateurs inscrits' : 'Registered Users'}
+              </div>
+            </div>
+            
+            {/* Stat 3 */}
+            <div className="text-center">
+              <div className="mb-2 text-4xl font-bold text-white md:text-5xl">6+</div>
+              <div className="text-sm text-white/70">
+                {locale === 'ar' ? 'دول مدعومة' : locale === 'fr' ? 'Pays supportés' : 'Countries Supported'}
+              </div>
+            </div>
+            
+            {/* Stat 4 */}
+            <div className="text-center">
+              <div className="mb-2 text-4xl font-bold text-emerald md:text-5xl">98%</div>
+              <div className="text-sm text-white/70">
+                {locale === 'ar' ? 'رضا العملاء' : locale === 'fr' ? 'Satisfaction client' : 'Customer Satisfaction'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="py-14 lg:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {/* Section Header */}
+          <div className="mb-12 text-center">
+            <Badge variant="secondary" className="mb-4 bg-emerald/10 text-emerald hover:bg-emerald/15">
+              <Quote className="me-1.5 size-3" />
+              {locale === 'ar' ? 'آراء المستخدمين' : locale === 'fr' ? 'Témoignages' : 'Testimonials'}
+            </Badge>
+            <h2 className="text-h2 mb-3 text-foreground">
+              {locale === 'ar' ? 'ماذا يقول عملاؤنا' : locale === 'fr' ? 'Que disent nos clients' : 'What Our Users Say'}
+            </h2>
+          </div>
+
+          {/* Testimonials Grid */}
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            {/* Testimonial 1 */}
+            <div className="rounded-2xl border border-border bg-card p-6 transition-all hover:border-emerald/30 hover:shadow-lg">
+              <div className="mb-4 flex gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="size-4 fill-gold text-gold" />
+                ))}
+              </div>
+              <Quote className="mb-4 size-8 text-emerald/20" />
+              <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
+                {locale === 'ar'
+                  ? 'مافورا غيرت طريقة بيعي للمنتجات. سهلة الاستخدام ووصلني بعملاء كثيرين.'
+                  : locale === 'fr'
+                    ? 'MAVORA a changé ma façon de vendre. Facile à utiliser et m\'a connecté à de nombreux clients.'
+                    : 'MAVORA changed how I sell products. Easy to use and connected me with many customers.'}
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-full bg-emerald/10 text-emerald font-semibold">
+                  A
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Ahmed M.</p>
+                  <p className="text-xs text-muted-foreground">Casablanca</p>
                 </div>
               </div>
-            ))}
+            </div>
+
+            {/* Testimonial 2 */}
+            <div className="rounded-2xl border border-border bg-card p-6 transition-all hover:border-emerald/30 hover:shadow-lg">
+              <div className="mb-4 flex gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="size-4 fill-gold text-gold" />
+                ))}
+              </div>
+              <Quote className="mb-4 size-8 text-emerald/20" />
+              <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
+                {locale === 'ar'
+                  ? 'وجدت سيارتي أحلام خلال أسبوع فقط! الأسعار هنا أفضل بكثير من الأماكن الأخرى.'
+                  : locale === 'fr'
+                    ? 'J\'ai trouvé ma voiture de rêve en seulement une semaine ! Les prix sont bien meilleurs qu\'ailleurs.'
+                    : 'Found my dream car in just a week! Prices here are much better than elsewhere.'}
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-full bg-gold/10 text-gold font-semibold">
+                  S
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Sarah K.</p>
+                  <p className="text-xs text-muted-foreground">Rabat</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Testimonial 3 */}
+            <div className="rounded-2xl border border-border bg-card p-6 transition-all hover:border-emerald/30 hover:shadow-lg">
+              <div className="mb-4 flex gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="size-4 fill-gold text-gold" />
+                ))}
+              </div>
+              <Quote className="mb-4 size-8 text-emerald/20" />
+              <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
+                {locale === 'ar'
+                  ? 'منصة رائعة للأعمال الصغيرة. زادت مبيعاتي بنسبة 200% منذ انضمامي.'
+                  : locale === 'fr'
+                    ? 'Une plateforme incroyable pour les petites entreprises. Mes ventes ont augmenté de 200%.'
+                    : 'Amazing platform for small businesses. My sales increased by 200%.'}
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold">
+                  M
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Mohammed R.</p>
+                  <p className="text-xs text-muted-foreground">Marrakech</p>
+                </div>
+              </div>
+            </div>
           </div>
-        ) : listings && listings.data.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {listings.data.map((listing) => (
-              <ListingCard
-                key={listing.id}
-                listing={listing}
-                onClick={() => onSelectListing(listing.id)}
-              />
-            ))}
+        </div>
+      </section>
+
+      {/* Download App CTA Section */}
+      <section className="overflow-hidden bg-gradient-to-br from-emerald to-emerald-dark py-14 lg:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="items-center gap-12 lg:flex">
+            {/* Content */}
+            <div className="flex-1 text-center lg:text-start">
+              <Badge className="mb-4 bg-white/20 text-white hover:bg-white/30">
+                <Smartphone className="me-1.5 size-3" />
+                {locale === 'ar' ? 'تطبيق الموبايل' : locale === 'fr' ? 'Application mobile' : 'Mobile App'}
+              </Badge>
+              <h2 className="mb-4 text-3xl font-bold text-white md:text-4xl">
+                {locale === 'ar'
+                  ? 'حمّل تطبيق مافورا الآن'
+                  : locale === 'fr'
+                    ? 'Téléchargez l\'application MAVORA'
+                    : 'Download the MAVORA App'}
+              </h2>
+              <p className="mb-8 text-lg text-white/80">
+                {locale === 'ar'
+                  ? 'تسوق وأبعث في أي وقت ومن أي مكان. تجربة سلسة على جوالك.'
+                  : locale === 'fr'
+                    ? 'Achetez et vendez à tout moment, de n\'importe où. Une expérience fluide sur mobile.'
+                    : 'Shop and sell anytime, anywhere. A seamless experience on your phone.'}
+              </p>
+              
+              {/* App Store Buttons */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
+                <button className="inline-flex items-center gap-3 rounded-xl bg-black/20 px-6 py-3 text-left transition-all hover:bg-black/30">
+                  <svg className="size-10 text-white" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                  </svg>
+                  <div>
+                    <div className="text-[10px] text-white/70">{locale === 'fr' ? 'Télécharger sur' : 'Download on the'}</div>
+                    <div className="text-base font-semibold text-white">App Store</div>
+                  </div>
+                </button>
+                
+                <button className="inline-flex items-center gap-3 rounded-xl bg-black/20 px-6 py-3 text-left transition-all hover:bg-black/30">
+                  <svg className="size-10 text-white" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.198l2.807 1.626a1 1 0 010 1.73l-2.808 1.626L15.206 12l2.492-2.491zM5.864 2.658L16.8 8.99l-2.302 2.302L5.864 2.658z"/>
+                  </svg>
+                  <div>
+                    <div className="text-[10px] text-white/70">{locale === 'fr' ? 'Disponible sur' : 'GET IT ON'}</div>
+                    <div className="text-base font-semibold text-white">Google Play</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+            
+            {/* Phone Mockup Illustration */}
+            <div className="hidden lg:block flex-1">
+              <div className="relative mx-auto w-72">
+                <div className="rounded-[3rem] border-4 border-white/20 bg-gradient-to-b from-white/10 to-transparent p-3 shadow-2xl">
+                  <div className="aspect-[9/19] rounded-[2.5rem] bg-gradient-to-b from-primary to-primary-dark p-4">
+                    <div className="flex h-full flex-col">
+                      {/* Mock App Header */}
+                      <div className="mb-4 flex items-center gap-2">
+                        <div className="size-8 rounded-lg bg-emerald/20" />
+                        <div class="h-4 w-20 rounded bg-white/20" />
+                      </div>
+                      {/* Mock Search */}
+                      <div className="mb-4 h-10 rounded-full bg-white/10" />
+                      {/* Mock Cards */}
+                      <div className="space-y-3">
+                        <div className="flex gap-3 rounded-xl bg-white/10 p-3">
+                          <div className="size-16 rounded-lg bg-white/10" />
+                          <div class="flex-1 space-y-2">
+                            <div className="h-4 w-3/4 rounded bg-white/20" />
+                            <div className="h-3 w-1/2 rounded bg-white/10" />
+                          </div>
+                        </div>
+                        <div className="flex gap-3 rounded-xl bg-white/10 p-3">
+                          <div className="size-16 rounded-lg bg-white/10" />
+                          <div class="flex-1 space-y-2">
+                            <div className="h-4 w-2/3 rounded bg-white/20" />
+                            <div className="h-3 w-1/2 rounded bg-white/10" />
+                          </div>
+                        </div>
+                        <div className="flex gap-3 rounded-xl bg-white/10 p-3">
+                          <div className="size-16 rounded-lg bg-white/10" />
+                          <div class="flex-1 space-y-2">
+                            <div className="h-4 w-4/5 rounded bg-white/20" />
+                            <div className="h-3 w-2/5 rounded bg-white/10" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* Decorative Elements */}
+                <div className="absolute -top-4 -right-4 size-20 rounded-full bg-gold/20 blur-2xl" />
+                <div className="absolute -bottom-4 -left-4 size-20 rounded-full bg-emerald/20 blur-2xl" />
+              </div>
+            </div>
           </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16">
-            <Inbox className="mb-3 size-10 text-muted-foreground/50" />
-            <p className="text-sm text-muted-foreground">{t('listings.no_listings')}</p>
-            <p className="mt-1 text-xs text-muted-foreground/70">{t('listings.no_listings_subtitle')}</p>
+        </div>
+      </section>
+
+      {/* Final CTA Section */}
+      <section className="py-14 lg:py-20">
+        <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+          <div className="rounded-3xl bg-gradient-to-br from-primary via-primary to-navy-dark p-10 md:p-16">
+            <Gift className="mx-auto mb-6 size-14 text-gold" />
+            <h2 className="mb-4 text-3xl font-bold text-white md:text-4xl">
+              {locale === 'ar'
+                ? 'جاهز للبدء؟'
+                : locale === 'fr'
+                  ? 'Prêt à commencer ?'
+                  : 'Ready to Get Started?'}
+            </h2>
+            <p className="mx-auto mb-8 max-w-xl text-lg text-white/80">
+              {locale === 'ar'
+                ? 'انضم إلى آلاف المستخدمين الذين يشترون ويبيعون يومياً على مافورا'
+                : locale === 'fr'
+                  ? 'Rejoignez des milliers d\'utilisateurs qui achètent et vendent chaque jour sur MAVORA'
+                  : 'Join thousands of users who buy and sell on MAVORA every day'}
+            </p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
+              <Button
+                size="lg"
+                className="gap-2 bg-emerald px-8 text-base font-semibold text-white shadow-lg shadow-emerald/30 hover:bg-emerald/90"
+                onClick={() => useNavigationStore.getState().navigateCreateListing()}
+              >
+                <Gift className="size-5" />
+                {t('common.post_ad')}
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="gap-2 border-white/30 bg-transparent px-8 text-base font-semibold text-white hover:bg-white/10"
+                onClick={() => document.getElementById('categories')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                {t('categories.title')}
+                <ArrowRight className={`size-5 ${isRtl ? 'rotate-180' : ''}`} />
+              </Button>
+            </div>
           </div>
-        )}
+        </div>
+      </section>
+
+      {/* Latest Listings Section */}
+      <section className="pb-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-h3 text-foreground">{t('listings.latest')}</h2>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="gap-1.5 text-emerald"
+              onClick={() => window.location.hash = '#browse'}
+            >
+              {t('common.view_all')}
+              <ArrowRight className={`size-4 ${isRtl ? 'rotate-180' : ''}`} />
+            </Button>
+          </div>
+
+          {listingsLoading ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="overflow-hidden rounded-xl border border-border">
+                  <Skeleton className="aspect-[4/3] w-full" />
+                  <div className="p-3">
+                    <Skeleton className="mb-2 h-4 w-3/4" />
+                    <Skeleton className="mb-1 h-3 w-1/2" />
+                    <Skeleton className="h-3 w-1/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : listings && listings.data.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {listings.data.map((listing) => (
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  onClick={() => onSelectListing(listing.id)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16">
+              <Inbox className="mb-3 size-10 text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground">{t('listings.no_listings')}</p>
+              <p className="mt-1 text-xs text-muted-foreground/70">{t('listings.no_listings_subtitle')}</p>
+            </div>
+          )}
+        </div>
       </section>
     </>
   );

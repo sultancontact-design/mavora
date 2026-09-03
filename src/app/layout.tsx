@@ -1,8 +1,12 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, IBM_Plex_Sans_Arabic } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import AuthProvider from "@/components/auth/AuthProvider";
+import Header from "@/components/layout/Header";
+import Footer from "@/components/footer/Footer";
+
+/* ── Font Configuration ── */
 
 const inter = Inter({
   variable: "--font-inter",
@@ -16,6 +20,8 @@ const ibmPlexArabic = IBM_Plex_Sans_Arabic({
   subsets: ["arabic", "latin"],
   display: "swap",
 });
+
+/* ── Site Configuration ── */
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://mavora.ma";
 
@@ -31,6 +37,8 @@ const descriptionTemplates = {
   en: "MAVORA is the largest online marketplace in Morocco and North Africa. Buy and sell vehicles, real estate, electronics, fashion, and more. Safe, fast, and trusted.",
 };
 
+/* ── Metadata ── */
+
 export const metadata: Metadata = {
   title: {
     default: titleTemplates.ar,
@@ -38,6 +46,7 @@ export const metadata: Metadata = {
   },
   description: descriptionTemplates.ar,
   keywords: [
+    // English
     "MAVORA",
     "marketplace",
     "Morocco",
@@ -49,15 +58,31 @@ export const metadata: Metadata = {
     "electronics",
     "North Africa",
     "MENA",
-    "المغرب",
+    "online shopping",
+    "deals",
+    // Arabic
+    "مافورا",
     "سوق إلكتروني",
     "إعلانات",
     "سيارات",
     "عقارات",
+    "إلكترونيات",
+    "المغرب",
+    "شمال إفريقيا",
+    // French
+    "Maroc",
+    "petites annonces",
+    "acheter",
+    "vendre",
+    "voitures",
+    "immobilier",
   ],
-  authors: [{ name: "MAVORA" }],
+  authors: [{ name: "MAVORA", url: siteUrl }],
+  creator: "MAVORA",
+  publisher: "MAVORA",
   icons: {
     icon: "/favicon.ico",
+    shortcut: "/favicon-16x16.png",
     apple: "/apple-touch-icon.png",
   },
   metadataBase: new URL(siteUrl),
@@ -82,7 +107,7 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "MAVORA — Online Marketplace",
+        alt: "MAVORA — Online Marketplace in Morocco & North Africa",
       },
     ],
   },
@@ -91,6 +116,7 @@ export const metadata: Metadata = {
     title: titleTemplates.ar,
     description: descriptionTemplates.ar,
     images: ["/og-image.png"],
+    creator: "@mavora_ma",
   },
   robots: {
     index: true,
@@ -103,18 +129,20 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-  },
-  other: {
-    "theme-color": [
-      { media: "(prefers-color-scheme: light)", color: "#0f2b46" },
-      { media: "(prefers-color-scheme: dark)", color: "#0a1f33" },
-    ],
-  },
+  category: "marketplace",
 };
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#102A43" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a1628" },
+  ],
+};
+
+/* ── Root Layout Component ── */
 
 export default function RootLayout({
   children,
@@ -124,23 +152,69 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
+        {/* Favicon */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        
+        {/* Hreflang Tags for SEO */}
         <link rel="alternate" hrefLang="ar" href={`${siteUrl}/`} />
         <link rel="alternate" hrefLang="fr" href={`${siteUrl}/?lang=fr`} />
         <link rel="alternate" hrefLang="en" href={`${siteUrl}/?lang=en`} />
         <link rel="alternate" hrefLang="x-default" href={`${siteUrl}/`} />
-        <meta name="theme-color" content="#0f2b46" />
+        
+        {/* Preconnect to External Resources */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        
+        {/* Theme Color Meta */}
+        <meta name="theme-color" content="#102A43" />
+        <meta name="application-name" content="MAVORA" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="MAVORA" />
+        
+        {/* MS Tiles */}
+        <meta name="msapplication-TileColor" content="#102A43" />
+        <meta name="msapplication-config" content="/browserconfig.xml" />
       </head>
       <body
-        className={`${inter.variable} ${ibmPlexArabic.variable} antialiased bg-background text-foreground`}
+        className={`${inter.variable} ${ibmPlexArabic.variable} font-sans antialiased bg-background text-foreground min-h-screen flex flex-col`}
       >
         <AuthProvider>
-          <div className="min-h-screen flex flex-col">
+          {/* Skip to main content - Accessibility */}
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:start-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+          >
+            تخطي إلى المحتوى الرئيسي
+          </a>
+          
+          {/* Site Header */}
+          <Header />
+          
+          {/* Main Content Area */}
+          <main id="main-content" className="flex-1">
             {children}
-          </div>
+          </main>
+          
+          {/* Site Footer */}
+          <Footer />
         </AuthProvider>
-        <Toaster richColors position={"top-center"} />
+        
+        {/* Toast Notifications */}
+        <Toaster 
+          richColors 
+          position="top-center"
+          toastOptions={{
+            duration: 4000,
+            classNames: {
+              toast: 'group',
+              title: 'font-semibold',
+              description: 'text-sm opacity-90',
+            },
+          }}
+        />
       </body>
     </html>
   );

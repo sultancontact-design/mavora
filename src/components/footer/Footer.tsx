@@ -1,25 +1,43 @@
 'use client';
 
-import { Facebook, Twitter, Instagram, Youtube, Smartphone, Download } from 'lucide-react';
+import { 
+  Facebook, 
+  Twitter, 
+  Instagram, 
+  Youtube, 
+  Linkedin, 
+  Smartphone, 
+  Download,
+  Mail,
+  Phone,
+  MapPin,
+  Heart,
+  ExternalLink
+} from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
+import MavoraLogo from '@/components/common/MavoraLogo';
+import type { Locale } from '@/lib/types';
+
+/* ── Constants ── */
 
 const SOCIAL_LINKS = [
-  { icon: Facebook, href: '#', label: 'Facebook' },
-  { icon: Twitter, href: '#', label: 'Twitter' },
-  { icon: Instagram, href: '#', label: 'Instagram' },
-  { icon: Youtube, href: '#', label: 'YouTube' },
+  { icon: Facebook, href: '#', label: 'Facebook', color: 'hover:bg-blue-600' },
+  { icon: Twitter, href: '#', label: 'Twitter / X', color: 'hover:bg-sky-500' },
+  { icon: Instagram, href: '#', label: 'Instagram', color: 'hover:bg-pink-600' },
+  { icon: Youtube, href: '#', label: 'YouTube', color: 'hover:bg-red-600' },
+  { icon: Linkedin, href: '#', label: 'LinkedIn', color: 'hover:bg-blue-700' },
 ];
 
 const FOOTER_COUNTRIES = [
-  { code: 'MA', flag: '🇲🇦', nameKey: 'footer.morocco' },
-  { code: 'DZ', flag: '🇩🇿', nameKey: 'footer.algeria' },
-  { code: 'TN', flag: '🇹🇳', nameKey: 'footer.tunisia' },
-  { code: 'EG', flag: '🇪🇬', nameKey: 'footer.egypt' },
-  { code: 'SA', flag: '🇸🇦', nameKey: 'footer.saudi' },
-  { code: 'AE', flag: '🇦🇪', nameKey: 'footer.uae' },
+  { code: 'MA', flag: '🇲🇦', nameKey: 'footer.morocco', url: '/?country=MA' },
+  { code: 'DZ', flag: '🇩🇿', nameKey: 'footer.algeria', url: '/?country=DZ' },
+  { code: 'TN', flag: '🇹🇳', nameKey: 'footer.tunisia', url: '/?country=TN' },
+  { code: 'EG', flag: '🇪🇬', nameKey: 'footer.egypt', url: '/?country=EG' },
+  { code: 'SA', flag: '🇸🇦', nameKey: 'footer.saudi', url: '/?country=SA' },
+  { code: 'AE', flag: '🇦🇪', nameKey: 'footer.uae', url: '/?country=AE' },
 ];
 
-const COUNTRY_NAMES: Record<string, Record<string, string>> = {
+const COUNTRY_NAMES: Record<string, Record<Locale, string>> = {
   'footer.morocco': { ar: 'المغرب', fr: 'Maroc', en: 'Morocco' },
   'footer.algeria': { ar: 'الجزائر', fr: 'Algérie', en: 'Algeria' },
   'footer.tunisia': { ar: 'تونس', fr: 'Tunisie', en: 'Tunisia' },
@@ -28,122 +46,138 @@ const COUNTRY_NAMES: Record<string, Record<string, string>> = {
   'footer.uae': { ar: 'الإمارات', fr: 'Émirats', en: 'UAE' },
 };
 
-function MavoraLogoSmall({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 120 40"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      aria-label="MAVORA"
-    >
-      <path
-        d="M8 8 L22 32 L28 20"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <path
-        d="M18 32 L22 32 L26 24"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <path
-        d="M32 32 L46 8 L52 20"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <path
-        d="M42 8 L46 8 L50 16"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <text
-        x="60"
-        y="28"
-        fontFamily="var(--font-inter), sans-serif"
-        fontWeight="700"
-        fontSize="20"
-        letterSpacing="2"
-        fill="currentColor"
-      >
-        MAVORA
-      </text>
-    </svg>
-  );
-}
+const QUICK_LINKS = [
+  { key: 'footer.about', href: '/about' },
+  { key: 'footer.terms', href: '/terms' },
+  { key: 'footer.privacy', href: '/privacy' },
+  { key: 'footer.help', href: '/help' },
+  { key: 'footer.contact', href: '/contact' },
+];
+
+const CATEGORY_LINKS = [
+  { key: 'categories.vehicles', slug: 'vehicles', icon: '🚗' },
+  { key: 'categories.real_estate', slug: 'real-estate', icon: '🏠' },
+  { key: 'categories.electronics', slug: 'electronics', icon: '📱' },
+  { key: 'categories.jobs', slug: 'jobs', icon: '💼' },
+  { key: 'categories.services', slug: 'services', icon: '🔧' },
+  { key: 'categories.fashion', slug: 'fashion', icon: '👗' },
+];
+
+/* ── Main Component ── */
 
 export default function Footer() {
   const { t, locale } = useTranslation();
 
-  const getCountryName = (nameKey: string) => {
+  const getCountryName = (nameKey: string): string => {
     return COUNTRY_NAMES[nameKey]?.[locale] ?? nameKey;
   };
 
+  const currentYear = new Date().getFullYear();
+
   return (
-    <footer className="mt-auto border-t border-border bg-primary text-primary-foreground">
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Column 1: Logo, tagline, social */}
+    <footer className="mt-auto bg-primary text-primary-foreground">
+      {/* Main Footer Content */}
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-5">
+          
+          {/* ── Column 1: Brand & Social (spans 2 cols on lg) ── */}
           <div className="sm:col-span-2 lg:col-span-1">
-            <MavoraLogoSmall className="mb-4 h-8 w-auto text-primary-foreground" />
-            <p className="mb-5 max-w-xs text-sm leading-relaxed text-primary-foreground/70">
+            {/* Logo */}
+            <MavoraLogo size="md" className="text-primary-foreground mb-4" />
+            
+            {/* Tagline */}
+            <p className="mb-6 max-w-xs text-sm leading-relaxed text-primary-foreground/70">
               {t('app.tagline')}
             </p>
-            <div className="flex items-center gap-3">
-              {SOCIAL_LINKS.map((social) => {
-                const Icon = social.icon;
-                return (
-                  <a
-                    key={social.label}
-                    href={social.href}
-                    aria-label={social.label}
-                    className="flex size-9 items-center justify-center rounded-full bg-primary-foreground/10 transition-colors hover:bg-primary-foreground/20"
-                  >
-                    <Icon className="size-4" />
-                  </a>
-                );
-              })}
+
+            {/* Contact Info */}
+            <div className="mb-6 space-y-3">
+              <a 
+                href="mailto:support@mavora.ma" 
+                className="flex items-center gap-2.5 text-sm text-primary-foreground/70 transition-colors hover:text-primary-foreground"
+              >
+                <Mail className="size-4 shrink-0" />
+                support@mavora.ma
+              </a>
+              <a 
+                href="tel:+212500000000" 
+                className="flex items-center gap-2.5 text-sm text-primary-foreground/70 transition-colors hover:text-primary-foreground"
+              >
+                <Phone className="size-4 shrink-0" />
+                +212 5 00 00 00 00
+              </a>
+              <div className="flex items-start gap-2.5 text-sm text-primary-foreground/70">
+                <MapPin className="size-4 shrink-0 mt-0.5" />
+                <span>Casablanca, Morocco</span>
+              </div>
+            </div>
+
+            {/* Social Links */}
+            <div>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-primary-foreground/50">
+                {locale === 'ar' ? 'تابعنا' : locale === 'fr' ? 'Suivez-nous' : 'Follow Us'}
+              </p>
+              <div className="flex items-center gap-2.5">
+                {SOCIAL_LINKS.map((social) => {
+                  const Icon = social.icon;
+                  return (
+                    <a
+                      key={social.label}
+                      href={social.href}
+                      aria-label={social.label}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`flex size-9 items-center justify-center rounded-full bg-primary-foreground/10 text-primary-foreground transition-all duration-200 hover:bg-primary-foreground/20 hover:scale-110 ${social.color} hover:text-white`}
+                    >
+                      <Icon className="size-4" />
+                    </a>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          {/* Column 2: Quick links */}
+          {/* ── Column 2: Quick Links ── */}
           <div>
             <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-primary-foreground/50">
               {t('footer.about')}
             </h3>
             <ul className="space-y-2.5">
-              {[
-                { key: 'footer.about', href: '#' },
-                { key: 'footer.terms', href: '#' },
-                { key: 'footer.privacy', href: '#' },
-                { key: 'footer.help', href: '#' },
-                { key: 'footer.contact', href: '#' },
-              ].map((link) => (
+              {QUICK_LINKS.map((link) => (
                 <li key={link.key}>
                   <a
                     href={link.href}
-                    className="text-sm text-primary-foreground/70 transition-colors hover:text-primary-foreground"
+                    className="group inline-flex items-center gap-1.5 text-sm text-primary-foreground/70 transition-colors duration-200 hover:text-primary-foreground"
                   >
                     {t(link.key)}
+                    <ExternalLink className="size-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                   </a>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Column 3: Countries */}
+          {/* ── Column 3: Categories ── */}
+          <div>
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-primary-foreground/50">
+              {t('categories.title')}
+            </h3>
+            <ul className="space-y-2.5">
+              {CATEGORY_LINKS.map((cat) => (
+                <li key={cat.slug}>
+                  <a
+                    href={`/category/${cat.slug}`}
+                    className="inline-flex items-center gap-2 text-sm text-primary-foreground/70 transition-colors duration-200 hover:text-primary-foreground"
+                  >
+                    <span>{cat.icon}</span>
+                    {t(cat.key)}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* ── Column 4: Countries ── */}
           <div>
             <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-primary-foreground/50">
               {t('footer.countries')}
@@ -152,8 +186,8 @@ export default function Footer() {
               {FOOTER_COUNTRIES.map((country) => (
                 <li key={country.code}>
                   <a
-                    href="#"
-                    className="inline-flex items-center gap-2 text-sm text-primary-foreground/70 transition-colors hover:text-primary-foreground"
+                    href={country.url}
+                    className="inline-flex items-center gap-2 text-sm text-primary-foreground/70 transition-colors duration-200 hover:text-primary-foreground"
                   >
                     <span>{country.flag}</span>
                     <span>{getCountryName(country.nameKey)}</span>
@@ -163,7 +197,7 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Column 4: Download app */}
+          {/* ── Column 5: Download App ── */}
           <div>
             <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-primary-foreground/50">
               {locale === 'ar'
@@ -172,46 +206,87 @@ export default function Footer() {
                   ? 'Télécharger l\'app'
                   : 'Download App'}
             </h3>
+            
+            <p className="mb-4 text-xs leading-relaxed text-primary-foreground/60">
+              {locale === 'ar'
+                ? 'احصل على أفضل تجربة مع تطبيق مافورا للموبايل'
+                : locale === 'fr'
+                  ? 'Obtenez la meilleure expérience avec l\'application MAVORA'
+                  : 'Get the best experience with MAVORA mobile app'}
+            </p>
+
             <div className="space-y-3">
-              <div className="flex h-11 w-full items-center gap-2.5 rounded-lg bg-primary-foreground/10 px-3 transition-colors hover:bg-primary-foreground/20">
+              {/* Google Play Button */}
+              <a
+                href="#"
+                className="flex h-11 w-full items-center gap-2.5 rounded-lg bg-primary-foreground/10 px-4 transition-all duration-200 hover:bg-primary-foreground/20 hover:scale-[1.02]"
+                aria-label="Download on Google Play"
+              >
                 <Smartphone className="size-5 shrink-0" />
                 <div className="flex flex-col leading-tight">
                   <span className="text-[10px] uppercase tracking-wide text-primary-foreground/50">
-                    {locale === 'fr' ? 'Bientôt sur' : locale === 'ar' ? 'قريباً على' : 'Coming soon on'}
+                    {locale === 'fr' ? 'Disponible sur' : locale === 'ar' ? 'متوفر على' : 'GET IT ON'}
                   </span>
-                  <span className="text-xs font-semibold">Google Play</span>
+                  <span className="text-sm font-semibold">Google Play</span>
                 </div>
-              </div>
-              <div className="flex h-11 w-full items-center gap-2.5 rounded-lg bg-primary-foreground/10 px-3 transition-colors hover:bg-primary-foreground/20">
+              </a>
+              
+              {/* App Store Button */}
+              <a
+                href="#"
+                className="flex h-11 w-full items-center gap-2.5 rounded-lg bg-primary-foreground/10 px-4 transition-all duration-200 hover:bg-primary-foreground/20 hover:scale-[1.02]"
+                aria-label="Download on App Store"
+              >
                 <Download className="size-5 shrink-0" />
                 <div className="flex flex-col leading-tight">
                   <span className="text-[10px] uppercase tracking-wide text-primary-foreground/50">
-                    {locale === 'fr' ? 'Bientôt sur' : locale === 'ar' ? 'قريباً على' : 'Coming soon on'}
+                    {locale === 'fr' ? 'Disponible sur' : locale === 'ar' ? 'متوفر على' : 'Download on'}
                   </span>
-                  <span className="text-xs font-semibold">App Store</span>
+                  <span className="text-sm font-semibold">App Store</span>
                 </div>
-              </div>
+              </a>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Copyright bar */}
-        <div className="mt-10 border-t border-primary-foreground/10 pt-6">
-          <div className="flex flex-col items-center justify-between gap-2 text-xs text-primary-foreground/50 sm:flex-row">
-            <p>
-              © {new Date().getFullYear()} MAVORA. {t('footer.rights')}.
+      {/* ── Bottom Bar ── */}
+      <div className="border-t border-primary-foreground/10">
+        <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+            {/* Copyright */}
+            <p className="flex items-center gap-1 text-xs text-primary-foreground/50">
+              © {currentYear} MAVORA. {t('footer.rights')}.
+              <span className="hidden sm:inline">
+                Made with
+                <Heart className="inline size-3 mx-0.5 text-red-400 fill-red-400" />
+                in Morocco
+              </span>
             </p>
-            <div className="flex items-center gap-4">
-              <a href="#" className="transition-colors hover:text-primary-foreground">
+
+            {/* Legal Links */}
+            <nav className="flex items-center gap-4" aria-label="Footer navigation">
+              <a 
+                href="/terms" 
+                className="text-xs text-primary-foreground/50 transition-colors hover:text-primary-foreground link-underline"
+              >
                 {t('footer.terms')}
               </a>
-              <a href="#" className="transition-colors hover:text-primary-foreground">
+              <span className="text-primary-foreground/20">|</span>
+              <a 
+                href="/privacy" 
+                className="text-xs text-primary-foreground/50 transition-colors hover:text-primary-foreground link-underline"
+              >
                 {t('footer.privacy')}
               </a>
-              <a href="#" className="transition-colors hover:text-primary-foreground">
+              <span className="text-primary-foreground/20">|</span>
+              <a 
+                href="/contact" 
+                className="text-xs text-primary-foreground/50 transition-colors hover:text-primary-foreground link-underline"
+              >
                 {t('footer.contact')}
               </a>
-            </div>
+            </nav>
           </div>
         </div>
       </div>

@@ -1,6 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase';
-import type { ListingStatus } from '@/lib/types';
+import type { ListingStatus, UserRole } from '@/lib/types';
+
+// XSS Prevention: Sanitize string input
+function sanitizeInput(str: string): string {
+  return str
+    .replace(/[<>"'&]/g, (char) => {
+      const escapeMap: Record<string, string> = {
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+        '&': '&amp;',
+      };
+      return escapeMap[char] || char;
+    })
+    .trim();
+}
+
+// Valid statuses for listings
+const VALID_STATUSES: ListingStatus[] = ['draft', 'pending_review', 'active', 'sold', 'reserved', 'archived', 'rejected'];
+
+// Admin roles that can perform admin actions
+const ADMIN_ROLES: UserRole[] = ['admin', 'super_admin', 'moderator', 'content_manager'];
 
 export async function GET(
   request: NextRequest,
@@ -13,10 +35,17 @@ export async function GET(
 
     let query = supabase
       .from('listings')
-      .select('*, seller:profiles!listings_seller_id_fkey(id, display_name, avatar_url, is_verified, phone, created_at), category:categories(*), currency:currencies(*), media:listing_media(*)')
+      .select(`
+        *, 
+        seller:profiles!listings_seller_id_fkey(id, display_name, avatar_url, is_verified, phone, created_at), 
+        category:categories(*), 
+        currency:currencies(*), 
+        media:listing_media(*),
+        field_values:listing_field_values(*, field:category_fields(*))
+      `)
       .eq('id', id);
 
-    // If not in edit mode, only return active listings
+    // If not in edit mode, only return active listings (or own listing if authenticated)
     if (!edit) {
       query = query.eq('status', 'active');
     }
@@ -56,9 +85,9 @@ export async function GET(
   }
 }
 
-// ─── PATCH: Update listing (status, title, description, price, etc.) ──
+// ─── PUT: Full update of a listing ──────────────────────────────────
 
-export async function PATCH(
+export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -73,12 +102,15 @@ export async function PATCH(
     } = await supabase.auth.getSession();
 
     if (authError || !session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Unauthorized', message: 'You must be logged in to update a listing' }, 
+        { status: 401 }
+      );
     }
 
     const userId = session.user.id;
 
-    // Verify user owns the listing
+    // Verify user owns the listing or is admin
     const { data: existing, error: fetchError } = await supabase
       .from('listings')
       .select('seller_id, status')
@@ -89,43 +121,118 @@ export async function PATCH(
       return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
     }
 
-    if (existing.seller_id !== userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const isAdmin = session.user.app_metadata?.role && 
+      ADMIN_ROLES.includes(session.user.app_metadata.role as UserRole);
+
+    if (existing.seller_id !== userId && !isAdmin) {
+      return NextResponse.json({ error: 'Forbidden', message: 'You can only update your own listings' }, { status: 403 });
     }
 
     const body = await request.json();
+    const {
+      title,
+      description,
+      price,
+      currency_id,
+      category_id,
+      country_id,
+      city_id,
+      status,
+      video_url,
+      is_featured,
+      is_urgent,
+      field_values,
+      media_items,
+    } = body as {
+      title?: string;
+      description?: string;
+      price?: number | string | null;
+      currency_id?: string;
+      category_id?: string;
+      country_id?: string;
+      city_id?: string;
+      status?: ListingStatus;
+      video_url?: string | null;
+      is_featured?: boolean;
+      is_urgent?: boolean;
+      field_values?: Array<{ field_id: string; value: string }>;
+      media_items?: Array<{
+        id?: string;
+        url?: string;
+        sort_order?: number;
+        is_primary?: boolean;
+        _delete?: boolean;
+      }>;
+    };
+
+    // Build updates object with validation
     const updates: Record<string, unknown> = {};
 
-    if (body.status) {
-      const validStatuses: ListingStatus[] = ['draft', 'pending_review', 'active', 'sold', 'reserved', 'archived', 'rejected'];
-      if (!validStatuses.includes(body.status)) {
-        return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+    // Validate and update title
+    if (typeof title === 'string') {
+      if (title.trim().length < 3) {
+        return NextResponse.json(
+          { error: 'Validation failed', details: { title: 'Title must be at least 3 characters' } },
+          { status: 400 }
+        );
       }
-      updates.status = body.status;
-      if (body.status === 'active' && !existing.status) {
+      updates.title = sanitizeInput(title).slice(0, 200);
+    }
+
+    // Validate and update description
+    if (typeof description === 'string') {
+      if (description.trim().length < 20) {
+        return NextResponse.json(
+          { error: 'Validation failed', details: { description: 'Description must be at least 20 characters' } },
+          { status: 400 }
+        );
+      }
+      updates.description = sanitizeInput(description).slice(0, 5000);
+    }
+
+    // Validate price
+    if (price !== undefined && price !== null) {
+      const numPrice = Number(price);
+      if (isNaN(numPrice) || numPrice < 0) {
+        return NextResponse.json(
+          { error: 'Validation failed', details: { price: 'Price must be a valid positive number' } },
+          { status: 400 }
+        );
+      }
+      updates.price = numPrice;
+    }
+    if (price === null) {
+      updates.price = null;
+    }
+
+    // Update other fields
+    if (typeof category_id === 'string') updates.category_id = category_id;
+    if (typeof country_id === 'string') updates.country_id = country_id;
+    if (typeof city_id === 'string') updates.city_id = city_id;
+    if (typeof currency_id === 'string') updates.currency_id = currency_id;
+    if (typeof video_url === 'string') {
+      const VIDEO_URL_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|vimeo\.com\/)/;
+      updates.video_url = VIDEO_URL_REGEX.test(video_url.trim()) ? video_url.trim() : null;
+    }
+    if (video_url === null) updates.video_url = null;
+    if (typeof is_featured === 'boolean') updates.is_featured = is_featured;
+    if (typeof is_urgent === 'boolean') updates.is_urgent = is_urgent;
+
+    // Validate status change
+    if (status) {
+      if (!VALID_STATUSES.includes(status)) {
+        return NextResponse.json(
+          { error: 'Validation failed', details: { status: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}` } },
+          { status: 400 }
+        );
+      }
+      updates.status = status;
+      if (status === 'active' && existing.status !== 'active') {
         updates.published_at = new Date().toISOString();
       }
     }
 
-    if (typeof body.title === 'string') {
-      updates.title = body.title.trim().slice(0, 200);
-    }
-    if (typeof body.description === 'string') {
-      updates.description = body.description.trim().slice(0, 5000);
-    }
-    if (body.price !== undefined && body.price !== null) {
-      updates.price = Number(body.price);
-    }
-    if (body.price === null) {
-      updates.price = null;
-    }
-    if (typeof body.category_id === 'string') updates.category_id = body.category_id;
-    if (typeof body.country_id === 'string') updates.country_id = body.country_id;
-    if (typeof body.city_id === 'string') updates.city_id = body.city_id;
-    if (typeof body.currency_id === 'string') updates.currency_id = body.currency_id;
-    if (typeof body.video_url === 'string') updates.video_url = body.video_url.trim();
-    if (body.video_url === null) updates.video_url = null;
-
+    // Perform the update
     const { data, error } = await supabase
       .from('listings')
       .update(updates)
@@ -135,7 +242,91 @@ export async function PATCH(
 
     if (error) {
       console.error('Listing update error:', error);
-      return NextResponse.json({ error: 'Failed to update listing' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to update listing', details: error.message }, { status: 500 });
+    }
+
+    // Update dynamic field values if provided
+    if (field_values && Array.isArray(field_values) && field_values.length > 0) {
+      const fieldUpserts = field_values.map((fv) => ({
+        listing_id: id,
+        field_id: fv.field_id,
+        value: sanitizeInput(fv.value),
+      }));
+
+      await supabase
+        .from('listing_field_values')
+        .upsert(fieldUpserts, { onConflict: 'listing_id,field_id' })
+        .catch((err) => console.error('Field values update warning:', err));
+    }
+
+    // Update media items if provided (reorder, set primary, add new)
+    if (media_items && Array.isArray(media_items)) {
+      for (const item of media_items) {
+        // Handle deletion
+        if (item._delete && item.id) {
+          // Delete from storage first
+          const { data: mediaRecord } = await supabase
+            .from('listing_media')
+            .select('url')
+            .eq('id', item.id)
+            .eq('listing_id', id)
+            .single();
+
+          if (mediaRecord?.url) {
+            try {
+              const urlObj = new URL(mediaRecord.url);
+              const pathMatch = urlObj.pathname.match(/\/listing-images\/(.+)/);
+              if (pathMatch) {
+                await supabase.storage.from('listing-images').remove([pathMatch[1]]).catch(() => {});
+              }
+            } catch {/* ignore */}
+          }
+
+          await supabase
+            .from('listing_media')
+            .delete()
+            .eq('id', item.id)
+            .eq('listing_id', id)
+            .catch(() => {});
+        }
+        // Handle update (reorder, primary)
+        else if (item.id) {
+          const mediaUpdates: Record<string, unknown> = {};
+          if (typeof item.sort_order === 'number') mediaUpdates.sort_order = item.sort_order;
+          if (typeof item.is_primary === 'boolean') {
+            if (item.is_primary) {
+              await supabase
+                .from('listing_media')
+                .update({ is_primary: false })
+                .eq('listing_id', id)
+                .catch(() => {});
+            }
+            mediaUpdates.is_primary = item.is_primary;
+          }
+
+          if (Object.keys(mediaUpdates).length > 0) {
+            await supabase
+              .from('listing_media')
+              .update(mediaUpdates)
+              .eq('id', item.id)
+              .eq('listing_id', id)
+              .catch(() => {});
+          }
+        }
+        // Handle new media
+        else if (item.url) {
+          await supabase
+            .from('listing_media')
+            .insert({
+              listing_id: id,
+              url: item.url,
+              type: 'image',
+              sort_order: item.sort_order ?? 0,
+              is_primary: item.is_primary ?? false,
+            })
+            .catch(() => {});
+        }
+      }
     }
 
     return NextResponse.json(data);
@@ -145,7 +336,17 @@ export async function PATCH(
   }
 }
 
-// ─── DELETE: Delete a listing and its media ──────────────────────────
+// ─── PATCH: Partial update of a listing (backward compatibility) ───
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  // Reuse PUT logic for backward compatibility
+  return PUT(request, { params });
+}
+
+// ─── DELETE: Soft delete (archive) or hard delete a listing ─────────
 
 export async function DELETE(
   request: NextRequest,
@@ -162,15 +363,18 @@ export async function DELETE(
     } = await supabase.auth.getSession();
 
     if (authError || !session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Unauthorized', message: 'You must be logged in to delete a listing' }, 
+        { status: 401 }
+      );
     }
 
     const userId = session.user.id;
 
-    // Verify user owns the listing
+    // Verify user owns the listing or is admin
     const { data: listing, error: fetchError } = await supabase
       .from('listings')
-      .select('seller_id')
+      .select('seller_id, status')
       .eq('id', id)
       .single();
 
@@ -178,53 +382,88 @@ export async function DELETE(
       return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
     }
 
-    if (listing.seller_id !== userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const isAdmin = session.user.app_metadata?.role && 
+      ADMIN_ROLES.includes(session.user.app_metadata.role as UserRole);
+
+    if (listing.seller_id !== userId && !isAdmin) {
+      return NextResponse.json({ error: 'Forbidden', message: 'You can only delete your own listings' }, { status: 403 });
     }
 
-    // Fetch all media records for this listing
-    const { data: mediaRecords } = await supabase
-      .from('listing_media')
-      .select('url')
-      .eq('listing_id', id);
+    // Check if hard delete is requested (default is soft delete / archive)
+    const { searchParams } = new URL(request.url);
+    const hardDelete = searchParams.get('hard') === 'true';
 
-    // Delete files from storage (best effort)
-    if (mediaRecords && mediaRecords.length > 0) {
-      const pathsToDelete: string[] = [];
-      for (const media of mediaRecords) {
-        try {
-          const urlObj = new URL(media.url as string);
-          const pathMatch = urlObj.pathname.match(/\/listing-images\/(.+)/);
-          if (pathMatch) {
-            pathsToDelete.push(pathMatch[1]);
+    if (hardDelete && isAdmin) {
+      // Hard delete: Remove everything permanently
+      // Fetch all media records for this listing
+      const { data: mediaRecords } = await supabase
+        .from('listing_media')
+        .select('url')
+        .eq('listing_id', id);
+
+      // Delete files from storage (best effort)
+      if (mediaRecords && mediaRecords.length > 0) {
+        const pathsToDelete: string[] = [];
+        for (const media of mediaRecords) {
+          try {
+            const urlObj = new URL(media.url as string);
+            const pathMatch = urlObj.pathname.match(/\/listing-images\/(.+)/);
+            if (pathMatch) {
+              pathsToDelete.push(pathMatch[1]);
+            }
+          } catch {
+            // Skip invalid URLs
           }
-        } catch {
-          // Skip invalid URLs
+        }
+        if (pathsToDelete.length > 0) {
+          await supabase.storage.from('listing-images').remove(pathsToDelete).catch(() => {});
         }
       }
-      if (pathsToDelete.length > 0) {
-        await supabase.storage.from('listing-images').remove(pathsToDelete).catch(() => {});
+
+      // Delete media records
+      await supabase
+        .from('listing_media')
+        .delete()
+        .eq('listing_id', id);
+
+      // Delete field values
+      await supabase
+        .from('listing_field_values')
+        .delete()
+        .eq('listing_id', id);
+
+      // Delete favorites
+      await supabase
+        .from('favorites')
+        .delete()
+        .eq('listing_id', id);
+
+      // Delete the listing
+      const { error: deleteError } = await supabase
+        .from('listings')
+        .delete()
+        .eq('id', id);
+
+      if (deleteError) {
+        console.error('Listing hard delete error:', deleteError);
+        return NextResponse.json({ error: 'Failed to delete listing' }, { status: 500 });
       }
+
+      return NextResponse.json({ success: true, deleted: 'hard' });
+    } else {
+      // Soft delete: Archive the listing
+      const { error: archiveError } = await supabase
+        .from('listings')
+        .update({ status: 'archived' })
+        .eq('id', id);
+
+      if (archiveError) {
+        console.error('Listing archive error:', archiveError);
+        return NextResponse.json({ error: 'Failed to archive listing' }, { status: 500 });
+      }
+
+      return NextResponse.json({ success: true, deleted: 'soft' });
     }
-
-    // Delete media records
-    await supabase
-      .from('listing_media')
-      .delete()
-      .eq('listing_id', id);
-
-    // Delete the listing
-    const { error: deleteError } = await supabase
-      .from('listings')
-      .delete()
-      .eq('id', id);
-
-    if (deleteError) {
-      console.error('Listing delete error:', deleteError);
-      return NextResponse.json({ error: 'Failed to delete listing' }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Listing delete error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

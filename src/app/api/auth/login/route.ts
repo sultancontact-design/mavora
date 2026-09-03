@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase';
-import { loginSchema, getAuthErrorMessage } from '@/lib/validations/auth';
+import { loginSchema } from '@/lib/validations/auth';
 import type { User } from '@/lib/types';
 import { dbLogin } from '@/lib/db-auth'; // Database-first auth fallback
 
@@ -140,148 +140,130 @@ export async function POST(request: NextRequest) {
       return setSecurityHeaders(errorResponse);
     }
 
-    // Use Supabase client for auth
-    const supabase = getSupabaseServerClient();
+    // Try Supabase Auth first
+    try {
+      const supabase = getSupabaseServerClient();
 
-    // Sign in with Supabase Auth
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    // If Supabase Auth fails, try database-first authentication
-    if (error) {
-      console.log(`[AUTH] Supabase Auth failed for ${email}, trying DB auth fallback...`);
-      
-      const dbResult = await dbLogin(email, password);
-      
-      if (dbResult.success && dbResult.user) {
-        console.log(`[AUTH] DB auth successful for ${email}`);
-        
-        // Clear failed attempts on successful login
+      if (!error && data.user) {
+        // Supabase Auth succeeded
         clearLoginAttempts(email, ip);
-        
-        // Return database-authenticated user
+
+        // Fetch the user's profile with role
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*, user_roles(role)')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError) {
+          console.warn('[AUTH] Profile fetch warning:', profileError.message);
+        }
+
+        // Check if user is suspended/banned
+        if (profile?.is_suspended) {
+          await supabase.auth.signOut();
+          
+          const errorResponse = NextResponse.json(
+            { error: 'auth.account_banned' },
+            { status: 403 }
+          );
+          return setSecurityHeaders(errorResponse);
+        }
+
+        // Build user response object
+        const user: User = {
+          id: data.user.id,
+          email: data.user.email ?? '',
+          display_name: profile?.display_name ?? data.user.user_metadata?.display_name ?? '',
+          phone: profile?.phone ?? undefined,
+          avatar_url: profile?.avatar_url ?? undefined,
+          bio: profile?.bio ?? undefined,
+          country_id: profile?.country_id ?? undefined,
+          city_id: profile?.city_id ?? undefined,
+          is_verified: profile?.is_verified ?? false,
+          is_suspended: profile?.is_suspended ?? false,
+          role: profile?.user_roles?.role ?? 'user',
+          created_at: profile?.created_at ?? data.user.created_at,
+        };
+
+        console.log(`[AUTH] User logged in via Supabase: ${user.id}`);
+
+        // Create response with session cookie
         const response = NextResponse.json({
-          user: dbResult.user,
-          session: dbResult.session,
-          authMethod: 'database', // Indicate this is DB auth
+          user,
+          session: {
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+            expires_in: data.session.expires_in,
+            expires_at: data.session.expires_at,
+          },
         });
-        
+
+        // Set HTTP-only cookies for the session tokens
+        response.cookies.set('sb-access-token', data.session.access_token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: data.session.expires_in,
+        });
+
+        response.cookies.set('sb-refresh-token', data.session.refresh_token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 60 * 60 * 24 * 7, // 7 days
+        });
+
         return setSecurityHeaders(response);
       }
-      
-      // Both methods failed
-      console.error(`[AUTH] Login failed for ${email}:`, error.message);
-      
-      let errorMessage = error.message;
-      let status = error.status ?? 401;
 
-      // Map Supabase errors to user-friendly messages
-      if (
-        error.message.includes('Invalid') ||
-        error.message.includes('invalid') ||
-        error.message.includes('credentials')
-      ) {
-        errorMessage = 'auth.invalid_credentials';
-        status = 401;
-      } else if (error.message.includes('Email not confirmed')) {
-        errorMessage = 'auth.email_not_confirmed';
-        status = 403;
+      // If it's not a credentials error, try DB fallback
+      if (error && !error.message.includes('Invalid') && !error.message.includes('invalid')) {
+        console.log(`[AUTH] Supabase auth error (non-credentials), trying DB fallback:`, error.message);
       }
-
-      const errorResponse = NextResponse.json(
-        { 
-          error: errorMessage,
-          remainingAttempts: rateLimitResult.remainingAttempts - 1,
-        },
-        { status }
-      );
-      return setSecurityHeaders(errorResponse);
+    } catch (supabaseError) {
+      console.warn('[AUTH] Supabase auth exception, using DB fallback:', supabaseError);
     }
 
-    if (!data.user) {
-      const errorResponse = NextResponse.json(
-        { error: 'common.error' },
-        { status: 401 }
-      );
-      return setSecurityHeaders(errorResponse);
-    }
-
-    // Clear failed attempts on successful login
-    clearLoginAttempts(email, ip);
-
-    // Fetch the user's profile with role
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*, user_roles(role)')
-      .eq('id', data.user.id)
-      .single();
-
-    if (profileError) {
-      console.warn('[AUTH] Profile fetch warning:', profileError.message);
-    }
-
-    // Check if user is suspended/banned
-    if (profile?.is_suspended) {
-      // Sign out the suspended user
-      await supabase.auth.signOut();
+    // FALLBACK: Use Database-First Authentication
+    console.log(`[AUTH] Trying DB auth fallback for ${email}...`);
+    
+    const dbResult = await dbLogin(email, password);
+    
+    if (dbResult.success && dbResult.user) {
+      console.log(`[AUTH] DB auth successful for ${email}`);
       
-      const errorResponse = NextResponse.json(
-        { error: 'auth.account_banned' },
-        { status: 403 }
-      );
-      return setSecurityHeaders(errorResponse);
+      // Clear failed attempts on successful login
+      clearLoginAttempts(email, ip);
+      
+      // Return database-authenticated user
+      const response = NextResponse.json({
+        user: dbResult.user,
+        session: dbResult.session,
+        authMethod: 'database',
+      });
+      
+      return setSecurityHeaders(response);
     }
-
-    // Build user response object (without sensitive data)
-    const user: User = {
-      id: data.user.id,
-      email: data.user.email ?? '',
-      display_name: profile?.display_name ?? data.user.user_metadata?.display_name ?? '',
-      phone: profile?.phone ?? undefined,
-      avatar_url: profile?.avatar_url ?? undefined,
-      bio: profile?.bio ?? undefined,
-      country_id: profile?.country_id ?? undefined,
-      city_id: profile?.city_id ?? undefined,
-      is_verified: profile?.is_verified ?? false,
-      is_suspended: profile?.is_suspended ?? false,
-      role: profile?.user_roles?.role ?? 'user',
-      created_at: profile?.created_at ?? data.user.created_at,
-    };
-
-    // Log successful login (without sensitive data)
-    console.log(`[AUTH] User logged in: ${user.id} (${user.email})`);
-
-    // Create response with session cookie
-    const response = NextResponse.json({
-      user,
-      session: {
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
-        expires_in: data.session.expires_in,
-        expires_at: data.session.expires_at,
+    
+    // Both methods failed
+    console.error(`[AUTH] Login failed for ${email}`);
+    
+    const errorResponse = NextResponse.json(
+      { 
+        error: 'auth.invalid_credentials',
+        remainingAttempts: rateLimitResult.remainingAttempts - 1,
       },
-    });
-
-    // Set HTTP-only cookies for the session tokens
-    response.cookies.set('sb-access-token', data.session.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: data.session.expires_in,
-    });
-
-    response.cookies.set('sb-refresh-token', data.session.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    });
-
-    return setSecurityHeaders(response);
+      { status: 401 }
+    );
+    return setSecurityHeaders(errorResponse);
 
   } catch (error) {
     console.error('[AUTH] Unexpected login error:', error);

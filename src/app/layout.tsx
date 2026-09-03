@@ -1,23 +1,26 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, IBM_Plex_Sans_Arabic } from "next/font/google";
+import { Tajawal, Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import AuthProvider from "@/components/auth/AuthProvider";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/footer/Footer";
 
-/* ── Font Configuration ── */
+/* ── Font Configuration ──
+ * Tajawal: Modern Arabic font, excellent for RTL content
+ * Inter: Clean, modern Latin font for English/French
+ */
+
+const tajawal = Tajawal({
+  variable: "--font-tajawal",
+  subsets: ["arabic", "latin"],
+  weight: ["200", "300", "400", "500", "700", "800", "900"],
+  display: "swap",
+});
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
-  display: "swap",
-});
-
-const ibmPlexArabic = IBM_Plex_Sans_Arabic({
-  variable: "--font-ibm-plex-arabic",
-  weight: ["300", "400", "500", "600", "700"],
-  subsets: ["arabic", "latin"],
   display: "swap",
 });
 
@@ -137,8 +140,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#102A43" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a1628" },
+    { media: "(prefers-color-scheme: light)", color: "#0D9488" },
+    { media: "(prefers-color-scheme: dark)", color: "#111827" },
   ],
 };
 
@@ -167,25 +170,25 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         
-        {/* Theme Color Meta */}
-        <meta name="theme-color" content="#102A43" />
+        {/* Theme Color Meta - Teal for modern look */}
+        <meta name="theme-color" content="#0D9488" />
         <meta name="application-name" content="MAVORA" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="MAVORA" />
         
         {/* MS Tiles */}
-        <meta name="msapplication-TileColor" content="#102A43" />
+        <meta name="msapplication-TileColor" content="#0D9488" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
       </head>
       <body
-        className={`${inter.variable} ${ibmPlexArabic.variable} font-sans antialiased bg-background text-foreground min-h-screen flex flex-col`}
+        className={`${tajawal.variable} ${inter.variable} font-sans antialiased bg-background text-foreground min-h-screen flex flex-col`}
       >
         <AuthProvider>
           {/* Skip to main content - Accessibility */}
           <a
             href="#main-content"
-            className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:start-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+            className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:start-4 focus:z-[100] focus:rounded-xl focus:bg-teal-600 focus:px-4 focus:py-2 focus:text-white focus:shadow-lg"
           >
             تخطي إلى المحتوى الرئيسي
           </a>
@@ -209,7 +212,7 @@ export default function RootLayout({
           toastOptions={{
             duration: 4000,
             classNames: {
-              toast: 'group',
+              toast: 'group rounded-xl',
               title: 'font-semibold',
               description: 'text-sm opacity-90',
             },

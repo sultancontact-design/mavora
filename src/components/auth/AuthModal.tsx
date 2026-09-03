@@ -15,7 +15,8 @@ import {
   ShieldCheck,
   KeyRound,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -58,8 +59,8 @@ interface AuthModalProps {
 // ============================================================
 
 const loginSchema = z.object({
-  email: z.string().email('auth.invalid_email'),
-  password: z.string().min(1, 'auth.password_required'),
+  email: z.string().email('Invalid email'),
+  password: z.string().min(1, 'Password is required'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -67,23 +68,23 @@ type LoginFormData = z.infer<typeof loginSchema>;
 const signupSchema = z
   .object({
     display_name: z.string().min(2).max(50),
-    email: z.string().email('auth.invalid_email'),
+    email: z.string().email('Invalid email'),
     password: z
       .string()
-      .min(8, 'auth.password_too_short')
-      .regex(/[a-z]/, 'auth.password_needs_lowercase')
-      .regex(/[0-9]/, 'auth.password_needs_number'),
+      .min(8, 'Password must be at least 8 characters')
+      .regex(/[a-z]/, 'Password needs a lowercase letter')
+      .regex(/[0-9]/, 'Password needs a number'),
     confirmPassword: z.string().min(8),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: 'auth.passwords_mismatch',
+    message: 'Passwords do not match',
     path: ['confirmPassword'],
   });
 
 type SignupFormData = z.infer<typeof signupSchema>;
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email('auth.invalid_email'),
+  email: z.string().email('Invalid email'),
 });
 
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
@@ -105,52 +106,79 @@ function getPasswordStrength(password: string): {
   if (/[^a-zA-Z0-9]/.test(password)) score++;
 
   const levels = [
-    { labelKey: 'auth.password_weak', color: 'bg-red-500', width: 'w-1/4' },
-    { labelKey: 'auth.password_fair', color: 'bg-orange-500', width: 'w-2/4' },
-    { labelKey: 'auth.password_good', color: 'bg-yellow-500', width: 'w-3/4' },
-    { labelKey: 'auth.password_strong', color: 'bg-emerald-500', width: 'w-full' },
+    { labelKey: 'Weak', color: 'bg-red-500', width: 'w-1/4' },
+    { labelKey: 'Fair', color: 'bg-orange-500', width: 'w-2/4' },
+    { labelKey: 'Good', color: 'bg-yellow-500', width: 'w-3/4' },
+    { labelKey: 'Strong', color: 'bg-teal-500', width: 'w-full' },
   ];
 
   return { score, ...levels[score] };
 }
 
 // ============================================================
-// Password Input Component with Toggle
+// Modern Input Component
 // ============================================================
 
-function PasswordInput({
+function ModernInput({
   value,
   onChange,
   placeholder,
   error,
+  type = 'text',
+  icon: Icon,
+  showToggle,
+  onToggleShow,
+  autoComplete,
 }: {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder: string;
   error?: string;
+  type?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  showToggle?: boolean;
+  onToggleShow?: () => void;
+  autoComplete?: string;
 }) {
   const [show, setShow] = useState(false);
+  const inputType = type === 'password' ? (show ? 'text' : 'password') : type;
 
   return (
-    <div className="relative">
-      <Lock className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+    <div className="relative group">
+      {Icon && (
+        <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
+          <Icon className={`size-5 text-gray-400 group-focus-within:text-teal-500 transition-colors`} />
+        </div>
+      )}
       <Input
-        type={show ? 'text' : 'password'}
+        type={inputType}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className={`pe-10 ps-10 ${error ? 'border-destructive' : ''}`}
-        autoComplete={show ? 'off' : 'current-password'}
+        className={`
+          h-12 ${Icon ? 'ps-11' : 'ps-4'} pe-${showToggle || type === 'password' ? '11' : '4'} 
+          rounded-xl border-gray-200 bg-gray-50/50 text-gray-900 
+          placeholder:text-gray-400 
+          focus:border-teal-500 focus:ring-teal-500/20 
+          transition-all ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20' : ''}
+        `}
+        autoComplete={autoComplete}
+        dir={type === 'email' ? 'ltr' : undefined}
       />
-      <button
-        type="button"
-        onClick={() => setShow(!show)}
-        className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-        tabIndex={-1}
-        aria-label={show ? 'Hide password' : 'Show password'}
-      >
-        {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-      </button>
+      {(type === 'password' || showToggle) && (
+        <button
+          type="button"
+          onClick={() => {
+            setShow(!show);
+            onToggleShow?.();
+          }}
+          className="absolute end-1.5 top-1/2 -translate-y-1/2 size-9 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
+          tabIndex={-1}
+          aria-label={show ? 'Hide password' : 'Show password'}
+        >
+          {show ? <EyeOff className="size-4.5" /> : <Eye className="size-4.5" />}
+        </button>
+      )}
     </div>
   );
 }
@@ -195,7 +223,8 @@ function LoginForm({
           return;
         }
         
-        toast.error(t(data.error) || t('common.error'));
+        const errorMsg = data.error?.includes('.') ? t(data.error) || data.error : data.error;
+        toast.error(errorMsg || t('common.error'));
         return;
       }
 
@@ -203,7 +232,7 @@ function LoginForm({
         setUser(data.user);
       }
       
-      toast.success(t('auth.login_success'));
+      toast.success(t('auth.login_success') || 'Welcome back!');
       onSuccess();
     } catch {
       toast.error(t('auth.error_occurred'));
@@ -214,24 +243,21 @@ function LoginForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
         <FormField
           control={form.control}
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-medium">{t('auth.email')}</FormLabel>
+              <FormLabel className="text-sm font-semibold text-gray-700">{t('auth.email')}</FormLabel>
               <FormControl>
-                <div className="relative">
-                  <Mail className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="email"
-                    placeholder="name@example.com"
-                    className="ps-10"
-                    autoComplete="email"
-                    {...field}
-                  />
-                </div>
+                <ModernInput
+                  {...field}
+                  placeholder="name@example.com"
+                  icon={Mail}
+                  type="email"
+                  autoComplete="email"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -244,21 +270,22 @@ function LoginForm({
           render={({ field }) => (
             <FormItem>
               <div className="flex items-center justify-between">
-                <FormLabel className="text-sm font-medium">{t('auth.password')}</FormLabel>
+                <FormLabel className="text-sm font-semibold text-gray-700">{t('auth.password')}</FormLabel>
                 <button
                   type="button"
                   onClick={onSwitchToForgotPassword}
-                  className="text-xs text-emerald hover:text-emerald/80 font-medium transition-colors"
+                  className="text-xs font-medium text-teal-600 hover:text-teal-700 transition-colors"
                 >
                   {t('auth.forgot_password')}
                 </button>
               </div>
               <FormControl>
-                <PasswordInput
-                  value={field.value}
-                  onChange={field.onChange}
+                <ModernInput
+                  {...field}
                   placeholder="••••••••"
-                  error={form.formState.errors.password?.message}
+                  icon={Lock}
+                  type="password"
+                  autoComplete="current-password"
                 />
               </FormControl>
               <FormMessage />
@@ -269,11 +296,11 @@ function LoginForm({
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-11 text-sm font-semibold"
+          className="w-full h-12 bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-700 hover:to-emerald-600 text-white font-semibold shadow-lg shadow-teal-500/25 transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 rounded-xl"
         >
           {isSubmitting ? (
             <>
-              <Loader2 className="size-4 animate-spin" />
+              <Loader2 className="size-4.5 animate-spin" />
               <span className="ms-2">{t('auth.logging_in')}</span>
             </>
           ) : (
@@ -281,12 +308,12 @@ function LoginForm({
           )}
         </Button>
 
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-sm text-gray-500">
           {t('auth.no_account')}{' '}
           <button
             type="button"
             onClick={onSwitchToSignup}
-            className="font-semibold text-emerald hover:text-emerald/80 transition-colors"
+            className="font-semibold text-teal-600 hover:text-teal-700 transition-colors"
           >
             {t('auth.signup_link')}
           </button>
@@ -345,7 +372,8 @@ function SignupForm({
       const data = await res.json();
 
       if (!res.ok) {
-        toast.error(t(data.error) || t('common.error'));
+        const errorMsg = data.error?.includes('.') ? t(data.error) || data.error : data.error;
+        toast.error(errorMsg || t('common.error'));
         return;
       }
 
@@ -353,13 +381,7 @@ function SignupForm({
         setUser(data.user);
       }
       
-      // Show different message based on email verification requirement
-      if (data.emailConfirmationRequired) {
-        toast.info(t('auth.verify_email_sent') || 'Please check your email to verify your account');
-      } else {
-        toast.success(t('auth.signup_success'));
-      }
-      
+      toast.success(t('auth.signup_success') || 'Account created successfully!');
       onSuccess();
     } catch {
       toast.error(t('auth.error_occurred'));
@@ -370,23 +392,20 @@ function SignupForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
         <FormField
           control={form.control}
           name="display_name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-medium">{t('auth.display_name')}</FormLabel>
+              <FormLabel className="text-sm font-semibold text-gray-700">{t('auth.display_name')}</FormLabel>
               <FormControl>
-                <div className="relative">
-                  <User className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder={t('auth.display_name')}
-                    className="ps-10"
-                    autoComplete="name"
-                    {...field}
-                  />
-                </div>
+                <ModernInput
+                  {...field}
+                  placeholder="Your name"
+                  icon={User}
+                  autoComplete="name"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -398,18 +417,15 @@ function SignupForm({
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-medium">{t('auth.email')}</FormLabel>
+              <FormLabel className="text-sm font-semibold text-gray-700">{t('auth.email')}</FormLabel>
               <FormControl>
-                <div className="relative">
-                  <Mail className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="email"
-                    placeholder="name@example.com"
-                    className="ps-10"
-                    autoComplete="email"
-                    {...field}
-                  />
-                </div>
+                <ModernInput
+                  {...field}
+                  placeholder="name@example.com"
+                  icon={Mail}
+                  type="email"
+                  autoComplete="email"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -421,24 +437,25 @@ function SignupForm({
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-medium">{t('auth.password')}</FormLabel>
+              <FormLabel className="text-sm font-semibold text-gray-700">{t('auth.password')}</FormLabel>
               <FormControl>
-                <PasswordInput
-                  value={field.value}
-                  onChange={field.onChange}
+                <ModernInput
+                  {...field}
                   placeholder="••••••••"
-                  error={form.formState.errors.password?.message}
+                  icon={Lock}
+                  type="password"
+                  autoComplete="new-password"
                 />
               </FormControl>
               {strength && (
                 <div className="space-y-1.5 pt-1">
-                  <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+                  <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-300 ${strength.color} ${strength.width}`}
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {t('auth.password_strength')}: {t(strength.labelKey)}
+                  <p className="text-xs text-gray-500">
+                    Password strength: {strength.labelKey}
                   </p>
                 </div>
               )}
@@ -452,13 +469,14 @@ function SignupForm({
           name="confirmPassword"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-medium">{t('auth.confirm_password')}</FormLabel>
+              <FormLabel className="text-sm font-semibold text-gray-700">{t('auth.confirm_password')}</FormLabel>
               <FormControl>
-                <PasswordInput
-                  value={field.value}
-                  onChange={field.onChange}
+                <ModernInput
+                  {...field}
                   placeholder="••••••••"
-                  error={form.formState.errors.confirmPassword?.message}
+                  icon={Lock}
+                  type="password"
+                  autoComplete="new-password"
                 />
               </FormControl>
               <FormMessage />
@@ -469,11 +487,11 @@ function SignupForm({
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="w-full bg-emerald text-emerald-foreground hover:bg-emerald/90 h-11 text-sm font-semibold"
+          className="w-full h-12 bg-gradient-to-r from-violet-600 to-purple-500 hover:from-violet-700 hover:to-purple-600 text-white font-semibold shadow-lg shadow-violet-500/25 transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 rounded-xl"
         >
           {isSubmitting ? (
             <>
-              <Loader2 className="size-4 animate-spin" />
+              <Loader2 className="size-4.5 animate-spin" />
               <span className="ms-2">{t('auth.creating_account')}</span>
             </>
           ) : (
@@ -481,12 +499,12 @@ function SignupForm({
           )}
         </Button>
 
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-sm text-gray-500">
           {t('auth.has_account')}{' '}
           <button
             type="button"
             onClick={onSwitchToLogin}
-            className="font-semibold text-emerald hover:text-emerald/80 transition-colors"
+            className="font-semibold text-violet-600 hover:text-violet-700 transition-colors"
           >
             {t('auth.login_link')}
           </button>
@@ -528,15 +546,14 @@ function ForgotPasswordForm({
       const data = await res.json();
 
       if (!res.ok && !data.rateLimited) {
-        toast.error(t(data.error) || t('common.error'));
+        toast.error(data.error || t('common.error'));
         return;
       }
 
       // Always show success for security (prevent email enumeration)
       setIsEmailSent(true);
-      toast.success(t('auth.reset_email_sent'));
+      toast.success(t('auth.reset_email_sent') || 'Check your email for reset link');
       
-      // Auto-close after showing success
       setTimeout(() => {
         onSuccess();
       }, 2000);
@@ -550,22 +567,22 @@ function ForgotPasswordForm({
   if (isEmailSent) {
     return (
       <div className="space-y-4 text-center py-4">
-        <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-emerald/10">
-          <CheckCircle className="size-6 text-emerald" />
+        <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-teal-100 to-emerald-100">
+          <CheckCircle className="size-7 text-teal-600" />
         </div>
         <div>
-          <h3 className="font-semibold text-lg">{t('auth.email_sent_title') || 'Check Your Email'}</h3>
-          <p className="text-sm text-muted-foreground mt-2">
-            {t('auth.reset_email_instructions') || 'We\'ve sent you a password reset link. Please check your inbox.'}
+          <h3 className="font-bold text-lg text-gray-900">Check Your Email</h3>
+          <p className="text-sm text-gray-500 mt-2">
+            We've sent you a password reset link. Please check your inbox.
           </p>
         </div>
         <Button
           variant="outline"
           onClick={onBackToLogin}
-          className="w-full"
+          className="w-full h-11 rounded-xl border-gray-200 hover:bg-gray-50"
         >
           <ArrowLeft className="size-4 me-2" />
-          {t('common.back_to_login') || 'Back to Login'}
+          Back to Login
         </Button>
       </div>
     );
@@ -573,11 +590,11 @@ function ForgotPasswordForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <div className="flex items-start gap-3 p-3 rounded-lg bg-amber/10 border border-amber/20">
-          <AlertCircle className="size-5 text-amber shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-dark">
-            {t('auth.reset_password_help') || 'Enter your email address and we\'ll send you a link to reset your password.'}
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-100">
+          <AlertCircle className="size-5 text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-700">
+            Enter your email address and we'll send you a link to reset your password.
           </p>
         </div>
 
@@ -586,18 +603,15 @@ function ForgotPasswordForm({
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-medium">{t('auth.email')}</FormLabel>
+              <FormLabel className="text-sm font-semibold text-gray-700">{t('auth.email')}</FormLabel>
               <FormControl>
-                <div className="relative">
-                  <Mail className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="email"
-                    placeholder="name@example.com"
-                    className="ps-10"
-                    autoComplete="email"
-                    {...field}
-                  />
-                </div>
+                <ModernInput
+                  {...field}
+                  placeholder="name@example.com"
+                  icon={Mail}
+                  type="email"
+                  autoComplete="email"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -607,29 +621,29 @@ function ForgotPasswordForm({
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-11 text-sm font-semibold"
+          className="w-full h-12 bg-gradient-to-r from-teal-600 to-cyan-500 hover:from-teal-700 hover:to-cyan-600 text-white font-semibold shadow-lg shadow-teal-500/25 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 rounded-xl"
         >
           {isSubmitting ? (
             <>
-              <Loader2 className="size-4 animate-spin" />
-              <span className="ms-2">{t('auth.sending') || 'Sending...'}</span>
+              <Loader2 className="size-4.5 animate-spin" />
+              <span className="ms-2">Sending...</span>
             </>
           ) : (
             <>
               <KeyRound className="size-4 me-2" />
-              {t('auth.send_reset_link') || 'Send Reset Link'}
+              Send Reset Link
             </>
           )}
         </Button>
 
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-sm text-gray-500">
           <button
             type="button"
             onClick={onBackToLogin}
-            className="font-semibold text-emerald hover:text-emerald/80 transition-colors inline-flex items-center"
+            className="font-semibold text-teal-600 hover:text-teal-700 transition-colors inline-flex items-center"
           >
             <ArrowLeft className="size-4 me-1" />
-            {t('auth.back_to_login') || 'Back to Login'}
+            Back to Login
           </button>
         </p>
       </form>
@@ -669,55 +683,66 @@ export default function AuthModal({
   const isSignup = view === 'signup';
   const isForgotPassword = view === 'forgot-password';
 
+  // Gradient based on view
+  const getHeaderGradient = () => {
+    switch (view) {
+      case 'login':
+        return 'bg-gradient-to-r from-teal-600 via-teal-500 to-emerald-500';
+      case 'signup':
+        return 'bg-gradient-to-r from-violet-600 via-purple-500 to-fuchsia-500';
+      case 'forgot-password':
+        return 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500';
+      default:
+        return 'bg-gradient-to-r from-teal-600 to-emerald-500';
+    }
+  };
+
+  const getHeaderIcon = () => {
+    switch (view) {
+      case 'login':
+        return ShieldCheck;
+      case 'signup':
+        return Sparkles;
+      case 'forgot-password':
+        return KeyRound;
+      default:
+        return ShieldCheck;
+    }
+  };
+
+  const HeaderIcon = getHeaderIcon();
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent 
-        className="sm:max-w-md p-0 overflow-hidden"
+        className="sm:max-w-md p-0 overflow-hidden gap-0 rounded-2xl"
         dir={direction}
       >
         {/* Header */}
-        <div className="bg-primary px-6 py-5 text-primary-foreground">
-          <DialogHeader className="text-start">
-            {isLogin && (
-              <>
-                <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                  <ShieldCheck className="size-5" />
-                  {t('auth.welcome_back')}
-                </DialogTitle>
-                <DialogDescription className="text-primary-foreground/70 text-sm mt-1">
-                  {t('auth.welcome_subtitle')}
-                </DialogDescription>
-              </>
-            )}
-            
-            {isSignup && (
-              <>
-                <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                  <User className="size-5" />
-                  {t('auth.signup_title')}
-                </DialogTitle>
-                <DialogDescription className="text-primary-foreground/70 text-sm mt-1">
-                  {t('auth.create_account_subtitle')}
-                </DialogDescription>
-              </>
-            )}
-
-            {isForgotPassword && (
-              <>
-                <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                  <KeyRound className="size-5" />
-                  {t('auth.forgot_password') || 'Forgot Password?'}
-                </DialogTitle>
-                <DialogDescription className="text-primary-foreground/70 text-sm mt-1">
-                  {t('auth.reset_password_subtitle') || "Don't worry, we'll help you get back in."}
-                </DialogDescription>
-              </>
-            )}
+        <div className={`${getHeaderGradient()} px-6 py-6 text-white relative overflow-hidden`}>
+          {/* Decorative elements */}
+          <div className="absolute top-0 -end-16 -mt-8 size-40 rounded-full bg-white/10 blur-2xl" />
+          <div className="absolute bottom-0 -start-12 mb-[-1rem] size-24 rounded-full bg-white/10 blur-xl" />
+          
+          <DialogHeader className="text-start relative">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2.5">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm">
+                <HeaderIcon className="size-4.5" />
+              </div>
+              {isLogin && t('auth.welcome_back')}
+              {isSignup && t('auth.signup_title') || 'Create Account'}
+              {isForgotPassword && (t('auth.forgot_password') || 'Forgot Password?')}
+            </DialogTitle>
+            <DialogDescription className="text-white/80 text-sm mt-1.5 font-normal">
+              {isLogin && (t('auth.welcome_subtitle') || 'Sign in to continue to MAVORA')}
+              {isSignup && (t('auth.create_account_subtitle') || 'Join our community today')}
+              {isForgotPassword && (t('auth.reset_password_subtitle') || "We'll help you get back in")}
+            </DialogDescription>
           </DialogHeader>
         </div>
 
         {/* Form Area */}
-        <div className="px-6 py-5">
+        <div className="px-6 py-6 bg-white">
           {isLogin && (
             <LoginForm
               onSwitchToSignup={() => setView('signup')}

@@ -191,7 +191,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur-md supports-[backdrop-filter]:bg-card/80">
+      <header className="sticky top-0 z-50 w-full border-b border-gray-200/80 bg-white/90 backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 shadow-sm">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:px-6 lg:px-8">
           
           {/* ── Mobile: Hamburger + Logo ── */}
@@ -201,13 +201,13 @@ export default function Header() {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="shrink-0 touch-target" 
+                  className="shrink-0 touch-target rounded-xl hover:bg-gray-100" 
                   aria-label={isRtl ? 'فتح القائمة' : 'Open menu'}
                 >
-                  <Menu className="size-5" />
+                  <Menu className="size-5 text-gray-700" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side={isRtl ? 'right' : 'left'} className="w-80 overflow-y-auto">
+              <SheetContent side={isRtl ? 'right' : 'left'} className="w-80 overflow-y-auto border-l border-r-0">
                 <SheetHeader>
                   <SheetTitle className="flex items-center gap-3">
                     <MavoraLogo size="sm" />
@@ -218,14 +218,14 @@ export default function Header() {
                 <nav className="mt-8 flex flex-col gap-1">
                   {/* Quick Links */}
                   <div className="mb-4">
-                    <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-gray-400">
                       {t('categories.title')}
                     </p>
                     {NAV_LINKS.map((link) => (
                       <SheetClose asChild key={link.key}>
                         <a
                           href={link.href}
-                          className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                          className="flex items-center justify-between rounded-xl px-3 py-3 text-sm font-medium text-gray-700 transition-all hover:bg-teal-50 hover:text-teal-700"
                         >
                           {t(link.key)}
                           <ArrowRight className={`size-4 ${isRtl ? 'rotate-180' : ''}`} />
@@ -234,75 +234,74 @@ export default function Header() {
                     ))}
                   </div>
 
-                  <div className="my-3 border-t border-border" />
+                  <div className="my-3 h-px bg-gray-100" />
 
                   {/* Auth State */}
                   {user ? (
                     <>
                       {/* User Info */}
-                      <div className="mb-4 flex items-center gap-3 rounded-lg bg-accent px-3 py-3">
-                        <Avatar className="size-10">
+                      <div className="mb-4 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-teal-50 to-emerald-50 p-4">
+                        <Avatar className="size-12 ring-2 ring-teal-200">
                           <AvatarImage src={user.avatar_url} alt={user.display_name} />
-                          <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+                          <AvatarFallback className="bg-gradient-to-br from-teal-500 to-emerald-500 text-white text-sm font-bold">
                             {userInitials}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <p className="truncate text-sm font-semibold">{user.display_name}</p>
-                          <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                          <p className="truncate text-sm font-bold text-gray-900">{user.display_name}</p>
+                          <p className="truncate text-xs text-gray-500">{user.email}</p>
                         </div>
                       </div>
 
                       {/* User Links */}
                       <SheetClose asChild>
-                        <Button variant="ghost" className="justify-start gap-3 w-full" onClick={() => navigateProfile(user?.id)}>
-                          <User className="size-4" />
-                          {t('common.profile')}
+                        <Button variant="ghost" className="justify-start gap-3 w-full h-12 rounded-xl hover:bg-gray-50" onClick={() => navigateProfile(user?.id)}>
+                          <User className="size-5 text-gray-500" />
+                          <span className="font-medium">{t('common.profile')}</span>
                         </Button>
                       </SheetClose>
                       <SheetClose asChild>
-                        <Button variant="ghost" className="justify-start gap-3 w-full">
-                          <Package className="size-4" />
-                          {t('common.my_listings')}
+                        <Button variant="ghost" className="justify-start gap-3 w-full h-12 rounded-xl hover:bg-gray-50">
+                          <Package className="size-5 text-gray-500" />
+                          <span className="font-medium">{t('common.my_listings')}</span>
                         </Button>
                       </SheetClose>
                       <SheetClose asChild>
-                        <Button variant="ghost" className="justify-start gap-3 w-full" onClick={navigateFavorites}>
-                          <Heart className="size-4" />
-                          {t('common.favorites')}
+                        <Button variant="ghost" className="justify-start gap-3 w-full h-12 rounded-xl hover:bg-gray-50" onClick={navigateFavorites}>
+                          <Heart className="size-5 text-gray-500" />
+                          <span className="font-medium">{t('common.favorites')}</span>
                         </Button>
                       </SheetClose>
                       <SheetClose asChild>
-                        <Button variant="ghost" className="justify-start gap-3 w-full" onClick={navigateMessages}>
-                          <MessageSquare className="size-4" />
-                          {t('common.messages')}
+                        <Button variant="ghost" className="justify-start gap-3 w-full h-12 rounded-xl hover:bg-gray-50" onClick={navigateMessages}>
+                          <MessageSquare className="size-5 text-gray-500" />
+                          <span className="font-medium">{t('common.messages')}</span>
                         </Button>
                       </SheetClose>
                       <SheetClose asChild>
-                        <Button variant="ghost" className="justify-start gap-3 w-full" onClick={navigateWallet}>
-                          <Wallet className="size-4" />
-                          {t('common.wallet')}
+                        <Button variant="ghost" className="justify-start gap-3 w-full h-12 rounded-xl hover:bg-gray-50" onClick={navigateWallet}>
+                          <Wallet className="size-5 text-gray-500" />
+                          <span className="font-medium">{t('common.wallet')}</span>
                         </Button>
                       </SheetClose>
                       
-                      <div className="my-3 border-t border-border" />
+                      <div className="my-3 h-px bg-gray-100" />
                       
                       <Button
                         variant="ghost"
-                        className="justify-start gap-3 w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                        className="justify-start gap-3 w-full h-12 rounded-xl text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                         onClick={handleLogout}
                         disabled={isLoggingOut}
                       >
-                        {isLoggingOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
-                        {isLoggingOut ? t('common.loading') : t('common.logout')}
+                        {isLoggingOut ? <Loader2 className="size-5 animate-spin" /> : <LogOut className="size-5" />}
+                        <span className="font-medium">{isLoggingOut ? t('common.loading') : t('common.logout')}</span>
                       </Button>
                     </>
                   ) : (
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2.5">
                       <SheetClose asChild>
                         <Button
-                          variant="default"
-                          className="w-full bg-emerald hover:bg-emerald/90 text-white font-semibold"
+                          className="w-full h-12 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 text-white font-semibold shadow-lg shadow-teal-500/25 rounded-xl btn-lift"
                           onClick={() => openAuth('login')}
                         >
                           {t('common.login')}
@@ -311,7 +310,7 @@ export default function Header() {
                       <SheetClose asChild>
                         <Button
                           variant="outline"
-                          className="w-full"
+                          className="w-full h-12 rounded-xl border-gray-200 hover:bg-gray-50 font-semibold"
                           onClick={() => openAuth('signup')}
                         >
                           {t('common.signup')}
@@ -323,12 +322,12 @@ export default function Header() {
               </SheetContent>
             </Sheet>
             
-            <MavoraLogo size="sm" className="text-primary" />
+            <MavoraLogo size="sm" className="text-teal-600" />
           </div>
 
           {/* ── Desktop: Logo ── */}
           <div className="hidden lg:flex lg:items-center lg:shrink-0">
-            <MavoraLogo size="md" className="text-primary" />
+            <MavoraLogo size="md" className="text-teal-600" />
           </div>
 
           {/* ── Country Selector (Desktop) ── */}
@@ -337,27 +336,25 @@ export default function Header() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="hidden gap-1.5 text-sm font-normal text-muted-foreground hover:text-foreground md:inline-flex"
+                className="hidden gap-1.5 text-sm font-normal text-gray-500 hover:text-gray-700 md:inline-flex rounded-lg"
               >
-                <MapPin className="size-3.5" />
+                <MapPin className="size-4 text-teal-500" />
                 <span>{selectedCountry.flag}</span>
-                <span className="hidden xl:inline">{getCountryName(selectedCountry)}</span>
-                <ChevronDown className="size-3" />
+                <span className="hidden xl:inline font-medium">{getCountryName(selectedCountry)}</span>
+                <ChevronDown className="size-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
+            <DropdownMenuContent align="start" className="w-52 rounded-xl p-2">
               {COUNTRIES.map((country) => (
                 <DropdownMenuItem
                   key={country.code}
                   onClick={() => setSelectedCountry(country)}
-                  className="gap-2 cursor-pointer"
+                  className="gap-2 cursor-pointer rounded-lg py-2.5"
                 >
                   <span className="text-base">{country.flag}</span>
-                  <span className="flex-1">{getCountryName(country)}</span>
+                  <span className="flex-1 font-medium">{getCountryName(country)}</span>
                   {selectedCountry.code === country.code && (
-                    <Badge variant="secondary" className="ms-auto text-[10px] px-1.5">
-                      ✓
-                    </Badge>
+                    <Badge className="ms-auto bg-teal-100 text-teal-700 border-0 text-[10px] px-1.5 h-5">✓</Badge>
                   )}
                 </DropdownMenuItem>
               ))}
@@ -369,8 +366,8 @@ export default function Header() {
             onSubmit={handleSearchSubmit}
             className="hidden flex-1 justify-center px-4 md:flex"
           >
-            <div className={`relative w-full max-w-xl transition-all duration-200 ${isSearchFocused ? 'scale-[1.02]' : ''}`}>
-              <Search className={`absolute start-4 top-1/2 size-4 -translate-y-1/2 transition-colors ${isSearchFocused ? 'text-emerald' : 'text-muted-foreground'}`} />
+            <div className={`relative w-full max-w-xl transition-all duration-300 ${isSearchFocused ? 'scale-[1.01]' : ''}`}>
+              <Search className={`absolute start-4 top-1/2 size-4.5 -translate-y-1/2 transition-colors duration-200 ${isSearchFocused ? 'text-teal-500' : 'text-gray-400'}`} />
               <Input
                 type="search"
                 placeholder={t('hero.search_placeholder')}
@@ -378,14 +375,14 @@ export default function Header() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setIsSearchFocused(false)}
-                className={`h-10 rounded-full border-border bg-secondary pe-12 ps-10 text-sm transition-all duration-200 focus-visible:border-emerald/50 focus-visible:ring-2 focus-visible:ring-emerald/20 ${
-                  isSearchFocused ? 'shadow-lg shadow-emerald/10' : ''
+                className={`h-11 rounded-xl border-gray-200 bg-gray-50/80 pe-28 ps-11 text-sm transition-all duration-200 focus-visible:border-teal-400 focus-visible:ring-2 focus-visible:ring-teal-500/20 focus-visible:bg-white ${
+                  isSearchFocused ? 'shadow-lg shadow-teal-500/10 border-teal-300' : ''
                 }`}
               />
               <Button
                 type="submit"
                 size="sm"
-                className="absolute end-1.5 top-1/2 h-8 -translate-y-1/2 rounded-full bg-emerald px-4 text-sm font-semibold text-white hover:bg-emerald/90 transition-all"
+                className="absolute end-1.5 top-1/2 h-9 -translate-y-1/2 rounded-lg bg-gradient-to-r from-teal-600 to-teal-500 px-4 text-sm font-semibold text-white shadow-md shadow-teal-500/20 hover:shadow-lg hover:shadow-teal-500/30 transition-all"
               >
                 {t('common.search')}
               </Button>
@@ -399,11 +396,11 @@ export default function Header() {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden touch-target"
+              className="md:hidden touch-target rounded-xl hover:bg-gray-100"
               onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
               aria-label={t('common.search')}
             >
-              <Search className="size-5" />
+              <Search className="size-5 text-gray-700" />
             </Button>
 
             {/* Notification Bell */}
@@ -415,29 +412,27 @@ export default function Header() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="gap-1.5 text-sm font-normal text-muted-foreground hover:text-foreground touch-target"
+                  className="gap-1.5 text-sm font-normal text-gray-500 hover:text-gray-700 touch-target rounded-lg"
                 >
-                  <Globe className="size-4" />
+                  <Globe className="size-4.5" />
                   <span className="hidden sm:inline-flex items-center gap-1">
                     <span className="text-base">{currentLocaleOption.flag}</span>
-                    <span className="hidden lg:inline">{currentLocaleOption.nativeName}</span>
+                    <span className="hidden lg:inline font-medium">{currentLocaleOption.nativeName}</span>
                   </span>
-                  <ChevronDown className="size-3" />
+                  <ChevronDown className="size-3.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuContent align="end" className="w-44 rounded-xl p-2">
                 {LOCALE_OPTIONS.map((opt) => (
                   <DropdownMenuItem
                     key={opt.value}
                     onClick={() => handleLocaleChange(opt.value)}
-                    className="gap-2 cursor-pointer"
+                    className="gap-2 cursor-pointer rounded-lg py-2.5"
                   >
                     <span className="text-base">{opt.flag}</span>
-                    <span className="flex-1">{opt.nativeName}</span>
+                    <span className="flex-1 font-medium">{opt.nativeName}</span>
                     {locale === opt.value && (
-                      <Badge variant="secondary" className="ms-auto text-[10px] px-1.5">
-                        ✓
-                      </Badge>
+                      <Badge className="ms-auto bg-teal-100 text-teal-700 border-0 text-[10px] px-1.5 h-5">✓</Badge>
                     )}
                   </DropdownMenuItem>
                 ))}
@@ -447,78 +442,78 @@ export default function Header() {
             {/* Post Ad Button (Desktop) */}
             <Button
               size="sm"
-              className="hidden gap-1.5 bg-emerald text-emerald-foreground shadow-sm shadow-emerald/20 hover:bg-emerald/90 hover:shadow-emerald/30 transition-all sm:inline-flex btn-press"
+              className="hidden gap-2 bg-gradient-to-r from-coral to-coral-light hover:from-coral-dark hover:to-coral text-white shadow-lg shadow-coral/25 hover:shadow-coral/35 transition-all sm:inline-flex btn-lift rounded-xl font-semibold"
               onClick={handlePostAd}
             >
-              <Plus className="size-4" />
-              <span className="hidden lg:inline font-semibold">{t('common.post_ad')}</span>
+              <Plus className="size-4.5" />
+              <span className="hidden lg:inline">{t('common.post_ad')}</span>
             </Button>
 
             {/* Auth Buttons or User Menu */}
             {isLoading ? (
               <div className="flex items-center justify-center p-2">
-                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                <Loader2 className="size-5 animate-spin text-teal-500" />
               </div>
             ) : user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full relative touch-target">
-                    <Avatar className="size-8 ring-2 ring-emerald/20">
+                  <Button variant="ghost" size="icon" className="rounded-full relative touch-target hover:bg-gray-100">
+                    <Avatar className="size-9 ring-2 ring-teal-200 ring-offset-2 ring-offset-white">
                       <AvatarImage src={user.avatar_url} alt={user.display_name} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+                      <AvatarFallback className="bg-gradient-to-br from-teal-500 to-emerald-500 text-white text-xs font-bold">
                         {userInitials}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel className="font-normal">
+                <DropdownMenuContent align="end" className="w-56 rounded-xl p-2">
+                  <DropdownMenuLabel className="font-normal p-2">
                     <div className="flex flex-col gap-1">
-                      <p className="text-sm font-semibold">{user.display_name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                      <p className="text-sm font-bold text-gray-900">{user.display_name}</p>
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
                     </div>
                   </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => navigateProfile(user?.id)}>
-                    <User className="size-4" />
-                    {t('common.profile')}
+                  <DropdownMenuSeparator className="my-1" />
+                  <DropdownMenuItem className="gap-2.5 cursor-pointer rounded-lg py-2.5" onClick={() => navigateProfile(user?.id)}>
+                    <User className="size-4 text-gray-500" />
+                    <span className="font-medium">{t('common.profile')}</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2 cursor-pointer">
-                    <Package className="size-4" />
-                    {t('common.my_listings')}
+                  <DropdownMenuItem className="gap-2.5 cursor-pointer rounded-lg py-2.5">
+                    <Package className="size-4 text-gray-500" />
+                    <span className="font-medium">{t('common.my_listings')}</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2 cursor-pointer" onClick={navigateFavorites}>
-                    <Heart className="size-4" />
-                    {t('common.favorites')}
+                  <DropdownMenuItem className="gap-2.5 cursor-pointer rounded-lg py-2.5" onClick={navigateFavorites}>
+                    <Heart className="size-4 text-gray-500" />
+                    <span className="font-medium">{t('common.favorites')}</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2 cursor-pointer" onClick={navigateMessages}>
-                    <MessageSquare className="size-4" />
-                    {t('common.messages')}
-                    <Badge variant="secondary" className="ms-auto h-5 min-w-5 rounded-full px-1.5 text-[10px]">
+                  <DropdownMenuItem className="gap-2.5 cursor-pointer rounded-lg py-2.5" onClick={navigateMessages}>
+                    <MessageSquare className="size-4 text-gray-500" />
+                    <span className="font-medium">{t('common.messages')}</span>
+                    <Badge variant="secondary" className="ms-auto h-5 min-w-5 rounded-full px-1.5 bg-violet-100 text-violet-700 border-0 text-[10px]">
                       3
                     </Badge>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2 cursor-pointer" onClick={navigateWallet}>
-                    <Wallet className="size-4" />
-                    {t('common.wallet')}
+                  <DropdownMenuItem className="gap-2.5 cursor-pointer rounded-lg py-2.5" onClick={navigateWallet}>
+                    <Wallet className="size-4 text-gray-500" />
+                    <span className="font-medium">{t('common.wallet')}</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2 cursor-pointer" onClick={navigateInvoices}>
-                    <FileText className="size-4" />
-                    {t('invoices.title')}
+                  <DropdownMenuItem className="gap-2.5 cursor-pointer rounded-lg py-2.5" onClick={navigateInvoices}>
+                    <FileText className="size-4 text-gray-500" />
+                    <span className="font-medium">{t('invoices.title')}</span>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="gap-2 cursor-pointer">
-                    <Settings className="size-4" />
-                    {t('common.settings')}
+                  <DropdownMenuSeparator className="my-1" />
+                  <DropdownMenuItem className="gap-2.5 cursor-pointer rounded-lg py-2.5">
+                    <Settings className="size-4 text-gray-500" />
+                    <span className="font-medium">{t('common.settings')}</span>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                  <DropdownMenuSeparator className="my-1" />
                   <DropdownMenuItem
-                    className="gap-2 text-destructive focus:text-destructive cursor-pointer"
+                    className="gap-2.5 text-rose-600 focus:text-rose-700 cursor-pointer rounded-lg py-2.5"
                     onClick={handleLogout}
                     disabled={isLoggingOut}
                   >
                     {isLoggingOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
-                    {isLoggingOut ? t('common.loading') : t('common.logout')}
+                    <span className="font-medium">{isLoggingOut ? t('common.loading') : t('common.logout')}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -528,14 +523,13 @@ export default function Header() {
                   variant="ghost"
                   size="sm"
                   onClick={() => openAuth('login')}
-                  className="font-medium"
+                  className="font-semibold text-gray-700 hover:text-teal-600 rounded-lg"
                 >
                   {t('common.login')}
                 </Button>
                 <Button
-                  variant="default"
                   size="sm"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold btn-press"
+                  className="bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 text-white font-semibold shadow-md shadow-teal-500/20 hover:shadow-lg btn-lift rounded-xl"
                   onClick={() => openAuth('signup')}
                 >
                   {t('common.signup')}
@@ -547,39 +541,39 @@ export default function Header() {
 
         {/* ── Mobile Search Bar (Expandable) ── */}
         {mobileSearchOpen && (
-          <div className="border-t border-border bg-card px-4 py-3 md:hidden animate-slide-down">
+          <div className="border-t border-gray-100 bg-white px-4 py-3 md:hidden animate-slide-down">
             <form onSubmit={handleSearchSubmit} className="relative">
-              <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute start-3 top-1/2 size-4.5 -translate-y-1/2 text-gray-400" />
               <Input
                 type="search"
                 placeholder={t('hero.search_placeholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 autoFocus
-                className="h-11 rounded-full border-border bg-secondary pe-11 ps-10 text-sm"
+                className="h-12 rounded-xl border-gray-200 bg-gray-50 pe-11 ps-11 text-sm focus:border-teal-400 focus:ring-teal-500/20"
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="absolute end-2 top-1/2 -translate-y-1/2 size-7"
+                className="absolute end-2 top-1/2 -translate-y-1/2 size-9 rounded-lg hover:bg-gray-100"
                 onClick={() => setMobileSearchOpen(false)}
                 aria-label={t('common.close')}
               >
-                <X className="size-4" />
+                <X className="size-4.5" />
               </Button>
             </form>
           </div>
         )}
 
         {/* ── Mobile Bottom Bar — Post Ad CTA ── */}
-        <div className="border-t border-border bg-card px-4 py-2 md:hidden">
+        <div className="border-t border-gray-100 bg-white px-4 py-2.5 md:hidden">
           <Button
             size="sm"
-            className="w-full gap-1.5 bg-emerald text-emerald-foreground hover:bg-emerald/90 font-semibold shadow-sm shadow-emerald/20 btn-press"
+            className="w-full gap-2 bg-gradient-to-r from-coral to-coral-light hover:from-coral-dark hover:to-coral text-white font-semibold shadow-lg shadow-coral/25 btn-lift rounded-xl h-11"
             onClick={handlePostAd}
           >
-            <Plus className="size-4" />
+            <Plus className="size-4.5" />
             {t('common.post_ad')}
           </Button>
         </div>

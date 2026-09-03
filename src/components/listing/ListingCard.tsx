@@ -117,7 +117,6 @@ export default function ListingCard({
   // Location info
   const locationText = useMemo(() => {
     const parts: string[] = [];
-    // Note: We'd need to fetch city/country names separately or include them in the query
     return parts.join(', ');
   }, []);
 
@@ -148,10 +147,10 @@ export default function ListingCard({
         transition={{ duration: 0.3 }}
       >
         <Link href={`/listings/${listing.id}`}>
-          <Card className="group overflow-hidden border-border transition-all duration-300 hover:border-emerald/50 hover:shadow-lg hover:shadow-emerald/5">
-            <CardContent className="flex gap-3 p-3">
+          <Card className="group overflow-hidden border-gray-100 transition-all duration-300 hover:border-teal-300 hover:shadow-xl hover:shadow-teal-500/10 rounded-2xl">
+            <CardContent className="flex gap-4 p-3.5">
               {/* Thumbnail */}
-              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
+              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-gray-50">
                 {primaryImage && !imageError ? (
                   <Image
                     src={primaryImage.url}
@@ -161,7 +160,7 @@ export default function ListingCard({
                     onError={() => setImageError(true)}
                   />
                 ) : (
-                  <div className="flex size-full items-center justify-center text-muted-foreground/30">
+                  <div className="flex size-full items-center justify-center text-gray-200">
                     <ExternalLink className="size-6" />
                   </div>
                 )}
@@ -169,17 +168,17 @@ export default function ListingCard({
 
               {/* Info */}
               <div className="min-w-0 flex-1">
-                <h3 className="truncate text-sm font-medium text-foreground group-hover:text-emerald transition-colors">
+                <h3 className="truncate text-sm font-semibold text-gray-900 group-hover:text-teal-600 transition-colors">
                   {listing.title}
                 </h3>
-                <p className="mt-1 text-sm font-bold text-emerald">
+                <p className="mt-1.5 text-base font-bold text-teal-600">
                   {formatPrice(listing.price, listing.currency, locale)}
                 </p>
-                <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
                   <span>{timeAgo(listing.created_at, locale)}</span>
                   <span>•</span>
                   <span className="flex items-center gap-1">
-                    <Eye className="size-3" />
+                    <Eye className="size-3.5" />
                     {listing.view_count}
                   </span>
                 </div>
@@ -203,11 +202,11 @@ export default function ListingCard({
         className="relative"
       >
         <Link href={`/listings/${listing.id}`}>
-          <Card className="group overflow-hidden border-2 border-gold/30 bg-gradient-to-br from-card to-gold/5 transition-all duration-300 hover:border-gold/60 hover:shadow-xl hover:shadow-gold/10">
+          <Card className="group overflow-hidden border-2 border-gold/30 bg-gradient-to-br from-white to-gold/5 transition-all duration-300 hover:border-gold/60 hover:shadow-2xl hover:shadow-gold/15 rounded-2xl">
             {/* Featured Badge */}
             <div className="absolute start-3 top-3 z-10">
-              <Badge className="bg-gold text-primary border-0 gap-1">
-                <Star className="size-3 fill-current" />
+              <Badge className="bg-gradient-to-r from-gold to-gold-light text-gray-900 border-0 gap-1.5 font-semibold shadow-lg shadow-gold/30 px-3 py-1 rounded-full">
+                <Star className="size-3.5 fill-current" />
                 {t('common.featured')}
               </Badge>
             </div>
@@ -215,14 +214,14 @@ export default function ListingCard({
             {/* Urgent Badge */}
             {listing.is_urgent && (
               <div className="absolute end-3 top-3 z-10">
-                <Badge className="bg-destructive text-white border-0">
+                <Badge className="bg-gradient-to-r from-coral to-coral-light text-white border-0 font-semibold shadow-lg shadow-coral/30 px-3 py-1 rounded-full">
                   {t('common.urgent')}
                 </Badge>
               </div>
             )}
 
             {/* Image */}
-            <div className="relative aspect-[16/9] overflow-hidden bg-muted">
+            <div className="relative aspect-[16/9] overflow-hidden bg-gray-50">
               {primaryImage && !imageError ? (
                 <>
                   {!imgLoaded && (
@@ -238,7 +237,7 @@ export default function ListingCard({
                   />
                 </>
               ) : (
-                <div className="flex size-full items-center justify-center text-muted-foreground/30">
+                <div className="flex size-full items-center justify-center text-gray-200">
                   <ExternalLink className="size-12" />
                 </div>
               )}
@@ -246,37 +245,37 @@ export default function ListingCard({
               {/* Favorite Button */}
               <button
                 onClick={handleFavorite}
-                className={`absolute end-3 bottom-3 flex size-9 items-center justify-center rounded-full backdrop-blur-sm transition-all ${
+                className={`absolute end-3 bottom-3 flex size-10 items-center justify-center rounded-xl backdrop-blur-md transition-all duration-200 ${
                   favState 
-                    ? 'bg-destructive text-white' 
-                    : 'bg-black/40 text-white opacity-0 group-hover:opacity-100 hover:bg-black/60'
+                    ? 'bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-lg'
+                    : 'bg-black/30 text-white opacity-0 group-hover:opacity-100 hover:bg-black/50'
                 }`}
                 aria-label={favState ? t('listing.detail.remove_from_favorites') : t('listing.detail.add_to_favorites')}
               >
-                <Heart className={`size-4 ${favState ? 'fill-current' : ''}`} />
+                <Heart className={`size-4.5 ${favState ? 'fill-current' : ''}`} />
               </button>
             </div>
 
             {/* Content */}
-            <CardContent className="p-4">
+            <CardContent className="p-5">
               {/* Title */}
-              <h3 className="line-clamp-1 text-base font-semibold text-foreground group-hover:text-emerald transition-colors">
+              <h3 className="line-clamp-1 text-base font-bold text-gray-900 group-hover:text-teal-600 transition-colors">
                 {listing.title}
               </h3>
 
               {/* Price */}
-              <p className="mt-2 text-xl font-bold text-emerald">
+              <p className="mt-2.5 text-xl font-bold bg-gradient-to-r from-gold-dark to-gold bg-clip-text text-transparent">
                 {formatPrice(listing.price, listing.currency, locale)}
               </p>
 
               {/* Meta */}
-              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <MapPin className="size-3" />
+              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500">
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="size-4 text-teal-500" />
                   {getLocalizedName(listing.category ?? {}, locale)}
                 </span>
-                <span className="flex items-center gap-1">
-                  <Eye className="size-3" />
+                <span className="flex items-center gap-1.5">
+                  <Eye className="size-4 text-teal-500" />
                   {listing.view_count} {t('listings.views')}
                 </span>
                 <span>{timeAgo(listing.created_at, locale)}</span>
@@ -284,26 +283,26 @@ export default function ListingCard({
 
               {/* Seller Info (optional) */}
               {showSeller && listing.seller && (
-                <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
+                <div className="mt-4 flex items-center gap-3 border-t border-gray-100 pt-4">
                   <div className="relative">
                     {listing.seller.avatar_url ? (
                       <Image
                         src={listing.seller.avatar_url}
                         alt={listing.seller.display_name}
-                        width={28}
-                        height={28}
-                        className="rounded-full object-cover"
+                        width={32}
+                        height={32}
+                        className="rounded-full object-cover ring-2 ring-teal-200"
                       />
                     ) : (
-                      <div className="flex size-7 items-center justify-center rounded-full bg-muted text-xs font-medium">
+                      <div className="flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-emerald-500 text-white text-xs font-bold">
                         {listing.seller.display_name?.charAt(0).toUpperCase()}
                       </div>
                     )}
                     {listing.seller.is_verified && (
-                      <BadgeCheck className="absolute -end-1 -top-1 size-4 text-emerald" />
+                      <BadgeCheck className="absolute -end-1 -top-1 size-4 text-teal-500" />
                     )}
                   </div>
-                  <span className="text-xs font-medium text-foreground">
+                  <span className="text-xs font-semibold text-gray-700">
                     {listing.seller.display_name}
                   </span>
                 </div>
@@ -326,11 +325,11 @@ export default function ListingCard({
       className="relative"
     >
       <Link href={`/listings/${listing.id}`}>
-        <Card className="group overflow-hidden border-border transition-all duration-300 hover:border-emerald/50 hover:shadow-lg hover:shadow-emerald/5">
+        <Card className="group overflow-hidden border-gray-100 transition-all duration-300 hover:border-teal-300 hover:shadow-xl hover:shadow-teal-500/10 rounded-2xl">
           {/* Badges */}
           <div className="absolute start-3 top-3 z-10 flex gap-2">
             {listing.is_featured && (
-              <Badge className="bg-gold text-primary border-0 gap-1">
+              <Badge className="bg-gradient-to-r from-gold to-gold-light text-gray-900 border-0 gap-1.5 font-semibold shadow-lg shadow-gold/30 px-2.5 py-1 rounded-full">
                 <Star className="size-3 fill-current" />
                 {t('common.featured')}
               </Badge>
@@ -339,14 +338,14 @@ export default function ListingCard({
           
           {listing.is_urgent && (
             <div className="absolute end-3 top-3 z-10">
-              <Badge className="bg-destructive text-white border-0">
+              <Badge className="bg-gradient-to-r from-coral to-coral-light text-white border-0 font-semibold shadow-lg shadow-coral/30 px-2.5 py-1 rounded-full">
                 {t('common.urgent')}
               </Badge>
             </div>
           )}
 
           {/* Image */}
-          <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+          <div className="relative aspect-[4/3] overflow-hidden bg-gray-50">
             {primaryImage && !imageError ? (
               <>
                 {!imgLoaded && (
@@ -362,7 +361,7 @@ export default function ListingCard({
                 />
               </>
             ) : (
-              <div className="flex size-full items-center justify-center text-muted-foreground/30">
+              <div className="flex size-full items-center justify-center text-gray-200">
                 <ExternalLink className="size-12" />
               </div>
             )}
@@ -370,74 +369,74 @@ export default function ListingCard({
             {/* Favorite Button */}
             <button
               onClick={handleFavorite}
-              className={`absolute end-3 bottom-3 flex size-9 items-center justify-center rounded-full backdrop-blur-sm transition-all ${
+              className={`absolute end-3 bottom-3 flex size-10 items-center justify-center rounded-xl backdrop-blur-md transition-all duration-200 ${
                 favState 
-                  ? 'bg-destructive text-white' 
-                  : 'bg-black/40 text-white opacity-0 group-hover:opacity-100 hover:bg-black/60'
+                  ? 'bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-lg'
+                  : 'bg-black/30 text-white opacity-0 group-hover:opacity-100 hover:bg-black/50'
               }`}
               aria-label={favState ? t('listing.detail.remove_from_favorites') : t('listing.detail.add_to_favorites')}
             >
-              <Heart className={`size-4 ${favState ? 'fill-current' : ''}`} />
+              <Heart className={`size-4.5 ${favState ? 'fill-current' : ''}`} />
             </button>
 
             {/* Image count indicator */}
             {listing.media && listing.media.length > 1 && (
-              <div className="absolute start-3 bottom-3 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white backdrop-blur-sm">
+              <div className="absolute start-3 bottom-3 rounded-full bg-black/60 backdrop-blur-sm px-2.5 py-1 text-xs text-white">
                 {listing.media.length}+
               </div>
             )}
           </div>
 
           {/* Content */}
-          <CardContent className="p-4">
+          <CardContent className="p-5">
             {/* Category */}
             {listing.category && (
-              <p className="mb-1 text-xs font-medium text-emerald">
+              <p className="mb-2 text-xs font-bold uppercase tracking-wide text-teal-600">
                 {getLocalizedName(listing.category, locale)}
               </p>
             )}
 
             {/* Title */}
-            <h3 className="line-clamp-2 text-base font-semibold text-foreground group-hover:text-emerald transition-colors leading-snug">
+            <h3 className="line-clamp-2 text-base font-bold text-gray-900 group-hover:text-teal-600 transition-colors leading-snug">
               {listing.title}
             </h3>
 
             {/* Price */}
-            <p className="mt-2 text-lg font-bold text-emerald">
+            <p className="mt-2.5 text-lg font-bold text-teal-600">
               {formatPrice(listing.price, listing.currency, locale)}
             </p>
 
             {/* Meta Info */}
-            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500">
               <span>{timeAgo(listing.created_at, locale)}</span>
-              <span className="flex items-center gap-1">
-                <Eye className="size-3" />
+              <span className="flex items-center gap-1.5">
+                <Eye className="size-4 text-teal-400" />
                 {listing.view_count}
               </span>
             </div>
 
             {/* Seller Info (optional) */}
             {showSeller && listing.seller && (
-              <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
+              <div className="mt-4 flex items-center gap-3 border-t border-gray-100 pt-4">
                 <div className="relative">
                   {listing.seller.avatar_url ? (
                     <Image
                       src={listing.seller.avatar_url}
                       alt={listing.seller.display_name}
-                      width={24}
-                      height={24}
-                      className="rounded-full object-cover"
+                      width={28}
+                      height={28}
+                      className="rounded-full object-cover ring-2 ring-teal-200"
                     />
                   ) : (
-                    <div className="flex size-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium">
+                    <div className="flex size-7 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-emerald-500 text-white text-[10px] font-bold">
                       {listing.seller.display_name?.charAt(0).toUpperCase()}
                     </div>
                   )}
                   {listing.seller.is_verified && (
-                    <BadgeCheck className="absolute -end-1 -top-1 size-3.5 text-emerald" />
+                    <BadgeCheck className="absolute -end-1 -top-1 size-3.5 text-teal-500" />
                   )}
                 </div>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs font-medium text-gray-600">
                   {listing.seller.display_name}
                 </span>
               </div>
@@ -454,13 +453,13 @@ export default function ListingCard({
 export function ListingCardSkeleton({ variant = 'default' }: { variant?: 'default' | 'compact' | 'featured' }) {
   if (variant === 'compact') {
     return (
-      <Card className="overflow-hidden border-border">
-        <CardContent className="flex gap-3 p-3">
-          <Skeleton className="h-20 w-20 shrink-0 rounded-lg" />
-          <div className="min-w-0 flex-1 space-y-2">
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/3" />
-            <Skeleton className="h-3 w-1/2" />
+      <Card className="overflow-hidden border-gray-100 rounded-2xl">
+        <CardContent className="flex gap-3.5 p-3.5">
+          <Skeleton className="h-20 w-20 shrink-0 rounded-xl" />
+          <div className="min-w-0 flex-1 space-y-2.5">
+            <Skeleton className="h-4 w-3/4 rounded-lg" />
+            <Skeleton className="h-4 w-1/3 rounded-lg" />
+            <Skeleton className="h-3 w-1/2 rounded-lg" />
           </div>
         </CardContent>
       </Card>
@@ -468,15 +467,15 @@ export function ListingCardSkeleton({ variant = 'default' }: { variant?: 'defaul
   }
 
   return (
-    <Card className="overflow-hidden border-border">
-      <Skeleton className="aspect-[4/3] w-full" />
-      <CardContent className="space-y-3 p-4">
-        <Skeleton className="h-3 w-1/4" />
-        <Skeleton className="h-5 w-full" />
-        <Skeleton className="h-6 w-1/3" />
-        <div className="flex gap-3">
-          <Skeleton className="h-3 w-16" />
-          <Skeleton className="h-3 w-12" />
+    <Card className="overflow-hidden border-gray-100 rounded-2xl">
+      <Skeleton className="aspect-[4/3] w-full rounded-none" />
+      <CardContent className="space-y-3.5 p-5">
+        <Skeleton className="h-3 w-1/4 rounded-lg" />
+        <Skeleton className="h-5 w-full rounded-lg" />
+        <Skeleton className="h-6 w-1/3 rounded-lg" />
+        <div className="flex gap-3 pt-1">
+          <Skeleton className="h-4 w-16 rounded-lg" />
+          <Skeleton className="h-4 w-12 rounded-lg" />
         </div>
       </CardContent>
     </Card>

@@ -21,11 +21,11 @@ import type { Locale } from '@/lib/types';
 /* ── Constants ── */
 
 const SOCIAL_LINKS = [
-  { icon: Facebook, href: '#', label: 'Facebook', color: 'hover:bg-blue-600' },
-  { icon: Twitter, href: '#', label: 'Twitter / X', color: 'hover:bg-sky-500' },
-  { icon: Instagram, href: '#', label: 'Instagram', color: 'hover:bg-pink-600' },
-  { icon: Youtube, href: '#', label: 'YouTube', color: 'hover:bg-red-600' },
-  { icon: Linkedin, href: '#', label: 'LinkedIn', color: 'hover:bg-blue-700' },
+  { icon: Facebook, href: '#', label: 'Facebook', color: 'hover:bg-blue-600 hover:text-white' },
+  { icon: Twitter, href: '#', label: 'Twitter / X', color: 'hover:bg-sky-500 hover:text-white' },
+  { icon: Instagram, href: '#', label: 'Instagram', color: 'hover:bg-pink-600 hover:text-white' },
+  { icon: Youtube, href: '#', label: 'YouTube', color: 'hover:bg-red-600 hover:text-white' },
+  { icon: Linkedin, href: '#', label: 'LinkedIn', color: 'hover:bg-blue-700 hover:text-white' },
 ];
 
 const FOOTER_COUNTRIES = [
@@ -75,18 +75,21 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="mt-auto bg-primary text-primary-foreground">
+    <footer className="mt-auto bg-gradient-to-br from-gray-900 via-gray-900 to-gray-950 text-white">
+      {/* Decorative top border */}
+      <div className="h-1 bg-gradient-to-r from-teal-500 via-violet-500 to-gold" />
+      
       {/* Main Footer Content */}
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
-        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-18">
+        <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-5">
           
           {/* ── Column 1: Brand & Social (spans 2 cols on lg) ── */}
           <div className="sm:col-span-2 lg:col-span-1">
             {/* Logo */}
-            <MavoraLogo size="md" className="text-primary-foreground mb-4" />
+            <MavoraLogo size="md" className="text-white mb-5" />
             
             {/* Tagline */}
-            <p className="mb-6 max-w-xs text-sm leading-relaxed text-primary-foreground/70">
+            <p className="mb-6 max-w-xs text-sm leading-relaxed text-gray-400">
               {t('app.tagline')}
             </p>
 
@@ -94,27 +97,33 @@ export default function Footer() {
             <div className="mb-6 space-y-3">
               <a 
                 href="mailto:support@mavora.ma" 
-                className="flex items-center gap-2.5 text-sm text-primary-foreground/70 transition-colors hover:text-primary-foreground"
+                className="flex items-center gap-2.5 text-sm text-gray-400 transition-all duration-200 hover:text-teal-400 group"
               >
-                <Mail className="size-4 shrink-0" />
+                <div className="flex size-8 items-center justify-center rounded-lg bg-gray-800 group-hover:bg-teal-900/50 transition-colors">
+                  <Mail className="size-4" />
+                </div>
                 support@mavora.ma
               </a>
               <a 
                 href="tel:+212500000000" 
-                className="flex items-center gap-2.5 text-sm text-primary-foreground/70 transition-colors hover:text-primary-foreground"
+                className="flex items-center gap-2.5 text-sm text-gray-400 transition-all duration-200 hover:text-teal-400 group"
               >
-                <Phone className="size-4 shrink-0" />
+                <div className="flex size-8 items-center justify-center rounded-lg bg-gray-800 group-hover:bg-teal-900/50 transition-colors">
+                  <Phone className="size-4" />
+                </div>
                 +212 5 00 00 00 00
               </a>
-              <div className="flex items-start gap-2.5 text-sm text-primary-foreground/70">
-                <MapPin className="size-4 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2.5 text-sm text-gray-400">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gray-800 mt-0.5">
+                  <MapPin className="size-4" />
+                </div>
                 <span>Casablanca, Morocco</span>
               </div>
             </div>
 
             {/* Social Links */}
             <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-primary-foreground/50">
+              <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">
                 {locale === 'ar' ? 'تابعنا' : locale === 'fr' ? 'Suivez-nous' : 'Follow Us'}
               </p>
               <div className="flex items-center gap-2.5">
@@ -127,9 +136,9 @@ export default function Footer() {
                       aria-label={social.label}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`flex size-9 items-center justify-center rounded-full bg-primary-foreground/10 text-primary-foreground transition-all duration-200 hover:bg-primary-foreground/20 hover:scale-110 ${social.color} hover:text-white`}
+                      className={`flex size-10 items-center justify-center rounded-xl bg-gray-800 text-gray-400 transition-all duration-200 hover:scale-110 ${social.color}`}
                     >
-                      <Icon className="size-4" />
+                      <Icon className="size-4.5" />
                     </a>
                   );
                 })}
@@ -139,15 +148,15 @@ export default function Footer() {
 
           {/* ── Column 2: Quick Links ── */}
           <div>
-            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-primary-foreground/50">
+            <h3 className="mb-5 text-sm font-bold uppercase tracking-wider text-gray-500">
               {t('footer.about')}
             </h3>
-            <ul className="space-y-2.5">
+            <ul className="space-y-3">
               {QUICK_LINKS.map((link) => (
                 <li key={link.key}>
                   <a
                     href={link.href}
-                    className="group inline-flex items-center gap-1.5 text-sm text-primary-foreground/70 transition-colors duration-200 hover:text-primary-foreground"
+                    className="group inline-flex items-center gap-2 text-sm text-gray-400 transition-all duration-200 hover:text-white"
                   >
                     {t(link.key)}
                     <ExternalLink className="size-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
@@ -159,17 +168,17 @@ export default function Footer() {
 
           {/* ── Column 3: Categories ── */}
           <div>
-            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-primary-foreground/50">
+            <h3 className="mb-5 text-sm font-bold uppercase tracking-wider text-gray-500">
               {t('categories.title')}
             </h3>
-            <ul className="space-y-2.5">
+            <ul className="space-y-3">
               {CATEGORY_LINKS.map((cat) => (
                 <li key={cat.slug}>
                   <a
                     href={`/category/${cat.slug}`}
-                    className="inline-flex items-center gap-2 text-sm text-primary-foreground/70 transition-colors duration-200 hover:text-primary-foreground"
+                    className="inline-flex items-center gap-2.5 text-sm text-gray-400 transition-all duration-200 hover:text-teal-400"
                   >
-                    <span>{cat.icon}</span>
+                    <span className="text-base">{cat.icon}</span>
                     {t(cat.key)}
                   </a>
                 </li>
@@ -179,15 +188,15 @@ export default function Footer() {
 
           {/* ── Column 4: Countries ── */}
           <div>
-            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-primary-foreground/50">
+            <h3 className="mb-5 text-sm font-bold uppercase tracking-wider text-gray-500">
               {t('footer.countries')}
             </h3>
-            <ul className="space-y-2.5">
+            <ul className="space-y-3">
               {FOOTER_COUNTRIES.map((country) => (
                 <li key={country.code}>
                   <a
                     href={country.url}
-                    className="inline-flex items-center gap-2 text-sm text-primary-foreground/70 transition-colors duration-200 hover:text-primary-foreground"
+                    className="inline-flex items-center gap-2.5 text-sm text-gray-400 transition-all duration-200 hover:text-teal-400"
                   >
                     <span>{country.flag}</span>
                     <span>{getCountryName(country.nameKey)}</span>
@@ -199,7 +208,7 @@ export default function Footer() {
 
           {/* ── Column 5: Download App ── */}
           <div>
-            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-primary-foreground/50">
+            <h3 className="mb-5 text-sm font-bold uppercase tracking-wider text-gray-500">
               {locale === 'ar'
                 ? 'حمّل التطبيق'
                 : locale === 'fr'
@@ -207,7 +216,7 @@ export default function Footer() {
                   : 'Download App'}
             </h3>
             
-            <p className="mb-4 text-xs leading-relaxed text-primary-foreground/60">
+            <p className="mb-5 text-xs leading-relaxed text-gray-500">
               {locale === 'ar'
                 ? 'احصل على أفضل تجربة مع تطبيق مافورا للموبايل'
                 : locale === 'fr'
@@ -219,13 +228,13 @@ export default function Footer() {
               {/* Google Play Button */}
               <a
                 href="/coming-soon"
-                className="flex h-11 w-full items-center gap-2.5 rounded-lg bg-primary-foreground/10 px-4 transition-all duration-200 hover:bg-primary-foreground/20 hover:scale-[1.02] opacity-75 cursor-not-allowed"
+                className="flex h-12 w-full items-center gap-3 rounded-xl bg-gray-800/50 px-4 transition-all duration-200 hover:bg-gray-800 opacity-60 cursor-not-allowed border border-gray-700/50"
                 aria-label="Download on Google Play"
                 onClick={(e) => e.preventDefault()}
               >
-                <Smartphone className="size-5 shrink-0" />
+                <Smartphone className="size-5 shrink-0 text-teal-400" />
                 <div className="flex flex-col leading-tight">
-                  <span className="text-[10px] uppercase tracking-wide text-primary-foreground/50">
+                  <span className="text-[10px] uppercase tracking-wide text-gray-500">
                     {locale === 'fr' ? 'Bientôt disponible' : locale === 'ar' ? 'قريباً' : 'COMING SOON'}
                   </span>
                   <span className="text-sm font-semibold">Google Play</span>
@@ -235,13 +244,13 @@ export default function Footer() {
               {/* App Store Button */}
               <a
                 href="/coming-soon"
-                className="flex h-11 w-full items-center gap-2.5 rounded-lg bg-primary-foreground/10 px-4 transition-all duration-200 hover:bg-primary-foreground/20 hover:scale-[1.02] opacity-75 cursor-not-allowed"
+                className="flex h-12 w-full items-center gap-3 rounded-xl bg-gray-800/50 px-4 transition-all duration-200 hover:bg-gray-800 opacity-60 cursor-not-allowed border border-gray-700/50"
                 aria-label="Download on App Store"
                 onClick={(e) => e.preventDefault()}
               >
-                <Download className="size-5 shrink-0" />
+                <Download className="size-5 shrink-0 text-violet-400" />
                 <div className="flex flex-col leading-tight">
-                  <span className="text-[10px] uppercase tracking-wide text-primary-foreground/50">
+                  <span className="text-[10px] uppercase tracking-wide text-gray-500">
                     {locale === 'fr' ? 'Bientôt disponible' : locale === 'ar' ? 'قريباً' : 'COMING SOON'}
                   </span>
                   <span className="text-sm font-semibold">App Store</span>
@@ -253,38 +262,38 @@ export default function Footer() {
       </div>
 
       {/* ── Bottom Bar ── */}
-      <div className="border-t border-primary-foreground/10">
-        <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+      <div className="border-t border-gray-800">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
             {/* Copyright */}
-            <p className="flex items-center gap-1 text-xs text-primary-foreground/50">
+            <p className="flex items-center gap-1.5 text-xs text-gray-500">
               © {currentYear} MAVORA. {t('footer.rights')}.
               <span className="hidden sm:inline">
                 Made with
-                <Heart className="inline size-3 mx-0.5 text-red-400 fill-red-400" />
+                <Heart className="inline size-3.5 mx-1 text-rose-500 fill-rose-500 animate-pulse" />
                 in Morocco
               </span>
             </p>
 
             {/* Legal Links */}
-            <nav className="flex items-center gap-4" aria-label="Footer navigation">
+            <nav className="flex items-center gap-5" aria-label="Footer navigation">
               <a 
                 href="/terms" 
-                className="text-xs text-primary-foreground/50 transition-colors hover:text-primary-foreground link-underline"
+                className="text-xs text-gray-500 transition-colors hover:text-teal-400 link-underline"
               >
                 {t('footer.terms')}
               </a>
-              <span className="text-primary-foreground/20">|</span>
+              <span className="text-gray-700">|</span>
               <a 
                 href="/privacy" 
-                className="text-xs text-primary-foreground/50 transition-colors hover:text-primary-foreground link-underline"
+                className="text-xs text-gray-500 transition-colors hover:text-teal-400 link-underline"
               >
                 {t('footer.privacy')}
               </a>
-              <span className="text-primary-foreground/20">|</span>
+              <span className="text-gray-700">|</span>
               <a 
                 href="/contact" 
-                className="text-xs text-primary-foreground/50 transition-colors hover:text-primary-foreground link-underline"
+                className="text-xs text-gray-500 transition-colors hover:text-teal-400 link-underline"
               >
                 {t('footer.contact')}
               </a>

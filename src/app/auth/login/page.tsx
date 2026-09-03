@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuthStore } from '@/stores/auth';
 import MavoraLogo from '@/components/common/MavoraLogo';
-import { Loader2, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Loader2, Eye, EyeOff, ArrowRight, Sparkles, Shield } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -44,7 +44,9 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || t('auth.login_failed'));
+        // Translate error key if it looks like one
+        const errorMsg = data.error?.includes('.') ? t(data.error) || data.error : (data.error || t('auth.login_failed'));
+        setError(errorMsg);
         return;
       }
 
@@ -65,69 +67,114 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4">
-      <Card className="w-full max-w-md shadow-xl border-0">
-        <CardHeader className="text-center space-y-4 pb-2">
-          <div className="flex justify-center">
-            <MavoraLogo size="lg" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-teal-50/30 to-amber-50/20 p-4 py-8 relative overflow-hidden">
+      {/* Background Decorations */}
+      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+        <div className="absolute -start-40 -top-40 size-[600px] rounded-full bg-teal-500/5 blur-3xl" />
+        <div className="absolute -end-40 top-1/3 size-[500px] rounded-full bg-amber-400/5 blur-3xl" />
+        <div className="absolute bottom-0 start-1/3 size-[400px] rounded-full bg-violet-500/5 blur-3xl" />
+        {/* Geometric Pattern */}
+        <svg className="absolute inset-0 w-full h-full opacity-[0.03]" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+              <path d="M 60 0 L 0 0 0 60" fill="none" stroke="currentColor" strokeWidth="1"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
+        </svg>
+      </div>
+
+      <Card className="w-full max-w-md shadow-2xl border-0 bg-white/80 backdrop-blur-xl relative z-10">
+        {/* Header Gradient */}
+        <div className="relative overflow-hidden rounded-t-xl bg-gradient-to-r from-teal-600 via-teal-500 to-emerald-500 px-6 py-8 text-white">
+          <div className="absolute top-0 end-0 -mt-8 -me-16 size-48 rounded-full bg-white/10 blur-2xl" />
+          <div className="absolute bottom-0 -start-12 mb-[-2rem] size-32 rounded-full bg-emerald-400/20 blur-xl" />
+          
+          <div className="relative flex flex-col items-center text-center">
+            <div className="mb-4 p-3 rounded-2xl bg-white/20 backdrop-blur-sm">
+              <MavoraLogo size="md" className="text-white" />
+            </div>
+            <CardTitle className="text-2xl font-bold tracking-tight">
+              {t('auth.welcome_back')}
+            </CardTitle>
+            <CardDescription className="text-base text-white/80 mt-2">
+              {t('auth.login_to_account')}
+            </CardDescription>
+            
+            {/* Trust Badge */}
+            <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-medium text-white/90 backdrop-blur-sm">
+              <Shield className="size-3.5" />
+              {t('home.secure_platform')}
+            </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-primary">
-            {t('auth.welcome_back')}
-          </CardTitle>
-          <CardDescription className="text-base">
-            {t('auth.login_to_account')}
-          </CardDescription>
-        </CardHeader>
+        </div>
         
-        <CardContent className="pt-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <CardContent className="pt-8 pb-8 px-8">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {/* Error Message */}
             {error && (
-              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-                {error}
+              <div className="p-4 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm flex items-start gap-3 animate-fade-in">
+                <svg className="size-5 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <span>{error}</span>
               </div>
             )}
 
             {/* Email Field */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">
+              <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
                 {t('auth.email')}
               </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder={t('auth.email_placeholder')}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={isLoading}
-                className="h-11"
-                autoComplete="email"
-                dir="ltr"
-              />
+              <div className="relative group">
+                <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
+                  <svg className="size-5 text-gray-400 group-focus-within:text-teal-500 transition-colors" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="4" width="20" height="16" rx="2" />
+                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                  </svg>
+                </div>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder={t('auth.email_placeholder') || 'name@example.com'}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                  className="h-12 ps-11 pe-4 rounded-xl border-gray-200 bg-gray-50/50 text-gray-900 placeholder:text-gray-400 focus:border-teal-500 focus:ring-teal-500/20 transition-all"
+                  autoComplete="email"
+                  dir="ltr"
+                />
+              </div>
             </div>
 
             {/* Password Field */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-sm font-medium">
+                <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
                   {t('auth.password')}
                 </Label>
                 <Link 
                   href="/auth/reset-password" 
-                  className="text-xs text-emerald hover:text-emerald/80 transition-colors"
+                  className="text-xs font-medium text-teal-600 hover:text-teal-700 transition-colors"
                 >
                   {t('auth.forgot_password')}
                 </Link>
               </div>
-              <div className="relative">
+              <div className="relative group">
+                <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
+                  <svg className="size-5 text-gray-400 group-focus-within:text-teal-500 transition-colors" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                </div>
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder={t('auth.password_placeholder')}
+                  placeholder={t('auth.password_placeholder') || '••••••••'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
-                  className="h-11 pe-10"
+                  className="h-12 pe-11 ps-11 rounded-xl border-gray-200 bg-gray-50/50 text-gray-900 placeholder:text-gray-400 focus:border-teal-500 focus:ring-teal-500/20 transition-all"
                   autoComplete="current-password"
                   dir="ltr"
                 />
@@ -135,14 +182,14 @@ export default function LoginPage() {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute end-1 top-1/2 -translate-y-1/2 size-8 hover:bg-transparent"
+                  className="absolute end-1.5 top-1/2 -translate-y-1/2 size-9 hover:bg-transparent text-gray-400 hover:text-gray-600"
                   onClick={() => setShowPassword(!showPassword)}
                   tabIndex={-1}
                 >
                   {showPassword ? (
-                    <EyeOff className="size-4 text-muted-foreground" />
+                    <EyeOff className="size-4.5" />
                   ) : (
-                    <Eye className="size-4 text-muted-foreground" />
+                    <Eye className="size-4.5" />
                   )}
                 </Button>
               </div>
@@ -152,17 +199,17 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full h-11 bg-emerald hover:bg-emerald/90 text-white font-semibold text-base shadow-lg shadow-emerald/20 transition-all"
+              className="w-full h-12 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 text-white font-semibold text-base shadow-lg shadow-teal-500/25 transition-all duration-200 hover:shadow-xl hover:shadow-teal-500/30 hover:-translate-y-0.5 active:translate-y-0 rounded-xl"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="size-4 animate-spin me-2" />
+                  <Loader2 className="size-4.5 animate-spin me-2" />
                   {t('common.loading')}
                 </>
               ) : (
                 <>
                   {t('common.login')}
-                  <ArrowRight className="size-4 ms-2" />
+                  <ArrowRight className="size-4.5 ms-2" />
                 </>
               )}
             </Button>
@@ -170,10 +217,10 @@ export default function LoginPage() {
             {/* Divider */}
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border" />
+                <span className="w-full border-t border-gray-200" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
+                <span className="bg-white px-4 text-gray-400 font-medium">
                   {t('auth.or_continue_with')}
                 </span>
               </div>
@@ -185,7 +232,7 @@ export default function LoginPage() {
                 type="button"
                 variant="outline"
                 disabled
-                className="h-11"
+                className="h-11 rounded-xl border-gray-200 bg-white hover:bg-gray-50 text-gray-600"
               >
                 <svg className="size-4 me-2" viewBox="0 0 24 24">
                   <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
@@ -199,7 +246,7 @@ export default function LoginPage() {
                 type="button"
                 variant="outline"
                 disabled
-                className="h-11"
+                className="h-11 rounded-xl border-gray-200 bg-white hover:bg-gray-50 text-gray-600"
               >
                 <svg className="size-4 me-2" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -209,11 +256,11 @@ export default function LoginPage() {
             </div>
 
             {/* Sign Up Link */}
-            <p className="text-center text-sm text-muted-foreground pt-4">
+            <p className="text-center text-sm text-gray-500 pt-2">
               {t('auth.no_account')}{' '}
               <Link 
                 href="/auth/signup" 
-                className="text-emerald hover:text-emerald/80 font-semibold transition-colors"
+                className="font-semibold text-teal-600 hover:text-teal-700 transition-colors"
               >
                 {t('common.signup')}
               </Link>

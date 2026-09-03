@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase';
 import { loginSchema, getAuthErrorMessage } from '@/lib/validations/auth';
 import type { User } from '@/lib/types';
+import { dbLogin } from '@/lib/db-auth'; // Database-first auth fallback
 
 // ============================================================
 // Rate Limiting (In-memory for demo - use Redis in production)
@@ -148,7 +149,29 @@ export async function POST(request: NextRequest) {
       password,
     });
 
+    // If Supabase Auth fails, try database-first authentication
     if (error) {
+      console.log(`[AUTH] Supabase Auth failed for ${email}, trying DB auth fallback...`);
+      
+      const dbResult = await dbLogin(email, password);
+      
+      if (dbResult.success && dbResult.user) {
+        console.log(`[AUTH] DB auth successful for ${email}`);
+        
+        // Clear failed attempts on successful login
+        clearLoginAttempts(email, ip);
+        
+        // Return database-authenticated user
+        const response = NextResponse.json({
+          user: dbResult.user,
+          session: dbResult.session,
+          authMethod: 'database', // Indicate this is DB auth
+        });
+        
+        return setSecurityHeaders(response);
+      }
+      
+      // Both methods failed
       console.error(`[AUTH] Login failed for ${email}:`, error.message);
       
       let errorMessage = error.message;

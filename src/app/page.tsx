@@ -35,26 +35,24 @@ import {
   BookOpen,
   PawPrint,
   Baby,
-  Flower2,
-  Music,
-  Camera
+  Flower2
 } from 'lucide-react';
 import type { Listing, Category } from '@/lib/types';
 
-// Categories with icons for the homepage
+// Categories with icons for the homepage - using translation keys
 const CATEGORIES_DATA = [
-  { id: 'vehicles', slug: 'vehicles', name_en: 'Vehicles', name_ar: 'سيارات', name_fr: 'Véhicules', icon: Car, color: 'bg-blue-500' },
-  { id: 'real-estate', slug: 'real-estate', name_en: 'Real Estate', name_ar: 'عقارات', name_fr: 'Immobilier', icon: Home, color: 'bg-emerald-500' },
-  { id: 'electronics', slug: 'electronics', name_en: 'Electronics', name_ar: 'إلكترونيات', name_fr: 'Électronique', icon: Smartphone, color: 'bg-purple-500' },
-  { id: 'jobs', slug: 'jobs', name_en: 'Jobs', name_ar: 'وظائف', name_fr: 'Emploi', icon: Briefcase, color: 'bg-orange-500' },
-  { id: 'services', slug: 'services', name_en: 'Services', name_ar: 'خدمات', name_fr: 'Services', icon: Wrench, color: 'bg-cyan-500' },
-  { id: 'fashion', slug: 'fashion', name_en: 'Fashion', name_ar: 'أزياء', name_fr: 'Mode', icon: Shirt, color: 'bg-pink-500' },
-  { id: 'sports', slug: 'sports', name_en: 'Sports', name_ar: 'رياضة', name_fr: 'Sports', icon: Dumbbell, color: 'bg-green-500' },
-  { id: 'home-garden', slug: 'home-garden', name_en: 'Home & Garden', name_ar: 'المنزل والحديقة', name_fr: 'Maison & Jardin', icon: Flower2, color: 'bg-lime-500' },
-  { id: 'education', slug: 'education', name_en: 'Education', name_ar: 'تعليم', name_fr: 'Éducation', icon: BookOpen, color: 'bg-indigo-500' },
-  { id: 'animals', slug: 'animals', name_en: 'Animals', name_ar: 'حيوانات', name_fr: 'Animaux', icon: PawPrint, color: 'bg-amber-500' },
-  { id: 'kids', slug: 'kids', name_en: 'Kids & Babies', name_ar: 'أطفال ورضع', name_fr: 'Enfants & Bébés', icon: Baby, color: 'bg-red-400' },
-  { id: 'entertainment', slug: 'entertainment', name_en: 'Entertainment', name_ar: 'ترفيه', name_fr: 'Divertissement', icon: Gamepad2, color: 'bg-violet-500' },
+  { id: 'vehicles', slug: 'vehicles', key: 'categories.vehicles', icon: Car, color: 'bg-blue-500' },
+  { id: 'real-estate', slug: 'real-estate', key: 'categories.real_estate', icon: Home, color: 'bg-emerald-500' },
+  { id: 'electronics', slug: 'electronics', key: 'categories.electronics', icon: Smartphone, color: 'bg-purple-500' },
+  { id: 'jobs', slug: 'jobs', key: 'categories.jobs', icon: Briefcase, color: 'bg-orange-500' },
+  { id: 'services', slug: 'services', key: 'categories.services', icon: Wrench, color: 'bg-cyan-500' },
+  { id: 'fashion', slug: 'fashion', key: 'categories.fashion', icon: Shirt, color: 'bg-pink-500' },
+  { id: 'sports', slug: 'sports', key: 'categories.sports', icon: Dumbbell, color: 'bg-green-500' },
+  { id: 'home-garden', slug: 'home-garden', key: 'categories.home', icon: Flower2, color: 'bg-lime-500' },
+  { id: 'education', slug: 'education', key: 'categories.education', icon: BookOpen, color: 'bg-indigo-500' },
+  { id: 'animals', slug: 'animals', key: 'categories.animals', icon: PawPrint, color: 'bg-amber-500' },
+  { id: 'kids', slug: 'kids', key: 'categories.kids', icon: Baby, color: 'bg-red-400' },
+  { id: 'entertainment', slug: 'entertainment', key: 'categories.entertainment', icon: Gamepad2, color: 'bg-violet-500' },
 ];
 
 export default function HomePage() {
@@ -66,6 +64,7 @@ export default function HomePage() {
   
   const [featuredListings, setFeaturedListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<{ listings: number; users: number; categories: number; cities: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const isRtl = locale === 'ar';
@@ -79,10 +78,28 @@ export default function HomePage() {
     try {
       setIsLoading(true);
       
+      // Fetch featured listings
       const listingsRes = await fetch('/api/listings?limit=8&sort=featured&status=active');
       if (listingsRes.ok) {
         const listingsData = await listingsRes.json();
-        setFeaturedListings(Array.isArray(listingsData) ? listingsData : listingsData.items || []);
+        setFeaturedListings(Array.isArray(listingsData) ? listingsData : listingsData.data || []);
+      }
+
+      // Fetch real stats from API
+      try {
+        const statsRes = await fetch('/api/admin/stats');
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStats({
+            listings: statsData.totalListings || 0,
+            users: statsData.totalUsers || 0,
+            categories: statsData.totalCategories || 0,
+            cities: statsData.totalCities || 0,
+          });
+        }
+      } catch (statsError) {
+        // Stats are optional - don't fail if not available
+        console.warn('Stats not available:', statsError);
       }
     } catch (error) {
       console.error('Error fetching home page data:', error);
@@ -100,6 +117,13 @@ export default function HomePage() {
 
   const handleCategoryClick = (categoryId: string) => {
     router.push(`/listings?category=${categoryId}`);
+  };
+
+  // Format number for display
+  const formatNumber = (num: number): string => {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M+`;
+    if (num >= 1000) return `${(num / 1000).toFixed(num >= 10000 ? 0 : 1)}K+`;
+    return num.toString();
   };
 
   return (
@@ -122,28 +146,17 @@ export default function HomePage() {
           <div className="mb-6 flex justify-center">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm text-white/90 backdrop-blur-sm">
               <Sparkles className="size-4 text-gold" />
-              <span>{locale === 'ar' ? 'أكبر سوق إلكتروني في المغرب وشمال إفريقيا' : 'The largest marketplace in Morocco & North Africa'}</span>
+              <span>{t('home.largest_marketplace')}</span>
               <TrendingUp className="size-4 text-emerald" />
             </div>
           </div>
 
           {/* Main Heading */}
           <h1 className="mb-6 text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl lg:text-6xl">
-            {locale === 'ar' ? (
-              <>
-                <span className="block">ابحث، اعرض وتبادل</span>
-                <span className="block mt-2 bg-gradient-to-l from-emerald to-gold bg-clip-text text-transparent">
-                  في مكان واحد
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="block">Search, Sell & Trade</span>
-                <span className="block mt-2 bg-gradient-to-r from-emerald to-gold bg-clip-text text-transparent">
-                  All in One Place
-                </span>
-              </>
-            )}
+            <span className="block">{t('home.search_sell_trade')}</span>
+            <span className="block mt-2 bg-gradient-to-l from-emerald to-gold bg-clip-text text-transparent">
+              {t('home.in_one_place')}
+            </span>
           </h1>
 
           {/* Subtitle */}
@@ -186,17 +199,17 @@ export default function HomePage() {
           <div className="mt-12 flex flex-wrap items-center justify-center gap-6 sm:gap-8">
             <div className="flex items-center gap-2 text-white/60">
               <Shield className="size-5 text-emerald" />
-              <span className="text-sm">{locale === 'ar' ? 'آمن وموثوق' : 'Safe & Trusted'}</span>
+              <span className="text-sm">{t('home.secure_platform')}</span>
             </div>
             <div className="hidden sm:block w-px h-5 bg-white/20" />
             <div className="flex items-center gap-2 text-white/60">
               <Users className="size-5 text-gold" />
-              <span className="text-sm">{locale === 'ar' ? '+10,000 مستخدم' : '+10K Users'}</span>
+              <span className="text-sm">{stats ? `${formatNumber(stats.users)} ${t('admin.total_users')}` : t('home.large_community')}</span>
             </div>
             <div className="hidden sm:block w-px h-5 bg-white/20" />
             <div className="flex items-center gap-2 text-white/60">
               <Zap className="size-5 text-emerald" />
-              <span className="text-sm">{locale === 'ar' ? 'مجاني تماماً' : '100% Free'}</span>
+              <span className="text-sm">100% {t('common.free')}</span>
             </div>
           </div>
         </div>
@@ -214,19 +227,19 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <Badge variant="secondary" className="mb-4 bg-emerald/10 text-emerald border-emerald/20">
-              {locale === 'ar' ? 'تصفح حسب التصنيف' : 'Browse by Category'}
+              {t('home.browse_by_category')}
             </Badge>
             <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-4">
               {t('categories.title')}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              {locale === 'ar' ? 'اختر التصنيف الذي يناسبك واكتشف آلاف الإعلانات' : 'Choose your category and discover thousands of listings'}
+              {t('categories.subtitle')}
             </p>
           </div>
           
           {/* Categories Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {CATEGORIES_DATA.map((category, index) => {
+            {CATEGORIES_DATA.map((category) => {
               const Icon = category.icon;
               return (
                 <button
@@ -238,7 +251,7 @@ export default function HomePage() {
                     <Icon className="size-7" strokeWidth={1.5} />
                   </div>
                   <span className="text-sm font-semibold text-center text-foreground group-hover:text-emerald transition-colors">
-                    {locale === 'ar' ? category.name_ar : locale === 'fr' ? category.name_fr : category.name_en}
+                    {t(category.key)}
                   </span>
                 </button>
               );
@@ -253,10 +266,10 @@ export default function HomePage() {
           <div className="flex items-center justify-between mb-12">
             <div>
               <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-2">
-                {locale === 'ar' ? 'إعلانات مميزة' : 'Featured Listings'}
+                {t('home.featured_listings_title')}
               </h2>
               <p className="text-lg text-muted-foreground">
-                {locale === 'ar' ? 'يدنا يدك لأفضل العروض' : 'Handpicked deals for you'}
+                {t('home.featured_listings_subtitle')}
               </p>
             </div>
             <Link href="/listings">
@@ -308,10 +321,10 @@ export default function HomePage() {
                 <Zap className="size-8 text-muted-foreground" />
               </div>
               <h3 className="text-xl font-semibold text-primary mb-2">
-                {locale === 'ar' ? 'لا توجد إعلانات بعد' : 'No listings yet'}
+                {t('home.no_listings_yet')}
               </h3>
               <p className="text-muted-foreground mb-6">
-                {locale === 'ar' ? 'كن أول من ينشر إعلان!' : 'Be the first to post a listing!'}
+                {t('home.be_first_to_post')}
               </p>
               <Link href="/listings/create">
                 <Button className="bg-emerald hover:bg-emerald/90 gap-2">
@@ -329,15 +342,13 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <Badge variant="secondary" className="mb-4 bg-emerald/10 text-emerald border-emerald/20">
-              {locale === 'ar' ? 'لماذا مافورا؟' : 'Why Choose Us?'}
+              {t('home.why_mavora')}
             </Badge>
             <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-4">
-              {locale === 'ar' ? 'مزايا مافورا' : 'The MAVORA Advantage'}
+              {t('home.mavora_advantages')}
             </h2>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-              {locale === 'ar' 
-                ? 'منصة مصممة بعناية لتجربة تسوق آمنة وسهلة في المغرب وشمال إفريقيا'
-                : 'A carefully crafted platform for a safe and easy shopping experience in Morocco & North Africa'}
+              {t('home.mavora_description')}
             </p>
           </div>
 
@@ -349,19 +360,13 @@ export default function HomePage() {
                   <Shield className="size-7 text-blue-600 dark:text-blue-400" />
                 </div>
                 <h3 className="text-xl font-bold text-primary mb-3">
-                  {locale === 'ar' ? 'معاملات آمنة' : 'Secure Transactions'}
+                  {t('home.secure_transactions')}
                 </h3>
                 <p className="text-muted-foreground leading-relaxed mb-4">
-                  {locale === 'ar' 
-                    ? 'نحمي كل معاملة مع نظام تحقق شامل وحماية من الاحتيال'
-                    : 'Every transaction is protected with comprehensive verification and fraud protection'}
+                  {t('home.secure_transactions_desc')}
                 </p>
                 <ul className="space-y-2">
-                  {[
-                    locale === 'ar' ? 'مستخدمون موققون' : 'Verified users',
-                    locale === 'ar' ? 'دفع آمن' : 'Secure payments',
-                    locale === 'ar' ? 'حماية المشتري' : 'Buyer protection',
-                  ].map((item) => (
+                  {[t('home.verified_users'), t('home.secure_payments'), t('home.buyer_protection')].map((item) => (
                     <li key={item} className="flex items-center gap-2 text-sm text-muted-foreground">
                       <CheckCircle2 className="size-4 text-emerald shrink-0" />
                       {item}
@@ -378,19 +383,13 @@ export default function HomePage() {
                   <Globe className="size-7 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <h3 className="text-xl font-bold text-primary mb-3">
-                  {locale === 'ar' ? 'وصول واسع' : 'Wide Reach'}
+                  {t('home.wide_reach')}
                 </h3>
                 <p className="text-muted-foreground leading-relaxed mb-4">
-                  {locale === 'ar' 
-                    ? 'وصول إلى آلاف المشترين في المغرب وشمال إفريقيا والشرق الأوسط'
-                    : 'Reach thousands of buyers across Morocco, North Africa & the Middle East'}
+                  {t('home.wide_reach_desc')}
                 </p>
                 <ul className="space-y-2">
-                  {[
-                    locale === 'ar' ? 'المغرب وشمال إفريقيا' : 'Morocco & North Africa',
-                    locale === 'ar' ? 'متعدد اللغات' : 'Multi-language',
-                    locale === 'ar' ? 'محسّن للجوال' : 'Mobile optimized',
-                  ].map((item) => (
+                  {[t('home.morocco_north_africa'), t('home.multi_language'), t('home.mobile_optimized')].map((item) => (
                     <li key={item} className="flex items-center gap-2 text-sm text-muted-foreground">
                       <CheckCircle2 className="size-4 text-emerald shrink-0" />
                       {item}
@@ -407,19 +406,13 @@ export default function HomePage() {
                   <Zap className="size-7 text-purple-600 dark:text-purple-400" />
                 </div>
                 <h3 className="text-xl font-bold text-primary mb-3">
-                  {locale === 'ar' ? 'سهل الاستخدام' : 'Easy to Use'}
+                  {t('home.easy_to_use')}
                 </h3>
                 <p className="text-muted-foreground leading-relaxed mb-4">
-                  {locale === 'ar' 
-                    ? 'منصة بسيطة وسهلة تناسب جميع المستخدمين، من المبتدئين إلى المحترفين'
-                    : 'A simple platform that works for everyone, from beginners to professionals'}
+                  {t('home.easy_to_use_desc')}
                 </p>
                 <ul className="space-y-2">
-                  {[
-                    locale === 'ar' ? 'نشر سهل' : 'Easy posting',
-                    locale === 'ar' ? 'بحث ذكي' : 'Smart search',
-                    locale === 'ar' ? 'رسائل فورية' : 'Instant messaging',
-                  ].map((item) => (
+                  {[t('home.easy_posting'), t('home.smart_search'), t('home.instant_messaging')].map((item) => (
                     <li key={item} className="flex items-center gap-2 text-sm text-muted-foreground">
                       <CheckCircle2 className="size-4 text-emerald shrink-0" />
                       {item}
@@ -432,32 +425,40 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Stats Section ── */}
+      {/* ── Stats Section (Real Data) ── */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-primary to-primary/90 text-white">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
-              <div className="text-4xl lg:text-5xl font-bold mb-2">10K+</div>
+              <div className="text-4xl lg:text-5xl font-bold mb-2">
+                {stats ? formatNumber(stats.listings) : '0'}
+              </div>
               <div className="text-white/80 text-sm uppercase tracking-wider">
-                {locale === 'ar' ? 'إعلان نشط' : 'Active Listings'}
+                {t('listings.featured')}
               </div>
             </div>
             <div>
-              <div className="text-4xl lg:text-5xl font-bold mb-2">5K+</div>
+              <div className="text-4xl lg:text-5xl font-bold mb-2">
+                {stats ? formatNumber(stats.users) : '0'}
+              </div>
               <div className="text-white/80 text-sm uppercase tracking-wider">
-                {locale === 'ar' ? 'مستخدم سعيد' : 'Happy Users'}
+                {t('admin.total_users')}
               </div>
             </div>
             <div>
-              <div className="text-4xl lg:text-5xl font-bold mb-2">50+</div>
+              <div className="text-4xl lg:text-5xl font-bold mb-2">
+                {stats ? formatNumber(stats.categories) : '0'}
+              </div>
               <div className="text-white/80 text-sm uppercase tracking-wider">
-                {locale === 'ar' ? 'تصنيف' : 'Categories'}
+                {t('admin.total_categories')}
               </div>
             </div>
             <div>
-              <div className="text-4xl lg:text-5xl font-bold mb-2">100+</div>
+              <div className="text-4xl lg:text-5xl font-bold mb-2">
+                {stats ? formatNumber(stats.cities) : '0'}
+              </div>
               <div className="text-white/80 text-sm uppercase tracking-wider">
-                {locale === 'ar' ? 'مدينة' : 'Cities'}
+                {t('admin.total_countries')}
               </div>
             </div>
           </div>
@@ -469,23 +470,21 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto text-center">
           <MavoraLogo size="lg" className="mx-auto mb-6" />
           <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-4">
-            {locale === 'ar' ? 'هل أنت جاهز للبدء؟' : 'Ready to Get Started?'}
+            {t('home.ready_to_start')}
           </h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            {locale === 'ar' 
-              ? 'انضم إلى آلاف المستخدمين الذين يشترون ويبيعون على مافورا'
-              : 'Join thousands of users buying and selling on MAVORA'}
+            {t('home.join_thousands')}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/listings/create">
               <Button size="lg" className="bg-emerald hover:bg-emerald/90 text-white gap-2 shadow-lg shadow-emerald/30 text-base px-8 h-12">
                 <Zap className="size-5" />
-                {locale === 'ar' ? 'أنشئ إعلاناً مجاناً' : 'Post a Free Ad'}
+                {t('home.post_free_ad')}
               </Button>
             </Link>
             <Link href="/listings">
               <Button size="lg" variant="outline" className="gap-2 text-base px-8 h-12">
-                {locale === 'ar' ? 'تصفح الإعلانات' : 'Browse Listings'}
+                {t('home.browse_listings')}
                 <ArrowRight className={`size-5 ${isRtl ? 'rotate-180' : ''}`} />
               </Button>
             </Link>
@@ -495,19 +494,19 @@ export default function HomePage() {
           <div className="flex flex-wrap items-center justify-center gap-6 mt-12 pt-8 border-t">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Shield className="size-4 text-emerald" />
-              {locale === 'ar' ? 'منصة آمنة' : 'Secure Platform'}
+              {t('home.secure_platform')}
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Users className="size-4 text-emerald" />
-              {locale === 'ar' ? 'مجتمع كبير' : 'Large Community'}
+              {t('home.large_community')}
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Star className="size-4 text-emerald" />
-              {locale === 'ar' ? 'مقيّم عالياً' : 'Top Rated'}
+              {t('home.top_rated')}
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <MapPin className="size-4 text-emerald" />
-              {locale === 'ar' ? 'تركيز محلي' : 'Local Focus'}
+              {t('home.local_focus')}
             </div>
           </div>
         </div>

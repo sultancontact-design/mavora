@@ -6,6 +6,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
+import { hash, compare } from 'bcryptjs';
 
 const SUPABASE_URL = 'https://kyanecjjautqmuowbtvy.supabase.co';
 const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5YW5lY2pqYXV0cW11b3didHZ5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODI5ODM2MiwiZXhwIjoyMTAzODc0MzYyfQ.CfYJjFHkacydBjS7U2kE44K9o4k8fH5DexC9Xd7sdN0';
@@ -14,7 +15,8 @@ const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false }
 });
 
-// Demo/Seed users with known passwords (for testing)
+// Demo/Seed users with known passwords (for testing) - these are stored in DB now
+// But we keep this as fallback for accounts created before password hashing was added
 const DEMO_PASSWORDS: Record<string, string> = {
   'admin@mavora.ma': 'Mavora@2024!Admin',
   'testuser@mavora.ma': 'TestUser2024!Secure',
@@ -97,7 +99,16 @@ export async function dbSignup(
       return { success: false, error: 'auth.signup_failed' };
     }
     
-    // Step 3: Store password hash (in demo mode, store in memory)
+    // Step 3: Hash and store password in database
+    const passwordHash = await hash(password, 10);
+    
+    // Update user with password hash
+    await supabaseAdmin
+      .from('users')
+      .update({ passwordHash: passwordHash })
+      .eq('id', userId);
+    
+    // Also keep in memory for backward compatibility during this session
     DEMO_PASSWORDS[email.toLowerCase()] = password;
     
     // Step 4: Create profile
@@ -193,16 +204,29 @@ export async function dbLogin(email: string, password: string): Promise<DbLoginR
     
     const user = users[0];
     
-    // Step 2: Check password (demo mode - check known passwords first)
+    // Step 2: Check password - first try database hash, then fallback to demo passwords
+    let passwordValid = false;
     const normalizedEmail = email.toLowerCase().trim();
-    const correctPassword = DEMO_PASSWORDS[normalizedEmail];
     
-    if (!correctPassword || password !== correctPassword) {
-      // Try with original case
-      const altPassword = DEMO_PASSWORDS[email];
-      if (!altPassword || password !== altPassword) {
-        return { success: false, error: 'auth.invalid_credentials' };
+    // First, check if user has a password hash in database
+    if (user.passwordHash) {
+      try {
+        passwordValid = await compare(password, user.passwordHash);
+      } catch (e) {
+        console.warn('[DB Auth] Password comparison error:', e);
       }
+    }
+    
+    // Fallback to demo passwords for legacy accounts
+    if (!passwordValid) {
+      const correctPassword = DEMO_PASSWORDS[normalizedEmail] || DEMO_PASSWORDS[email];
+      if (correctPassword) {
+        passwordValid = password === correctPassword;
+      }
+    }
+    
+    if (!passwordValid) {
+      return { success: false, error: 'auth.invalid_credentials' };
     }
     
     // Step 3: Get profile

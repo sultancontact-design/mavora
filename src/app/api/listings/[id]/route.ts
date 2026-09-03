@@ -75,7 +75,10 @@ export async function GET(
         .update({ view_count: (data.view_count ?? 0) + 1 })
         .eq('id', id)
         .then(() => {})
-        .catch(() => {});
+        .catch((err: unknown) => {
+          // Non-critical: view count update failed silently
+          console.debug('View count increment failed:', err);
+        });
     }
 
     return NextResponse.json(listing);
@@ -253,10 +256,13 @@ export async function PUT(
         value: sanitizeInput(fv.value),
       }));
 
-      await supabase
+      const { error: fieldError } = await supabase
         .from('listing_field_values')
-        .upsert(fieldUpserts, { onConflict: 'listing_id,field_id' })
-        .catch((err) => console.error('Field values update warning:', err));
+        .upsert(fieldUpserts, { onConflict: 'listing_id,field_id' });
+      
+      if (fieldError) {
+        console.error('Field values update warning:', fieldError);
+      }
     }
 
     // Update media items if provided (reorder, set primary, add new)
@@ -277,17 +283,22 @@ export async function PUT(
               const urlObj = new URL(mediaRecord.url);
               const pathMatch = urlObj.pathname.match(/\/listing-images\/(.+)/);
               if (pathMatch) {
-                await supabase.storage.from('listing-images').remove([pathMatch[1]]).catch(() => {});
+                try {
+                await supabase.storage.from('listing-images').remove([pathMatch[1]]);
+              } catch {/* Storage delete is non-critical */}
               }
             } catch {/* ignore */}
           }
 
-          await supabase
+          const { error: mediaDeleteError } = await supabase
             .from('listing_media')
             .delete()
             .eq('id', item.id)
-            .eq('listing_id', id)
-            .catch(() => {});
+            .eq('listing_id', id);
+          
+          if (mediaDeleteError) {
+            console.warn('Media delete warning:', mediaDeleteError);
+          }
         }
         // Handle update (reorder, primary)
         else if (item.id) {
@@ -298,24 +309,26 @@ export async function PUT(
               await supabase
                 .from('listing_media')
                 .update({ is_primary: false })
-                .eq('listing_id', id)
-                .catch(() => {});
+                .eq('listing_id', id);
             }
             mediaUpdates.is_primary = item.is_primary;
           }
 
           if (Object.keys(mediaUpdates).length > 0) {
-            await supabase
+            const { error: mediaUpdateError } = await supabase
               .from('listing_media')
               .update(mediaUpdates)
               .eq('id', item.id)
-              .eq('listing_id', id)
-              .catch(() => {});
+              .eq('listing_id', id);
+            
+            if (mediaUpdateError) {
+              console.warn('Media update warning:', mediaUpdateError);
+            }
           }
         }
         // Handle new media
         else if (item.url) {
-          await supabase
+          const { error: mediaInsertError } = await supabase
             .from('listing_media')
             .insert({
               listing_id: id,
@@ -323,8 +336,11 @@ export async function PUT(
               type: 'image',
               sort_order: item.sort_order ?? 0,
               is_primary: item.is_primary ?? false,
-            })
-            .catch(() => {});
+            });
+          
+          if (mediaInsertError) {
+            console.warn('Media insert warning:', mediaInsertError);
+          }
         }
       }
     }
@@ -416,7 +432,9 @@ export async function DELETE(
           }
         }
         if (pathsToDelete.length > 0) {
-          await supabase.storage.from('listing-images').remove(pathsToDelete).catch(() => {});
+          try {
+            await supabase.storage.from('listing-images').remove(pathsToDelete);
+          } catch {/* Storage delete is non-critical */}
         }
       }
 

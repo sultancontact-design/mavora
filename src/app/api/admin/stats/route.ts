@@ -117,7 +117,7 @@ export async function GET(request: Request) {
     );
 
     // Generate chart data from real database records
-    const chartData = await generateChartData(30);
+    const chartData = await generateChartData(30, adminClient);
 
     return NextResponse.json({
       overview: {
@@ -150,8 +150,8 @@ export async function GET(request: Request) {
   }
 }
 
-// Generate real chart data from database
-async function generateChartData(days: number) {
+// Generate real chart data from database using Supabase
+async function generateChartData(days: number, adminClient: ReturnType<typeof getSupabaseAdminClient>) {
   const listings: { date: string; count: number }[] = [];
   const users: { date: string; count: number }[] = [];
   
@@ -162,26 +162,25 @@ async function generateChartData(days: number) {
     const nextDate = new Date(date);
     nextDate.setDate(nextDate.getDate() + 1);
     const dateStr = date.toISOString().split('T')[0];
+    const dateStart = date.toISOString();
+    const dateEnd = nextDate.toISOString();
     
-    // Fetch real counts from database
+    // Fetch real counts from Supabase
     try {
-      const [listingCount, userCount] = await Promise.all([
-        db.listing.count({
-          where: {
-            createdAt: { gte: date, lt: nextDate },
-          },
-        }),
-        db.user.count({
-          where: {
-            createdAt: { gte: date, lt: nextDate },
-          },
-        }),
+      const [listingRes, userRes] = await Promise.all([
+        adminClient.from('listings').select('id', { count: 'exact', head: true })
+          .gte('created_at', dateStart)
+          .lt('created_at', dateEnd),
+        adminClient.from('profiles').select('id', { count: 'exact', head: true })
+          .gte('created_at', dateStart)
+          .lt('created_at', dateEnd),
       ]);
       
-      listings.push({ date: dateStr, count: listingCount });
-      users.push({ date: dateStr, count: userCount });
+      listings.push({ date: dateStr, count: listingRes.count ?? 0 });
+      users.push({ date: dateStr, count: userRes.count ?? 0 });
     } catch (error) {
       // Fallback to 0 if query fails
+      console.warn(`Chart data fetch error for ${dateStr}:`, error);
       listings.push({ date: dateStr, count: 0 });
       users.push({ date: dateStr, count: 0 });
     }

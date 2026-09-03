@@ -355,14 +355,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Insert notification for the seller
-    await supabase.from('notifications').insert({
+    // Insert notification for the seller (non-critical)
+    const { error: notifError } = await supabase.from('notifications').insert({
       user_id: userId,
       type: 'listing_published',
       title: 'new_listing',
       body: 'listing_published',
       data: { listing_id: listing.id, listing_title: listing.title },
-    }).catch(() => {}); // Non-critical, don't fail if notification fails
+    });
+    
+    if (notifError) {
+      console.warn('Notification insert failed (non-critical):', notifError.message);
+    }
 
     return NextResponse.json(listing, { status: 201 });
   } catch (error) {

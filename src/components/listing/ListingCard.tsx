@@ -33,27 +33,34 @@ interface ListingCardProps {
 // ─── Helpers ────────────────────────────────────────────────────────
 
 function getLocalizedName(
-  item: { name_ar?: string; name_fr?: string; name_en?: string },
+  item: { name_ar?: string; name_fr?: string; name_en?: string; nameAr?: string; nameFr?: string; name?: string } | null | undefined,
   locale: Locale
 ): string {
+  if (!item) return '';
   switch (locale) {
-    case 'ar': return item.name_ar ?? item.name_en ?? '';
-    case 'fr': return item.name_fr ?? item.name_en ?? '';
-    default: return item.name_en ?? '';
+    case 'ar': return item.nameAr ?? item.name_ar ?? item.name ?? item.name_en ?? '';
+    case 'fr': return item.nameFr ?? item.name_fr ?? item.name ?? item.name_en ?? '';
+    default: return item.name ?? item.name_en ?? '';
   }
 }
 
 function formatPrice(
   price: number | null,
-  currency: Currency | null | undefined,
+  currency: Currency | null | undefined | string,
   locale: Locale
 ): string {
   if (price === null || price === undefined) {
     return locale === 'ar' ? 'مجاني' : locale === 'fr' ? 'Gratuit' : 'Free';
   }
   
-  const symbol = currency?.symbol ?? '';
+  // Handle both Currency object and string (currencyCode from API)
+  const symbol = typeof currency === 'string' ? currency : currency?.symbol ?? '';
   const formatted = price.toLocaleString(locale);
+  
+  // For MAD, show the code after the number
+  if (symbol === 'MAD') {
+    return locale === 'ar' ? `${formatted} د.م` : `${formatted} MAD`;
+  }
   
   return locale === 'ar' ? `${formatted} ${symbol}` : `${symbol}${formatted}`;
 }
@@ -110,7 +117,8 @@ export default function ListingCard({
   // Get primary image or first image
   const primaryImage = useMemo(() => {
     if (!listing.media || listing.media.length === 0) return null;
-    const primary = listing.media.find((m) => m.is_primary);
+    // Handle both isPrimary (camelCase from API) and is_primary (snake_case)
+    const primary = listing.media.find((m: Record<string, unknown>) => m.isPrimary || m.is_primary);
     return primary ?? listing.media[0];
   }, [listing.media]);
 
@@ -172,14 +180,14 @@ export default function ListingCard({
                   {listing.title}
                 </h3>
                 <p className="mt-1.5 text-base font-bold text-teal-600">
-                  {formatPrice(listing.price, listing.currency, locale)}
+                  {formatPrice(listing.price, listing.currency || listing.currencyCode, locale)}
                 </p>
                 <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
-                  <span>{timeAgo(listing.created_at, locale)}</span>
+                  <span>{timeAgo(listing.created_at || listing.createdAt, locale)}</span>
                   <span>•</span>
                   <span className="flex items-center gap-1">
                     <Eye className="size-3.5" />
-                    {listing.view_count}
+                    {listing.view_count || listing.viewCount || 0}
                   </span>
                 </div>
               </div>
@@ -265,7 +273,7 @@ export default function ListingCard({
 
               {/* Price */}
               <p className="mt-2.5 text-xl font-bold bg-gradient-to-r from-gold-dark to-gold bg-clip-text text-transparent">
-                {formatPrice(listing.price, listing.currency, locale)}
+                {formatPrice(listing.price, listing.currency || listing.currencyCode, locale)}
               </p>
 
               {/* Meta */}
@@ -276,9 +284,9 @@ export default function ListingCard({
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Eye className="size-4 text-teal-500" />
-                  {listing.view_count} {t('listings.views')}
+                  {listing.view_count || listing.viewCount || 0} {t('listings.views')}
                 </span>
-                <span>{timeAgo(listing.created_at, locale)}</span>
+                <span>{timeAgo(listing.created_at || listing.createdAt, locale)}</span>
               </div>
 
               {/* Seller Info (optional) */}
@@ -298,7 +306,7 @@ export default function ListingCard({
                         {listing.seller.display_name?.charAt(0).toUpperCase()}
                       </div>
                     )}
-                    {listing.seller.is_verified && (
+                    {(listing.seller.is_verified || listing.seller.isVerified) && (
                       <BadgeCheck className="absolute -end-1 -top-1 size-4 text-teal-500" />
                     )}
                   </div>
@@ -328,7 +336,7 @@ export default function ListingCard({
         <Card className="group overflow-hidden border-gray-100 transition-all duration-300 hover:border-teal-300 hover:shadow-xl hover:shadow-teal-500/10 rounded-2xl">
           {/* Badges */}
           <div className="absolute start-3 top-3 z-10 flex gap-2">
-            {listing.is_featured && (
+            {(listing.is_featured || listing.isFeatured) && (
               <Badge className="bg-gradient-to-r from-gold to-gold-light text-gray-900 border-0 gap-1.5 font-semibold shadow-lg shadow-gold/30 px-2.5 py-1 rounded-full">
                 <Star className="size-3 fill-current" />
                 {t('common.featured')}
@@ -336,7 +344,7 @@ export default function ListingCard({
             )}
           </div>
           
-          {listing.is_urgent && (
+          {(listing.is_urgent || listing.isUrgent) && (
             <div className="absolute end-3 top-3 z-10">
               <Badge className="bg-gradient-to-r from-coral to-coral-light text-white border-0 font-semibold shadow-lg shadow-coral/30 px-2.5 py-1 rounded-full">
                 {t('common.urgent')}
@@ -403,15 +411,15 @@ export default function ListingCard({
 
             {/* Price */}
             <p className="mt-2.5 text-lg font-bold text-teal-600">
-              {formatPrice(listing.price, listing.currency, locale)}
+              {formatPrice(listing.price, listing.currency || listing.currencyCode, locale)}
             </p>
 
             {/* Meta Info */}
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500">
-              <span>{timeAgo(listing.created_at, locale)}</span>
+              <span>{timeAgo(listing.created_at || listing.createdAt, locale)}</span>
               <span className="flex items-center gap-1.5">
                 <Eye className="size-4 text-teal-400" />
-                {listing.view_count}
+                {listing.view_count || listing.viewCount || 0}
               </span>
             </div>
 
@@ -432,7 +440,7 @@ export default function ListingCard({
                       {listing.seller.display_name?.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  {listing.seller.is_verified && (
+                  {(listing.seller.is_verified || listing.seller.isVerified) && (
                     <BadgeCheck className="absolute -end-1 -top-1 size-3.5 text-teal-500" />
                   )}
                 </div>

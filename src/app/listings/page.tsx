@@ -41,21 +41,25 @@ export default function ListingsPage() {
       setIsLoading(true);
       const params = new URLSearchParams({
         page: page.toString(),
-        limit: '20',
-        sort: sortBy,
-        ...(searchQuery && { q: searchQuery }),
+        per_page: '20',
+        sort_by: sortBy,
+        ...(searchQuery && { search: searchQuery }),
         ...(selectedCategory !== 'all' && { category_id: selectedCategory }),
       });
 
       const res = await fetch(`/api/listings?${params}`);
       if (res.ok) {
-        const data: PaginatedResponse<Listing> = await res.json();
+        const responseData = await res.json();
+        // API returns: { data: [...], total, page, per_page, total_pages }
+        const listingsData = responseData.data || [];
+        const totalPages = responseData.total_pages || 1;
+        
         if (page === 1) {
-          setListings(data.items || []);
+          setListings(listingsData);
         } else {
-          setListings(prev => [...prev, ...(data.items || [])]);
+          setListings(prev => [...prev, ...listingsData]);
         }
-        setHasMore(data.hasNextPage || false);
+        setHasMore(page < totalPages);
       }
     } catch (error) {
       console.error('Error fetching listings:', error);

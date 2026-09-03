@@ -28,17 +28,8 @@ function getCategoryName(category: Category, locale: Locale): string {
   }
 }
 
-// Simulated listing counts per category (in real app, this would come from API)
-const MOCK_LISTING_COUNTS: Record<string, number> = {
-  vehicles: 12500,
-  'real-estate': 8900,
-  electronics: 15600,
-  jobs: 6700,
-  services: 9200,
-  fashion: 11300,
-  'home-garden': 5400,
-  sports: 4100,
-};
+// Listing counts are fetched from API via props or shown as loading state
+// Removed mock data - now uses real data from /api/categories endpoint
 
 /* ── Main Component ── */
 
@@ -58,7 +49,7 @@ export default function CategoryGrid({
       ...category,
       localName: getCategoryName(category, locale),
       Icon: getCategoryIcon(category.slug),
-      listingCount: MOCK_LISTING_COUNTS[category.slug] ?? Math.floor(Math.random() * 10000) + 1000,
+      listingCount: category._count?.listings ?? null, // Real count from API, null if not available
       childCount: category.children?.length ?? 0,
     }));
   }, [categories, locale]);
@@ -129,7 +120,7 @@ export default function CategoryGrid({
               onClick={() => onSelectCategory(category.id)}
               className={`group relative flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-5 transition-all duration-300 hover:border-emerald/40 hover:shadow-lg hover:shadow-emerald/5 active:scale-[0.98] sm:p-6 animate-scale-in`}
               style={{ animationDelay: `${index * 50}ms` }}
-              aria-label={`${category.localName} - ${category.listingCount.toLocaleString()} ${locale === 'ar' ? 'إعلان' : 'listings'}`}
+              aria-label={`${category.localName}${category.listingCount ? ` - ${category.listingCount.toLocaleString()} ${locale === 'ar' ? 'إعلان' : 'listings'}` : ''}`}
             >
               
               {/* Icon Container */}
@@ -144,8 +135,10 @@ export default function CategoryGrid({
 
               {/* Listing Count */}
               <span className="text-xs text-muted-foreground">
-                {category.listingCount.toLocaleString()}{' '}
-                {locale === 'ar' ? 'إعلان' : locale === 'fr' ? 'annonces' : 'listings'}
+                {category.listingCount != null 
+                  ? `${category.listingCount.toLocaleString()} ${locale === 'ar' ? 'إعلان' : locale === 'fr' ? 'annonces' : 'listings'}`
+                  : locale === 'ar' ? 'تصفح الإعلانات' : locale === 'fr' ? 'Parcourir les annonces' : 'Browse listings'
+                }
               </span>
 
               {/* Hover Arrow Indicator */}

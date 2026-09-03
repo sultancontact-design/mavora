@@ -878,20 +878,20 @@ function HomeView({
               </div>
             </div>
             
-            {/* Phone Mockup Illustration */}
+            {/* Phone App Preview Illustration - Decorative Only */}
             <div className="hidden lg:block flex-1">
               <div className="relative mx-auto w-72">
                 <div className="rounded-[3rem] border-4 border-white/20 bg-gradient-to-b from-white/10 to-transparent p-3 shadow-2xl">
                   <div className="aspect-[9/19] rounded-[2.5rem] bg-gradient-to-b from-primary to-primary-dark p-4">
                     <div className="flex h-full flex-col">
-                      {/* Mock App Header */}
+                      {/* App Header Illustration */}
                       <div className="mb-4 flex items-center gap-2">
                         <div className="size-8 rounded-lg bg-emerald/20" />
-                        <div class="h-4 w-20 rounded bg-white/20" />
+                        <div className="h-4 w-20 rounded bg-white/20" />
                       </div>
-                      {/* Mock Search */}
+                      {/* Search Bar Illustration */}
                       <div className="mb-4 h-10 rounded-full bg-white/10" />
-                      {/* Mock Cards */}
+                      {/* Listing Cards Illustration */}
                       <div className="space-y-3">
                         <div className="flex gap-3 rounded-xl bg-white/10 p-3">
                           <div className="size-16 rounded-lg bg-white/10" />

@@ -218,14 +218,15 @@ export default function Footer() {
             <div className="space-y-3">
               {/* Google Play Button */}
               <a
-                href="#"
-                className="flex h-11 w-full items-center gap-2.5 rounded-lg bg-primary-foreground/10 px-4 transition-all duration-200 hover:bg-primary-foreground/20 hover:scale-[1.02]"
+                href="/coming-soon"
+                className="flex h-11 w-full items-center gap-2.5 rounded-lg bg-primary-foreground/10 px-4 transition-all duration-200 hover:bg-primary-foreground/20 hover:scale-[1.02] opacity-75 cursor-not-allowed"
                 aria-label="Download on Google Play"
+                onClick={(e) => e.preventDefault()}
               >
                 <Smartphone className="size-5 shrink-0" />
                 <div className="flex flex-col leading-tight">
                   <span className="text-[10px] uppercase tracking-wide text-primary-foreground/50">
-                    {locale === 'fr' ? 'Disponible sur' : locale === 'ar' ? 'متوفر على' : 'GET IT ON'}
+                    {locale === 'fr' ? 'Bientôt disponible' : locale === 'ar' ? 'قريباً' : 'COMING SOON'}
                   </span>
                   <span className="text-sm font-semibold">Google Play</span>
                 </div>
@@ -233,14 +234,15 @@ export default function Footer() {
               
               {/* App Store Button */}
               <a
-                href="#"
-                className="flex h-11 w-full items-center gap-2.5 rounded-lg bg-primary-foreground/10 px-4 transition-all duration-200 hover:bg-primary-foreground/20 hover:scale-[1.02]"
+                href="/coming-soon"
+                className="flex h-11 w-full items-center gap-2.5 rounded-lg bg-primary-foreground/10 px-4 transition-all duration-200 hover:bg-primary-foreground/20 hover:scale-[1.02] opacity-75 cursor-not-allowed"
                 aria-label="Download on App Store"
+                onClick={(e) => e.preventDefault()}
               >
                 <Download className="size-5 shrink-0" />
                 <div className="flex flex-col leading-tight">
                   <span className="text-[10px] uppercase tracking-wide text-primary-foreground/50">
-                    {locale === 'fr' ? 'Disponible sur' : locale === 'ar' ? 'متوفر على' : 'Download on'}
+                    {locale === 'fr' ? 'Bientôt disponible' : locale === 'ar' ? 'قريباً' : 'COMING SOON'}
                   </span>
                   <span className="text-sm font-semibold">App Store</span>
                 </div>

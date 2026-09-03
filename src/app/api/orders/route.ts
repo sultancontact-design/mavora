@@ -196,9 +196,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate totals
+    // Tax calculation: Currently set to 0, will be implemented when tax settings system is added
+    // Discount calculation: Will be implemented when coupon/promotion system is fully integrated
     const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
-    const taxAmount = 0; // TODO: Calculate tax based on location/settings
-    const discountAmount = 0; // TODO: Apply discounts if any
+    const taxAmount = 0; // Tax: Pending tax settings configuration (see PROJECT_STATUS.md)
+    const discountAmount = 0; // Discounts: Pending coupon system integration (see PROJECT_STATUS.md)
     const totalAmount = subtotal + taxAmount - discountAmount;
 
     // Generate order number

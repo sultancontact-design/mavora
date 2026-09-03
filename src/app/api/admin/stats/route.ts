@@ -116,8 +116,8 @@ export async function GET(request: Request) {
       0
     );
 
-    // Generate chart data manually if RPC not available
-    const chartData = generateChartData(30);
+    // Generate chart data from real database records
+    const chartData = await generateChartData(30);
 
     return NextResponse.json({
       overview: {
@@ -150,25 +150,41 @@ export async function GET(request: Request) {
   }
 }
 
-// Generate placeholder chart data
-function generateChartData(days: number) {
+// Generate real chart data from database
+async function generateChartData(days: number) {
   const listings: { date: string; count: number }[] = [];
   const users: { date: string; count: number }[] = [];
   
   for (let i = days - 1; i >= 0; i--) {
     const date = new Date();
     date.setDate(date.getDate() - i);
+    date.setHours(0, 0, 0, 0);
+    const nextDate = new Date(date);
+    nextDate.setDate(nextDate.getDate() + 1);
     const dateStr = date.toISOString().split('T')[0];
     
-    listings.push({
-      date: dateStr,
-      count: Math.floor(Math.random() * 20) + 5, // Placeholder
-    });
-    
-    users.push({
-      date: dateStr,
-      count: Math.floor(Math.random() * 15) + 2, // Placeholder
-    });
+    // Fetch real counts from database
+    try {
+      const [listingCount, userCount] = await Promise.all([
+        db.listing.count({
+          where: {
+            createdAt: { gte: date, lt: nextDate },
+          },
+        }),
+        db.user.count({
+          where: {
+            createdAt: { gte: date, lt: nextDate },
+          },
+        }),
+      ]);
+      
+      listings.push({ date: dateStr, count: listingCount });
+      users.push({ date: dateStr, count: userCount });
+    } catch (error) {
+      // Fallback to 0 if query fails
+      listings.push({ date: dateStr, count: 0 });
+      users.push({ date: dateStr, count: 0 });
+    }
   }
   
   return { listings, users };

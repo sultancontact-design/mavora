@@ -263,3 +263,70 @@ src/components/wallet/WalletPage.tsx             # + سحب + شراء tokens + 
 ---
 
 **ملاحظة:** هذا النظام جاهز للاستخدام في وضع Sandbox/Development. للإنتاج، يربط بمفاتيح API حقيقية ويختبر بشكل شامل.
+
+---
+
+## 🗄️ إعداد قاعدة البيانات على Supabase
+
+**التاريخ:** 2026-09-03  
+**الحالة:** مكتمل ✅
+
+### ما تم إنجازه:
+
+| المهمة | الحالة |
+|--------|--------|
+| إصلاح 12 خطأ في Prisma Schema | ✅ |
+| إنشاء Prisma Client | ✅ |
+| توليد ملف SQL (1288 سطر، 207 statement) | ✅ |
+| ربط قاعدة بيانات Supabase | ✅ |
+| إنشاء 50 جدول | ✅ |
+| اختبار CRUD Operations | ✅ |
+| دعم النص العربي | ✅ |
+
+### قاعدة البيانات:
+
+**المزود:** Supabase PostgreSQL  
+**المشروع:** kyanecjjautqmuowbtvy  
+**الجداول:** 50 جدول  
+**الحالة:** ✅ **متصل ويعمل**
+
+### الجداول المُنشأة (50):
+
+**المصادقة والمستخدمين (7):**
+users, profiles, sessions, verification_tokens, roles, permissions, user_roles
+
+**الموقع والفئات (11):**
+countries, regions, cities, currencies, categories, category_fields, category_field_options, organizations, organization_members, seo_pages, posts
+
+**الإعلانات (5):**
+listings, listing_media, listing_field_values, listing_locations, listing_status_history
+
+**الرسائل (3):**
+conversations, conversation_members, messages
+
+**الإشعارات (2):**
+notifications, notification_preferences
+
+**المحفظة والدفع (10):**
+wallets, wallet_transactions, token_packages, plans, subscriptions, orders, order_items, payments, payment_events, promotions, listing_promotions
+
+**المراجعات والتقارير (4):**
+reviews, reports, moderation_actions, verification_requests
+
+**المفضلة والبحث (2):**
+favorites, saved_searches
+
+**النظام والتدقيق (6):**
+audit_logs, analytics_events, banned_terms, fraud_signals, support_tickets
+
+---
+
+### اختبارات التحقق:
+
+```
+✅ INSERT: إلكترونيات
+✅ SELECT: إلكترونيات | Slug: electronics-test  
+✅ UPDATE: Added French name - Électronique
+✅ DELETE: Test data cleaned up
+✅ Arabic text: SUPPORTED
+```

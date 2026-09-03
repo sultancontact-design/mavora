@@ -336,7 +336,9 @@ function SignupForm({
         body: JSON.stringify({
           email: values.email,
           password: values.password,
+          confirmPassword: values.confirmPassword,
           display_name: values.display_name,
+          phone: '',
         }),
       });
 

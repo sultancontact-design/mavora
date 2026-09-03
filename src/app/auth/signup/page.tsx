@@ -69,7 +69,9 @@ export default function SignupPage() {
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
+          confirmPassword: formData.confirmPassword,
           display_name: formData.displayName,
+          phone: '',
         }),
       });
 

@@ -14,7 +14,6 @@ import {
   Archive,
   Eye,
   Search,
-  Filter,
   RefreshCw,
   Clock,
   AlertTriangle,
@@ -26,11 +25,10 @@ import {
   Tag,
   ChevronLeft,
   ChevronRight,
-  MoreVertical,
   ExternalLink,
   Trash2,
   Zap,
-  MessageSquare,
+  FileText,
 } from 'lucide-react';
 import {
   Dialog,
@@ -74,11 +72,7 @@ interface Listing {
   };
 }
 
-interface ModerationQueueProps {
-  autoRefresh?: boolean;
-}
-
-export default function ModerationQueue({ autoRefresh = true }: ModerationQueueProps) {
+export default function ModerationQueue() {
   const { t, locale } = useTranslation();
   
   const [listings, setListings] = useState<Listing[]>([]);
@@ -114,7 +108,7 @@ export default function ModerationQueue({ autoRefresh = true }: ModerationQueueP
         ...(searchQuery && { search: searchQuery }),
       });
 
-      const res = await fetch(`/api/admin/listings?${params}`);
+      const res = await fetch('/api/admin/listings?' + params.toString());
       if (!res.ok) throw new Error('Failed to fetch listings');
       
       const data = await res.json();
@@ -133,14 +127,9 @@ export default function ModerationQueue({ autoRefresh = true }: ModerationQueueP
   useEffect(() => {
     fetchListings();
     
-    // Auto-refresh every 30 seconds if enabled
-    let interval: NodeJS.Timeout;
-    if (autoRefresh) {
-      interval = setInterval(fetchListings, 30000);
-    }
-    
+    const interval = setInterval(fetchListings, 30000);
     return () => clearInterval(interval);
-  }, [fetchListings, autoRefresh]);
+  }, [fetchListings]);
 
   const handleAction = async (listingId: string, action: string, data?: Record<string, unknown>) => {
     try {
@@ -161,11 +150,8 @@ export default function ModerationQueue({ autoRefresh = true }: ModerationQueueP
         throw new Error(errorData.error || 'Action failed');
       }
 
-      // Refresh the list
       await fetchListings();
-      
-      // Show success feedback (could use toast here)
-      console.log(`Action ${action} completed for listing ${listingId}`);
+      console.log('Action ' + action + ' completed for listing ' + listingId);
     } catch (err) {
       console.error('Action error:', err);
       alert(err instanceof Error ? err.message : 'Action failed');
@@ -308,28 +294,22 @@ export default function ModerationQueue({ autoRefresh = true }: ModerationQueueP
               </SelectContent>
             </Select>
 
-            <Button
-              variant="outline"
-              onClick={() => fetchListings()}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 ml-2 ${loading ? 'animate-spin' : ''} />
+            <Button variant="outline" onClick={() => fetchListings()} disabled={loading}>
+              <RefreshCw className={'h-4 w-4 ml-2 ' + (loading ? 'animate-spin' : '')} />
               تحديث
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Listings Table */}
+      {/* Listings */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
             قائمة المراجعة
           </CardTitle>
-          <CardDescription>
-            إدارة ومراجعة الإعلانات المرسلة من المستخدمين
-          </CardDescription>
+          <CardDescription>إدارة ومراجعة الإعلانات المرسلة من المستخدمين</CardDescription>
         </CardHeader>
         <CardContent>
           {error ? (
@@ -352,12 +332,8 @@ export default function ModerationQueue({ autoRefresh = true }: ModerationQueueP
           ) : (
             <div className="space-y-3">
               {listings.map((listing) => (
-                <div
-                  key={listing.id}
-                  className="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                >
+                <div key={listing.id} className="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                    {/* Listing Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start gap-3">
                         <div className="flex-shrink-0 w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
@@ -376,9 +352,7 @@ export default function ModerationQueue({ autoRefresh = true }: ModerationQueueP
                               <span className="flex items-center gap-1">
                                 <User className="h-3 w-3" />
                                 {listing.seller.display_name}
-                                {listing.seller.is_verified && (
-                                  <CheckCircle className="h-3 w-3 text-blue-500" />
-                                )}
+                                {listing.seller.is_verified && <CheckCircle className="h-3 w-3 text-blue-500" />}
                               </span>
                             )}
                             {listing.locationAddress && (
@@ -393,41 +367,23 @@ export default function ModerationQueue({ autoRefresh = true }: ModerationQueueP
                       </div>
                     </div>
 
-                    {/* Price & Status */}
                     <div className="flex items-center gap-4 mt-4 lg:mt-0">
                       <div className="text-right">
-                        <p className="font-bold text-lg text-emerald-600">
-                          {formatPrice(listing.price, listing.currencyCode)}
-                        </p>
+                        <p className="font-bold text-lg text-emerald-600">{formatPrice(listing.price, listing.currencyCode)}</p>
                         {getStatusBadge(listing.status)}
                       </div>
 
-                      {/* Actions */}
                       <div className="flex items-center gap-2">
                         {listing.status === 'pending_review' && (
                           <>
-                            <Button
-                              size="sm"
-                              variant="default"
-                              className="bg-emerald-600 hover:bg-emerald-700"
-                              onClick={() => handleAction(listing.id, 'approve')}
-                              disabled={actionListing === listing.id}
-                            >
-                              {actionListing === listing.id ? (
-                                <RefreshCw className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <CheckCircle className="h-4 w-4 ml-1" />
-                              )}
+                            <Button size="sm" variant="default" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => handleAction(listing.id, 'approve')} disabled={actionLoading === listing.id}>
+                              {actionLoading === listing.id ? <RefreshCw className="h-4 w-4 animate-spin ml-1" /> : <CheckCircle className="h-4 w-4 ml-1" />}
                               قبول
                             </Button>
                             
                             <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
                               <DialogTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => setSelectedListing(listing)}
-                                >
+                                <Button size="sm" variant="destructive" onClick={() => setSelectedListing(listing)}>
                                   <XCircle className="h-4 w-4 ml-1" />
                                   رفض
                                 </Button>
@@ -435,27 +391,12 @@ export default function ModerationQueue({ autoRefresh = true }: ModerationQueueP
                               <DialogContent>
                                 <DialogHeader>
                                   <DialogTitle>رفض الإعلان</DialogTitle>
-                                  <DialogDescription>
-                                    يرجى إدخال سبب رفض هذا الإعلان
-                                  </DialogDescription>
+                                  <DialogDescription>يرجى إدخال سبب رفض هذا الإعلان</DialogDescription>
                                 </DialogHeader>
-                                <Textarea
-                                  placeholder="سبب الرفض..."
-                                  value={rejectReason}
-                                  onChange={(e) => setRejectReason(e.target.value)}
-                                  rows={3}
-                                />
+                                <Textarea placeholder="سبب الرفض..." value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} />
                                 <DialogFooter>
-                                  <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
-                                    إلغاء
-                                  </Button>
-                                  <Button
-                                    variant="destructive"
-                                    onClick={() => handleAction(listing.id!, 'reject', { reason: rejectReason })}
-                                    disabled={!rejectReason.trim()}
-                                  >
-                                    تأكيد الرفض
-                                  </Button>
+                                  <Button variant="outline" onClick={() => setShowRejectDialog(false)}>إلغاء</Button>
+                                  <Button variant="destructive" onClick={() => handleAction(selectedListing?.id || '', 'reject', { reason: rejectReason })} disabled={!rejectReason.trim()}>تأكيد الرفض</Button>
                                 </DialogFooter>
                               </DialogContent>
                             </Dialog>
@@ -464,32 +405,18 @@ export default function ModerationQueue({ autoRefresh = true }: ModerationQueueP
 
                         {listing.status === 'active' && (
                           <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleAction(listing.id, 'feature', { days: 7 })}
-                              disabled={actionListing === listing.id}
-                            >
+                            <Button size="sm" variant="outline" onClick={() => handleAction(listing.id, 'feature', { days: 7 })} disabled={actionLoading === listing.id}>
                               <Zap className="h-4 w-4 ml-1" />
                               تمييز
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleAction(listing.id, 'archive')}
-                              disabled={actionListing === listing.id}
-                            >
+                            <Button size="sm" variant="outline" onClick={() => handleAction(listing.id, 'archive')} disabled={actionLoading === listing.id}>
                               <Archive className="h-4 w-4 ml-1" />
                               أرشفة
                             </Button>
                           </>
                         )}
 
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => window.open(`/listings/${listing.id}`, '_blank')}
-                        >
+                        <Button size="sm" variant="ghost" onClick={() => window.open('/listings/' + listing.id, '_blank')}>
                           <ExternalLink className="h-4 w-4" />
                         </Button>
                       </div>
@@ -507,23 +434,11 @@ export default function ModerationQueue({ autoRefresh = true }: ModerationQueueP
                 عرض {(page - 1) * 20 + 1} - {Math.min(page * 20, totalItems)} من {totalItems} إعلان
               </p>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                >
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
-                <span className="text-sm">
-                  صفحة {page} من {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                >
+                <span className="text-sm">صفحة {page} من {totalPages}</span>
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
               </div>
@@ -532,15 +447,5 @@ export default function ModerationQueue({ autoRefresh = true }: ModerationQueueP
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-// Import FileText icon (was missing)
-function FileText(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-      <polyline points="14 2 14 8 20 8"/>
-    </svg>
   );
 }

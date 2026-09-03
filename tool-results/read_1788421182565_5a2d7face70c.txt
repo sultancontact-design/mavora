@@ -1,0 +1,2002 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState, useCallback } from 'react';
+     4→import Header from '@/components/layout/Header';
+     5→import Footer from '@/components/footer/Footer';
+     6→import HeroSection from '@/components/marketplace/HeroSection';
+     7→import CategoryGrid from '@/components/marketplace/CategoryGrid';
+     8→import CreateListingForm from '@/components/listing/CreateListingForm';
+     9→import ProfilePage from '@/components/profile/ProfilePage';
+    10→import FavoritesPage from '@/components/favorites/FavoritesPage';
+    11→import ConversationsPage from '@/components/messages/ConversationsPage';
+    12→import AdminDashboard from '@/components/admin/AdminDashboard';
+    13→import SellerProfilePage from '@/components/seller/SellerProfilePage';
+    14→import OrganizationPage from '@/components/organization/OrganizationPage';
+    15→import WalletPage from '@/components/wallet/WalletPage';
+    16→import InvoicesPage from '@/components/invoices/InvoicesPage';
+    17→import { useTranslation } from '@/hooks/useTranslation';
+    18→import { useNavigationStore } from '@/stores/navigation';
+    19→import type { Category, Listing, PaginatedResponse, Locale, Country, City, Currency, ListingFieldValue } from '@/lib/types';
+    20→import FilterSidebar from '@/components/marketplace/FilterSidebar';
+    21→
+    22→import {
+    23→  Search,
+    24→  ArrowLeft,
+    25→  Eye,
+    26→  EyeOff,
+    27→  MapPin,
+    28→  Clock,
+    29→  Star,
+    30→  ChevronRight,
+    31→  ChevronDown,
+    32→  X,
+    33→  Loader2,
+    34→  Inbox,
+    35→  Database,
+    36→  CheckCircle2,
+    37→  Shield,
+    38→  Camera,
+    39→  Heart,
+    40→  RefreshCw,
+    41→  ExternalLink,
+    42→  Globe,
+    43→  Zap,
+    44→  AlertCircle,
+    45→  Info,
+    46→  Share2,
+    47→  Flag,
+    48→  Pencil,
+    49→  Trash2,
+    50→  Settings2,
+    51→  Play,
+    52→  // New icons for homepage sections
+    53→  ArrowRight,
+    54→  Users,
+    55→  TrendingUp,
+    56→  Smartphone,
+    57→  Download,
+    58→  Quote,
+    59→  Sparkles,
+    60→  Target,
+    61→  MessageSquare,
+    62→  Gift,
+    63→  Award,
+    64→} from 'lucide-react';
+    65→import { motion } from 'framer-motion';
+    66→import MavoraLogo from '@/components/common/MavoraLogo';
+    67→import ReportDialog from '@/components/common/ReportDialog';
+    68→import ReviewsSection from '@/components/listing/ReviewsSection';
+    69→import { Button } from '@/components/ui/button';
+    70→import { Badge } from '@/components/ui/badge';
+    71→import { Skeleton } from '@/components/ui/skeleton';
+    72→import { Input } from '@/components/ui/input';
+    73→import { Label } from '@/components/ui/label';
+    74→import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+    75→import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+    76→import { getCategoryIcon } from '@/lib/category-icons';
+    77→import { toast } from 'sonner';
+    78→import { useAuthStore } from '@/stores/auth';
+    79→
+    80→// ─── Helpers ────────────────────────────────────────────────────────
+    81→
+    82→function getLocalizedName(item: { name_ar: string; name_fr: string; name_en: string }, locale: Locale): string {
+    83→  switch (locale) {
+    84→    case 'ar': return item.name_ar;
+    85→    case 'fr': return item.name_fr;
+    86→    default: return item.name_en;
+    87→  }
+    88→}
+    89→
+    90→function getVideoEmbedUrl(url: string): string | null {
+    91→  let match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    92→  if (match) return `https://www.youtube.com/embed/${match[1]}`;
+    93→  match = url.match(/vimeo\.com\/(\d+)/);
+    94→  if (match) return `https://player.vimeo.com/video/${match[1]}`;
+    95→  return null;
+    96→}
+    97→
+    98→function timeAgo(dateStr: string, locale: Locale): string {
+    99→  const now = Date.now();
+   100→  const date = new Date(dateStr).getTime();
+   101→  const diffMs = now - date;
+   102→  const minutes = Math.floor(diffMs / 60000);
+   103→  const hours = Math.floor(diffMs / 3600000);
+   104→  const days = Math.floor(diffMs / 86400000);
+   105→  const months = Math.floor(days / 30);
+   106→
+   107→  if (locale === 'ar') {
+   108→    if (minutes < 1) return 'الآن';
+   109→    if (minutes < 60) return `منذ ${minutes} دقيقة`;
+   110→    if (hours < 24) return `منذ ${hours} ساعة`;
+   111→    if (days < 30) return `منذ ${days} يوم`;
+   112→    return `منذ ${months} شهر`;
+   113→  }
+   114→  if (locale === 'fr') {
+   115→    if (minutes < 1) return 'à l\'instant';
+   116→    if (minutes < 60) return `il y a ${minutes} min`;
+   117→    if (hours < 24) return `il y a ${hours}h`;
+   118→    if (days < 30) return `il y a ${days}j`;
+   119→    return `il y a ${months}m`;
+   120→  }
+   121→  if (minutes < 1) return 'just now';
+   122→  if (minutes < 60) return `${minutes}m ago`;
+   123→  if (hours < 24) return `${hours}h ago`;
+   124→  if (days < 30) return `${days}d ago`;
+   125→  return `${months}mo ago`;
+   126→}
+   127→
+   128→// ─── Setup View ─────────────────────────────────────────────────────
+   129→
+   130→function SetupView() {
+   131→  const { t, locale } = useTranslation();
+   132→  const { setDbConfigured, navigateHome } = useNavigationStore();
+   133→  const [checking, setChecking] = useState(false);
+   134→  const [configured, setConfigured] = useState(false);
+   135→
+   136→  // Auto-migration state
+   137→  const [autoOpen, setAutoOpen] = useState(false);
+   138→  const [token, setToken] = useState('');
+   139→  const [showToken, setShowToken] = useState(false);
+   140→  const [migrating, setMigrating] = useState(false);
+   141→  const [migrateSuccess, setMigrateSuccess] = useState(false);
+   142→  const [migrateError, setMigrateError] = useState('');
+   143→
+   144→  const handleCheck = useCallback(async () => {
+   145→    setChecking(true);
+   146→    try {
+   147→      const res = await fetch('/api/setup/check');
+   148→      const data = await res.json();
+   149→      if (data.configured) {
+   150→        setConfigured(true);
+   151→        setDbConfigured(true);
+   152→        setTimeout(() => navigateHome(), 1500);
+   153→      }
+   154→    } catch {
+   155→      // still not configured
+   156→    } finally {
+   157→      setChecking(false);
+   158→    }
+   159→  }, [setDbConfigured, navigateHome]);
+   160→
+   161→  const handleAutoMigrate = useCallback(async () => {
+   162→    if (!token.trim()) {
+   163→      setMigrateError(t('setup.enter_token_first'));
+   164→      return;
+   165→    }
+   166→    setMigrating(true);
+   167→    setMigrateError('');
+   168→    setMigrateSuccess(false);
+   169→    try {
+   170→      const res = await fetch('/api/setup/migrate', {
+   171→        method: 'POST',
+   172→        headers: { 'Content-Type': 'application/json' },
+   173→        body: JSON.stringify({ access_token: token.trim() }),
+   174→      });
+   175→      const data = await res.json();
+   176→      if (res.ok && data.success) {
+   177→        setMigrateSuccess(true);
+   178→        // Auto-trigger the check after successful migration
+   179→        setTimeout(() => handleCheck(), 1000);
+   180→      } else {
+   181→        setMigrateError(data.error || data.message || t('setup.migrate_error'));
+   182→      }
+   183→    } catch {
+   184→      setMigrateError(t('setup.migrate_error'));
+   185→    } finally {
+   186→      setMigrating(false);
+   187→    }
+   188→  }, [token, t, handleCheck]);
+   189→
+   190→  const features = [
+   191→    { icon: Shield, key: 'setup.feature_auth' },
+   192→    { icon: Search, key: 'setup.feature_listings' },
+   193→    { icon: Globe, key: 'setup.feature_categories' },
+   194→    { icon: Camera, key: 'setup.feature_media' },
+   195→    { icon: Heart, key: 'setup.feature_favorites' },
+   196→  ];
+   197→
+   198→  return (
+   199→    <div className="flex flex-1 items-center justify-center px-4 py-12 md:py-20">
+   200→      <div className="w-full max-w-2xl">
+   201→        {/* Logo */}
+   202→        <motion.div
+   203→          className="flex justify-center mb-8"
+   204→          initial={{ opacity: 0, y: -20 }}
+   205→          animate={{ opacity: 1, y: 0 }}
+   206→          transition={{ duration: 0.5 }}
+   207→        >
+   208→          <MavoraLogo size="lg" className="justify-center" />
+   209→        </motion.div>
+   210→
+   211→        {/* Welcome heading */}
+   212→        <motion.div
+   213→          className="text-center mb-8"
+   214→          initial={{ opacity: 0, y: -10 }}
+   215→          animate={{ opacity: 1, y: 0 }}
+   216→          transition={{ duration: 0.5, delay: 0.1 }}
+   217→        >
+   218→          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
+   219→            {t('setup.welcome_title')}
+   220→          </h1>
+   221→          <p className="text-lg text-muted-foreground">
+   222→            {t('setup.setup_subtitle')}
+   223→          </p>
+   224→        </motion.div>
+   225→
+   226→        {/* Main card */}
+   227→        <motion.div
+   228→          className="rounded-2xl border border-border bg-white shadow-lg overflow-hidden"
+   229→          initial={{ opacity: 0, y: 20 }}
+   230→          animate={{ opacity: 1, y: 0 }}
+   231→          transition={{ duration: 0.6, delay: 0.2 }}
+   232→        >
+   233→          {/* Card header with icon */}
+   234→          <div className="relative overflow-hidden px-6 py-8 md:px-10 md:py-10">
+   235→            {/* Decorative gradient blobs */}
+   236→            <div className="pointer-events-none absolute -top-20 -start-20 h-40 w-40 rounded-full bg-emerald-500/10 blur-3xl" />
+   237→            <div className="pointer-events-none absolute -bottom-16 -end-16 h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
+   238→
+   239→            <div className="relative flex flex-col items-center text-center">
+   240→              {/* Large styled Database icon */}
+   241→              <div className="mb-5 flex size-20 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 ring-1 ring-emerald-500/20">
+   242→                <Database className="size-10 text-emerald-500" />
+   243→              </div>
+   244→
+   245→              <h2 className="text-xl md:text-2xl font-bold text-foreground mb-3">
+   246→                {locale === 'ar' ? 'تهيئة المنصة' : locale === 'fr' ? 'Configuration de la plateforme' : 'Platform Setup'}
+   247→              </h2>
+   248→
+   249→              <p className="max-w-lg text-sm leading-relaxed text-muted-foreground">
+   250→                {t('setup.description')}
+   251→              </p>
+   252→            </div>
+   253→          </div>
+   254→
+   255→          {/* Divider */}
+   256→          <div className="h-px bg-border" />
+   257→
+   258→          {/* Auto-migration collapsible section */}
+   259→          <div className="px-6 py-5 md:px-10">
+   260→            <Collapsible open={autoOpen} onOpenChange={setAutoOpen}>
+   261→              <CollapsibleTrigger asChild>
+   262→                <button
+   263→                  className="flex w-full items-center justify-between gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-start transition-all hover:bg-emerald-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+   264→                >
+   265→                  <div className="flex items-center gap-3">
+   266→                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15">
+   267→                      <Zap className="size-4 text-emerald-500" />
+   268→                    </div>
+   269→                    <div>
+   270→                      <p className="text-sm font-semibold text-foreground">
+   271→                        {t('setup.auto_migrate_title')}
+   272→                      </p>
+   273→                      <p className="text-xs text-muted-foreground mt-0.5">
+   274→                        {t('setup.auto_migrate_desc')}
+   275→                      </p>
+   276→                    </div>
+   277→                  </div>
+   278→                  <ChevronDown
+   279→                    className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ${autoOpen ? 'rotate-180' : ''}`}
+   280→                  />
+   281→                </button>
+   282→              </CollapsibleTrigger>
+   283→
+   284→              <CollapsibleContent className="mt-3">
+   285→                <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-4">
+   286→                  {/* Token input */}
+   287→                  <div className="space-y-2">
+   288→                    <Label htmlFor="access-token" className="text-sm font-medium text-foreground">
+   289→                      {t('setup.token_label')}
+   290→                    </Label>
+   291→                    <div className="relative">
+   292→                      <Input
+   293→                        id="access-token"
+   294→                        type={showToken ? 'text' : 'password'}
+   295→                        placeholder={t('setup.token_placeholder')}
+   296→                        value={token}
+   297→                        onChange={(e) => { setToken(e.target.value); setMigrateError(''); }}
+   298→                        disabled={migrating}
+   299→                        className="pe-10"
+   300→                      />
+   301→                      <button
+   302→                        type="button"
+   303→                        onClick={() => setShowToken(!showToken)}
+   304→                        className="absolute end-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+   305→                        tabIndex={-1}
+   306→                        aria-label={showToken ? t('setup.hide_token') : t('setup.show_token')}
+   307→                      >
+   308→                        {showToken ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+   309→                      </button>
+   310→                    </div>
+   311→                  </div>
+   312→
+   313→                  {/* How to get token info */}
+   314→                  <Alert className="border-blue-200/60 bg-blue-50/50">
+   315→                    <Info className="size-4 text-blue-500" />
+   316→                    <AlertTitle className="text-xs font-semibold text-blue-700">
+   317→                      {t('setup.get_token')}
+   318→                    </AlertTitle>
+   319→                    <AlertDescription className="text-xs text-blue-600">
+   320→                      {t('setup.get_token_steps')}
+   321→                    </AlertDescription>
+   322→                  </Alert>
+   323→
+   324→                  {/* Error display */}
+   325→                  {migrateError && (
+   326→                    <motion.div
+   327→                      initial={{ opacity: 0, y: -5 }}
+   328→                      animate={{ opacity: 1, y: 0 }}
+   329→                    >
+   330→                      <Alert variant="destructive">
+   331→                        <AlertCircle className="size-4" />
+   332→                        <AlertTitle className="text-xs font-semibold">
+   333→                          {t('setup.migrate_error')}
+   334→                        </AlertTitle>
+   335→                        <AlertDescription className="text-xs">
+   336→                          {migrateError}
+   337→                        </AlertDescription>
+   338→                      </Alert>
+   339→                    </motion.div>
+   340→                  )}
+   341→
+   342→                  {/* Success display */}
+   343→                  {migrateSuccess && (
+   344→                    <motion.div
+   345→                      initial={{ opacity: 0, y: -5 }}
+   346→                      animate={{ opacity: 1, y: 0 }}
+   347→                    >
+   348→                      <Alert className="border-emerald-200/60 bg-emerald-50/50">
+   349→                        <CheckCircle2 className="size-4 text-emerald-500" />
+   350→                        <AlertDescription className="text-xs text-emerald-700 font-medium">
+   351→                          {t('setup.migrate_success')}
+   352→                        </AlertDescription>
+   353→                      </Alert>
+   354→                    </motion.div>
+   355→                  )}
+   356→
+   357→                  {/* Run auto migration button */}
+   358→                  <button
+   359→                    onClick={handleAutoMigrate}
+   360→                    disabled={migrating || configured}
+   361→                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-600 hover:shadow-md active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+   362→                  >
+   363→                    {migrating ? (
+   364→                      <>
+   365→                        <Loader2 className="size-4 animate-spin" />
+   366→                        {t('setup.running')}
+   367→                      </>
+   368→                    ) : (
+   369→                      <>
+   370→                        <Zap className="size-4" />
+   371→                        {t('setup.run_auto')}
+   372→                      </>
+   373→                    )}
+   374→                  </button>
+   375→                </div>
+   376→              </CollapsibleContent>
+   377→            </Collapsible>
+   378→          </div>
+   379→
+   380→          {/* Divider */}
+   381→          <div className="h-px bg-border" />
+   382→
+   383→          {/* Manual migration fallback */}
+   384→          <div className="px-6 py-5 md:px-10">
+   385→            <div className="flex items-center gap-2 mb-3">
+   386→              <div className="h-px flex-1 bg-border" />
+   387→              <span className="text-xs font-medium text-muted-foreground">
+   388→                {t('setup.manual_fallback')}
+   389→              </span>
+   390→              <div className="h-px flex-1 bg-border" />
+   391→            </div>
+   392→            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+   393→              {t('setup.open_dashboard')}
+   394→            </p>
+   395→            <div className="rounded-lg bg-muted/60 px-4 py-3 text-sm text-muted-foreground leading-relaxed">
+   396→              {t('setup.run_sql_steps')}
+   397→            </div>
+   398→          </div>
+   399→
+   400→          {/* Divider */}
+   401→          <div className="h-px bg-border" />
+   402→
+   403→          {/* Features list */}
+   404→          <div className="px-6 py-6 md:px-10">
+   405→            <p className="text-sm font-semibold text-foreground mb-4">
+   406→              {t('setup.features')}
+   407→            </p>
+   408→            <div className="grid gap-3 sm:grid-cols-2">
+   409→              {features.map((feat, idx) => (
+   410→                <motion.div
+   411→                  key={feat.key}
+   412→                  className="flex items-center gap-3 rounded-lg bg-muted/40 px-4 py-3"
+   413→                  initial={{ opacity: 0, x: locale === 'ar' ? 20 : -20 }}
+   414→                  animate={{ opacity: 1, x: 0 }}
+   415→                  transition={{ duration: 0.4, delay: 0.35 + idx * 0.08 }}
+   416→                >
+   417→                  <feat.icon className="size-4 shrink-0 text-emerald-500" />
+   418→                  <span className="text-sm text-foreground">{t(feat.key)}</span>
+   419→                </motion.div>
+   420→              ))}
+   421→            </div>
+   422→          </div>
+   423→
+   424→          {/* Divider */}
+   425→          <div className="h-px bg-border" />
+   426→
+   427→          {/* Action buttons */}
+   428→          <div className="px-6 py-6 md:px-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+   429→            <a
+   430→              href="https://supabase.com/dashboard/project/kyanecjjautqmuowbtvy/sql"
+   431→              target="_blank"
+   432→              rel="noopener noreferrer"
+   433→              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-600 hover:shadow-md active:scale-[0.98]"
+   434→            >
+   435→              {t('setup.run_migration')}
+   436→              <ExternalLink className="size-4" />
+   437→            </a>
+   438→
+   439→            <button
+   440→              onClick={handleCheck}
+   441→              disabled={checking || configured}
+   442→              className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-white px-6 py-3 text-sm font-semibold text-foreground shadow-sm transition-all hover:bg-muted/60 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+   443→            >
+   444→              {checking ? (
+   445→                <>
+   446→                  <Loader2 className="size-4 animate-spin" />
+   447→                  {t('setup.checking')}
+   448→                </>
+   449→              ) : configured ? (
+   450→                <>
+   451→                  <CheckCircle2 className="size-4 text-emerald-500" />
+   452→                  {t('setup.configured_msg')}
+   453→                </>
+   454→              ) : (
+   455→                <>
+   456→                  <RefreshCw className="size-4" />
+   457→                  {t('setup.check_status')}
+   458→                </>
+   459→              )}
+   460→            </button>
+   461→          </div>
+   462→        </motion.div>
+   463→
+   464→        {/* Subtle branding footer inside setup */}
+   465→        <motion.p
+   466→          className="mt-6 text-center text-xs text-muted-foreground/60"
+   467→          initial={{ opacity: 0 }}
+   468→          animate={{ opacity: 1 }}
+   469→          transition={{ duration: 0.6, delay: 0.8 }}
+   470→        >
+   471→          MAVORA — {t('app.tagline')}
+   472→        </motion.p>
+   473→      </div>
+   474→    </div>
+   475→  );
+   476→}
+   477→
+   478→// ─── Home View ──────────────────────────────────────────────────────
+   479→
+   480→function HomeView({
+   481→  categories,
+   482→  categoriesLoading,
+   483→  onSearch,
+   484→  onSelectCategory,
+   485→  onSelectListing,
+   486→}: {
+   487→  categories: Category[] | null;
+   488→  categoriesLoading: boolean;
+   489→  onSearch: (query: string) => void;
+   490→  onSelectCategory: (id: string) => void;
+   491→  onSelectListing: (id: string) => void;
+   492→}) {
+   493→  const { t, locale } = useTranslation();
+   494→  const [listings, setListings] = useState<PaginatedResponse<Listing> | null>(null);
+   495→  const [listingsLoading, setListingsLoading] = useState(true);
+   496→  const isRtl = locale === 'ar';
+   497→
+   498→  useEffect(() => {
+   499→    async function fetchListings() {
+   500→      try {
+   501→        const params = new URLSearchParams({
+   502→          sort_by: 'newest',
+   503→          page: '1',
+   504→          per_page: '8',
+   505→        });
+   506→        const res = await fetch(`/api/listings?${params}`);
+   507→        if (res.ok) {
+   508→          const data = await res.json();
+   509→          setListings(data);
+   510→        }
+   511→      } catch {
+   512→        // Silently fail — just show empty state
+   513→      } finally {
+   514→        setListingsLoading(false);
+   515→      }
+   516→    }
+   517→    fetchListings();
+   518→  }, []);
+   519→
+   520→  return (
+   521→    <>
+   522→      {/* Hidden but accessible SEO heading for search engines */}
+   523→      <h1 className="sr-only">
+   524→        MAVORA — سوقك الإلكتروني الموثوق في المغرب وشمال إفريقيا. اشترِ وبِع السيارات والعقارات والإلكترونيات والأزياء والمزيد.
+   525→      </h1>
+   526→      
+   527→      {/* Hero Section with Search */}
+   528→      <HeroSection onSearch={onSearch} />
+   529→      
+   530→      {/* Categories Grid */}
+   531→      <CategoryGrid
+   532→        categories={categories}
+   533→        isLoading={categoriesLoading}
+   534→        onSelectCategory={onSelectCategory}
+   535→      />
+   536→
+   537→      {/* Featured Listings Section */}
+   538→      <section id="featured" className="bg-muted/30 py-14 lg:py-20">
+   539→        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   540→          {/* Section Header */}
+   541→          <div className="mb-10 flex items-end justify-between">
+   542→            <div>
+   543→              <Badge variant="secondary" className="mb-3 bg-gold/10 text-gold hover:bg-gold/15">
+   544→                <Sparkles className="me-1.5 size-3" />
+   545→                {t('common.featured')}
+   546→              </Badge>
+   547→              <h2 className="text-h2 text-foreground">
+   548→                {t('listings.featured')}
+   549→              </h2>
+   550→              <p className="mt-2 max-w-lg text-sm text-muted-foreground">
+   551→                {locale === 'ar' 
+   552→                  ? 'إعلانات مميزة من أفضل البائعين في المنطقة'
+   553→                  : locale === 'fr'
+   554→                    ? 'Annonces en vedette des meilleurs vendeurs de la région'
+   555→                    : 'Featured listings from top sellers in the region'}
+   556→              </p>
+   557→            </div>
+   558→            <Button 
+   559→              variant="ghost" 
+   560→              className="hidden gap-1.5 text-emerald sm:inline-flex"
+   561→              onClick={() => window.location.hash = '#all-listings'}
+   562→            >
+   563→              {t('common.view_all')}
+   564→              <ArrowRight className={`size-4 ${isRtl ? 'rotate-180' : ''}`} />
+   565→            </Button>
+   566→          </div>
+   567→
+   568→          {/* Featured Listings Grid */}
+   569→          {listingsLoading ? (
+   570→            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+   571→              {Array.from({ length: 4 }).map((_, i) => (
+   572→                <div key={i} className="overflow-hidden rounded-2xl border border-border bg-card">
+   573→                  <Skeleton className="aspect-[4/3] w-full" />
+   574→                  <div className="p-4">
+   575→                    <Skeleton className="mb-2 h-5 w-3/4" />
+   576→                    <Skeleton className="mb-2 h-4 w-1/2" />
+   577→                    <Skeleton className="h-4 w-1/3" />
+   578→                  </div>
+   579→                </div>
+   580→              ))}
+   581→            </div>
+   582→          ) : listings && listings.data.length > 0 ? (
+   583→            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+   584→              {listings.data.slice(0, 4).map((listing) => (
+   585→                <ListingCard
+   586→                  key={listing.id}
+   587→                  listing={listing}
+   588→                  onClick={() => onSelectListing(listing.id)}
+   589→                />
+   590→              ))}
+   591→            </div>
+   592→          ) : (
+   593→            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-16">
+   594→              <Inbox className="mb-3 size-12 text-muted-foreground/40" />
+   595→              <p className="text-sm text-muted-foreground">{t('listings.no_listings')}</p>
+   596→              <p className="mt-1 text-xs text-muted-foreground/70">{t('listings.no_listings_subtitle')}</p>
+   597→            </div>
+   598→          )}
+   599→        </div>
+   600→      </section>
+   601→
+   602→      {/* How It Works Section */}
+   603→      <section id="about" className="py-14 lg:py-20">
+   604→        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   605→          {/* Section Header */}
+   606→          <div className="mb-12 text-center">
+   607→            <Badge variant="secondary" className="mb-4 bg-primary/10 text-primary hover:bg-primary/15">
+   608→              <Target className="me-1.5 size-3" />
+   609→              {locale === 'ar' ? 'كيف يعمل' : locale === 'fr' ? 'Comment ça marche' : 'How It Works'}
+   610→            </Badge>
+   611→            <h2 className="text-h2 mb-3 text-foreground">
+   612→              {locale === 'ar' ? 'ابدأ في دقائق معدودة' : locale === 'fr' ? 'Commencez en quelques minutes' : 'Get Started in Minutes'}
+   613→            </h2>
+   614→            <p className="mx-auto max-w-xl text-muted-foreground">
+   615→              {locale === 'ar'
+   616→                ? 'ثلاث خطوات بسيطة للبيع أو الشراء على مافورا'
+   617→                : locale === 'fr'
+   618→                  ? 'Trois étapes simples pour acheter ou vendre sur MAVORA'
+   619→                  : 'Three simple steps to buy or sell on MAVORA'}
+   620→            </p>
+   621→          </div>
+   622→
+   623→          {/* Steps Grid */}
+   624→          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+   625→            {/* Step 1 */}
+   626→            <div className="group relative text-center">
+   627→              <div className="mx-auto mb-6 flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald/15 to-emerald/5 text-emerald transition-all group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-emerald/20">
+   628→                <Search className="size-7" strokeWidth={1.5} />
+   629→              </div>
+   630→              <div className="mb-2 inline-flex items-center justify-center size-8 rounded-full bg-emerald/10 text-xs font-bold text-emerald">
+   631→                1
+   632→              </div>
+   633→              <h3 className="mb-2 text-lg font-semibold text-foreground">
+   634→                {locale === 'ar' ? 'ابحث' : locale === 'fr' ? 'Rechercher' : 'Search'}
+   635→              </h3>
+   636→              <p className="text-sm text-muted-foreground">
+   637→                {locale === 'ar'
+   638→                  ? 'ابحث عن ما تريده من بين آلاف الإعلانات'
+   639→                  : locale === 'fr'
+   640→                    ? 'Cherchez ce que vous voulez parmi des milliers d\'annonces'
+   641→                    : 'Browse thousands of listings to find what you need'}
+   642→              </p>
+   643→            </div>
+   644→
+   645→            {/* Step 2 */}
+   646→            <div className="group relative text-center">
+   647→              <div className="mx-auto mb-6 flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-gold/15 to-gold/5 text-gold transition-all group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-gold/20">
+   648→                <MessageSquare className="size-7" strokeWidth={1.5} />
+   649→              </div>
+   650→              <div className="mb-2 inline-flex items-center justify-center size-8 rounded-full bg-gold/10 text-xs font-bold text-gold">
+   651→                2
+   652→              </div>
+   653→              <h3 className="mb-2 text-lg font-semibold text-foreground">
+   654→                {locale === 'ar' ? 'تواصل' : locale === 'fr' ? 'Contacter' : 'Connect'}
+   655→              </h3>
+   656→              <p className="text-sm text-muted-foreground">
+   657→                {locale === 'ar'
+   658→                  ? 'تواصل مباشرة مع البائع واتفق على التفاصيل'
+   659→                  : locale === 'fr'
+   660→                    ? 'Contactez directement le vendeur et convenez des détails'
+   661→                    : 'Contact sellers directly and agree on details'}
+   662→              </p>
+   663→            </div>
+   664→
+   665→            {/* Step 3 */}
+   666→            <div className="group relative text-center">
+   667→              <div className="mx-auto mb-6 flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 text-primary transition-all group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-primary/20">
+   668→                <CheckCircle2 className="size-7" strokeWidth={1.5} />
+   669→              </div>
+   670→              <div className="mb-2 inline-flex items-center justify-center size-8 rounded-full bg-primary/10 text-xs font-bold text-primary">
+   671→                3
+   672→              </div>
+   673→              <h3 className="mb-2 text-lg font-semibold text-foreground">
+   674→                {locale === 'ar' ? 'تداول' : locale === 'fr' ? 'Échanger' : 'Trade'}
+   675→              </h3>
+   676→              <p className="text-sm text-muted-foreground">
+   677→                {locale === 'ar'
+   678→                  ? 'أتمم الصفقة بأمان واستلم مشترياتك'
+   679→                  : locale === 'fr'
+   680→                    ? 'Finalisez la transaction en toute sécurité et recevez vos achats'
+   681→                    : 'Complete the deal safely and receive your items'}
+   682→              </p>
+   683→            </div>
+   684→          </div>
+   685→        </div>
+   686→      </section>
+   687→
+   688→      {/* Statistics Section */}
+   689→      <section className="relative overflow-hidden bg-primary py-14 lg:py-20">
+   690→        {/* Background Pattern */}
+   691→        <div className="pointer-events-none absolute inset-0 opacity-5">
+   692→          <div className="absolute inset-0" style={{
+   693→            backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
+   694→            backgroundSize: '24px 24px',
+   695→          }} />
+   696→        </div>
+   697→        
+   698→        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   699→          <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+   700→            {/* Stat 1 */}
+   701→            <div className="text-center">
+   702→              <div className="mb-2 text-4xl font-bold text-white md:text-5xl">100K+</div>
+   703→              <div className="text-sm text-white/70">
+   704→                {locale === 'ar' ? 'إعلان نشط' : locale === 'fr' ? 'Annonces actives' : 'Active Listings'}
+   705→              </div>
+   706→            </div>
+   707→            
+   708→            {/* Stat 2 */}
+   709→            <div className="text-center">
+   710→              <div className="mb-2 text-4xl font-bold text-white md:text-5xl">50K+</div>
+   711→              <div className="text-sm text-white/70">
+   712→                {locale === 'ar' ? 'مستخدم مسجل' : locale === 'fr' ? 'Utilisateurs inscrits' : 'Registered Users'}
+   713→              </div>
+   714→            </div>
+   715→            
+   716→            {/* Stat 3 */}
+   717→            <div className="text-center">
+   718→              <div className="mb-2 text-4xl font-bold text-white md:text-5xl">6+</div>
+   719→              <div className="text-sm text-white/70">
+   720→                {locale === 'ar' ? 'دول مدعومة' : locale === 'fr' ? 'Pays supportés' : 'Countries Supported'}
+   721→              </div>
+   722→            </div>
+   723→            
+   724→            {/* Stat 4 */}
+   725→            <div className="text-center">
+   726→              <div className="mb-2 text-4xl font-bold text-emerald md:text-5xl">98%</div>
+   727→              <div className="text-sm text-white/70">
+   728→                {locale === 'ar' ? 'رضا العملاء' : locale === 'fr' ? 'Satisfaction client' : 'Customer Satisfaction'}
+   729→              </div>
+   730→            </div>
+   731→          </div>
+   732→        </div>
+   733→      </section>
+   734→
+   735→      {/* Testimonials Section */}
+   736→      <section className="py-14 lg:py-20">
+   737→        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   738→          {/* Section Header */}
+   739→          <div className="mb-12 text-center">
+   740→            <Badge variant="secondary" className="mb-4 bg-emerald/10 text-emerald hover:bg-emerald/15">
+   741→              <Quote className="me-1.5 size-3" />
+   742→              {locale === 'ar' ? 'آراء المستخدمين' : locale === 'fr' ? 'Témoignages' : 'Testimonials'}
+   743→            </Badge>
+   744→            <h2 className="text-h2 mb-3 text-foreground">
+   745→              {locale === 'ar' ? 'ماذا يقول عملاؤنا' : locale === 'fr' ? 'Que disent nos clients' : 'What Our Users Say'}
+   746→            </h2>
+   747→          </div>
+   748→
+   749→          {/* Testimonials Grid */}
+   750→          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+   751→            {/* Testimonial 1 */}
+   752→            <div className="rounded-2xl border border-border bg-card p-6 transition-all hover:border-emerald/30 hover:shadow-lg">
+   753→              <div className="mb-4 flex gap-1">
+   754→                {[...Array(5)].map((_, i) => (
+   755→                  <Star key={i} className="size-4 fill-gold text-gold" />
+   756→                ))}
+   757→              </div>
+   758→              <Quote className="mb-4 size-8 text-emerald/20" />
+   759→              <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
+   760→                {locale === 'ar'
+   761→                  ? 'مافورا غيرت طريقة بيعي للمنتجات. سهلة الاستخدام ووصلني بعملاء كثيرين.'
+   762→                  : locale === 'fr'
+   763→                    ? 'MAVORA a changé ma façon de vendre. Facile à utiliser et m\'a connecté à de nombreux clients.'
+   764→                    : 'MAVORA changed how I sell products. Easy to use and connected me with many customers.'}
+   765→              </p>
+   766→              <div className="flex items-center gap-3">
+   767→                <div className="flex size-10 items-center justify-center rounded-full bg-emerald/10 text-emerald font-semibold">
+   768→                  A
+   769→                </div>
+   770→                <div>
+   771→                  <p className="text-sm font-semibold text-foreground">Ahmed M.</p>
+   772→                  <p className="text-xs text-muted-foreground">Casablanca</p>
+   773→                </div>
+   774→              </div>
+   775→            </div>
+   776→
+   777→            {/* Testimonial 2 */}
+   778→            <div className="rounded-2xl border border-border bg-card p-6 transition-all hover:border-emerald/30 hover:shadow-lg">
+   779→              <div className="mb-4 flex gap-1">
+   780→                {[...Array(5)].map((_, i) => (
+   781→                  <Star key={i} className="size-4 fill-gold text-gold" />
+   782→                ))}
+   783→              </div>
+   784→              <Quote className="mb-4 size-8 text-emerald/20" />
+   785→              <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
+   786→                {locale === 'ar'
+   787→                  ? 'وجدت سيارتي أحلام خلال أسبوع فقط! الأسعار هنا أفضل بكثير من الأماكن الأخرى.'
+   788→                  : locale === 'fr'
+   789→                    ? 'J\'ai trouvé ma voiture de rêve en seulement une semaine ! Les prix sont bien meilleurs qu\'ailleurs.'
+   790→                    : 'Found my dream car in just a week! Prices here are much better than elsewhere.'}
+   791→              </p>
+   792→              <div className="flex items-center gap-3">
+   793→                <div className="flex size-10 items-center justify-center rounded-full bg-gold/10 text-gold font-semibold">
+   794→                  S
+   795→                </div>
+   796→                <div>
+   797→                  <p className="text-sm font-semibold text-foreground">Sarah K.</p>
+   798→                  <p className="text-xs text-muted-foreground">Rabat</p>
+   799→                </div>
+   800→              </div>
+   801→            </div>
+   802→
+   803→            {/* Testimonial 3 */}
+   804→            <div className="rounded-2xl border border-border bg-card p-6 transition-all hover:border-emerald/30 hover:shadow-lg">
+   805→              <div className="mb-4 flex gap-1">
+   806→                {[...Array(5)].map((_, i) => (
+   807→                  <Star key={i} className="size-4 fill-gold text-gold" />
+   808→                ))}
+   809→              </div>
+   810→              <Quote className="mb-4 size-8 text-emerald/20" />
+   811→              <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
+   812→                {locale === 'ar'
+   813→                  ? 'منصة رائعة للأعمال الصغيرة. زادت مبيعاتي بنسبة 200% منذ انضمامي.'
+   814→                  : locale === 'fr'
+   815→                    ? 'Une plateforme incroyable pour les petites entreprises. Mes ventes ont augmenté de 200%.'
+   816→                    : 'Amazing platform for small businesses. My sales increased by 200%.'}
+   817→              </p>
+   818→              <div className="flex items-center gap-3">
+   819→                <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold">
+   820→                  M
+   821→                </div>
+   822→                <div>
+   823→                  <p className="text-sm font-semibold text-foreground">Mohammed R.</p>
+   824→                  <p className="text-xs text-muted-foreground">Marrakech</p>
+   825→                </div>
+   826→              </div>
+   827→            </div>
+   828→          </div>
+   829→        </div>
+   830→      </section>
+   831→
+   832→      {/* Download App CTA Section */}
+   833→      <section className="overflow-hidden bg-gradient-to-br from-emerald to-emerald-dark py-14 lg:py-20">
+   834→        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   835→          <div className="items-center gap-12 lg:flex">
+   836→            {/* Content */}
+   837→            <div className="flex-1 text-center lg:text-start">
+   838→              <Badge className="mb-4 bg-white/20 text-white hover:bg-white/30">
+   839→                <Smartphone className="me-1.5 size-3" />
+   840→                {locale === 'ar' ? 'تطبيق الموبايل' : locale === 'fr' ? 'Application mobile' : 'Mobile App'}
+   841→              </Badge>
+   842→              <h2 className="mb-4 text-3xl font-bold text-white md:text-4xl">
+   843→                {locale === 'ar'
+   844→                  ? 'حمّل تطبيق مافورا الآن'
+   845→                  : locale === 'fr'
+   846→                    ? 'Téléchargez l\'application MAVORA'
+   847→                    : 'Download the MAVORA App'}
+   848→              </h2>
+   849→              <p className="mb-8 text-lg text-white/80">
+   850→                {locale === 'ar'
+   851→                  ? 'تسوق وأبعث في أي وقت ومن أي مكان. تجربة سلسة على جوالك.'
+   852→                  : locale === 'fr'
+   853→                    ? 'Achetez et vendez à tout moment, de n\'importe où. Une expérience fluide sur mobile.'
+   854→                    : 'Shop and sell anytime, anywhere. A seamless experience on your phone.'}
+   855→              </p>
+   856→              
+   857→              {/* App Store Buttons */}
+   858→              <div className="flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
+   859→                <button className="inline-flex items-center gap-3 rounded-xl bg-black/20 px-6 py-3 text-left transition-all hover:bg-black/30">
+   860→                  <svg className="size-10 text-white" viewBox="0 0 24 24" fill="currentColor">
+   861→                    <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+   862→                  </svg>
+   863→                  <div>
+   864→                    <div className="text-[10px] text-white/70">{locale === 'fr' ? 'Télécharger sur' : 'Download on the'}</div>
+   865→                    <div className="text-base font-semibold text-white">App Store</div>
+   866→                  </div>
+   867→                </button>
+   868→                
+   869→                <button className="inline-flex items-center gap-3 rounded-xl bg-black/20 px-6 py-3 text-left transition-all hover:bg-black/30">
+   870→                  <svg className="size-10 text-white" viewBox="0 0 24 24" fill="currentColor">
+   871→                    <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.198l2.807 1.626a1 1 0 010 1.73l-2.808 1.626L15.206 12l2.492-2.491zM5.864 2.658L16.8 8.99l-2.302 2.302L5.864 2.658z"/>
+   872→                  </svg>
+   873→                  <div>
+   874→                    <div className="text-[10px] text-white/70">{locale === 'fr' ? 'Disponible sur' : 'GET IT ON'}</div>
+   875→                    <div className="text-base font-semibold text-white">Google Play</div>
+   876→                  </div>
+   877→                </button>
+   878→              </div>
+   879→            </div>
+   880→            
+   881→            {/* Phone App Preview Illustration - Decorative Only */}
+   882→            <div className="hidden lg:block flex-1">
+   883→              <div className="relative mx-auto w-72">
+   884→                <div className="rounded-[3rem] border-4 border-white/20 bg-gradient-to-b from-white/10 to-transparent p-3 shadow-2xl">
+   885→                  <div className="aspect-[9/19] rounded-[2.5rem] bg-gradient-to-b from-primary to-primary-dark p-4">
+   886→                    <div className="flex h-full flex-col">
+   887→                      {/* App Header Illustration */}
+   888→                      <div className="mb-4 flex items-center gap-2">
+   889→                        <div className="size-8 rounded-lg bg-emerald/20" />
+   890→                        <div className="h-4 w-20 rounded bg-white/20" />
+   891→                      </div>
+   892→                      {/* Search Bar Illustration */}
+   893→                      <div className="mb-4 h-10 rounded-full bg-white/10" />
+   894→                      {/* Listing Cards Illustration */}
+   895→                      <div className="space-y-3">
+   896→                        <div className="flex gap-3 rounded-xl bg-white/10 p-3">
+   897→                          <div className="size-16 rounded-lg bg-white/10" />
+   898→                          <div class="flex-1 space-y-2">
+   899→                            <div className="h-4 w-3/4 rounded bg-white/20" />
+   900→                            <div className="h-3 w-1/2 rounded bg-white/10" />
+   901→                          </div>
+   902→                        </div>
+   903→                        <div className="flex gap-3 rounded-xl bg-white/10 p-3">
+   904→                          <div className="size-16 rounded-lg bg-white/10" />
+   905→                          <div class="flex-1 space-y-2">
+   906→                            <div className="h-4 w-2/3 rounded bg-white/20" />
+   907→                            <div className="h-3 w-1/2 rounded bg-white/10" />
+   908→                          </div>
+   909→                        </div>
+   910→                        <div className="flex gap-3 rounded-xl bg-white/10 p-3">
+   911→                          <div className="size-16 rounded-lg bg-white/10" />
+   912→                          <div class="flex-1 space-y-2">
+   913→                            <div className="h-4 w-4/5 rounded bg-white/20" />
+   914→                            <div className="h-3 w-2/5 rounded bg-white/10" />
+   915→                          </div>
+   916→                        </div>
+   917→                      </div>
+   918→                    </div>
+   919→                  </div>
+   920→                </div>
+   921→                {/* Decorative Elements */}
+   922→                <div className="absolute -top-4 -right-4 size-20 rounded-full bg-gold/20 blur-2xl" />
+   923→                <div className="absolute -bottom-4 -left-4 size-20 rounded-full bg-emerald/20 blur-2xl" />
+   924→              </div>
+   925→            </div>
+   926→          </div>
+   927→        </div>
+   928→      </section>
+   929→
+   930→      {/* Final CTA Section */}
+   931→      <section className="py-14 lg:py-20">
+   932→        <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+   933→          <div className="rounded-3xl bg-gradient-to-br from-primary via-primary to-navy-dark p-10 md:p-16">
+   934→            <Gift className="mx-auto mb-6 size-14 text-gold" />
+   935→            <h2 className="mb-4 text-3xl font-bold text-white md:text-4xl">
+   936→              {locale === 'ar'
+   937→                ? 'جاهز للبدء؟'
+   938→                : locale === 'fr'
+   939→                  ? 'Prêt à commencer ?'
+   940→                  : 'Ready to Get Started?'}
+   941→            </h2>
+   942→            <p className="mx-auto mb-8 max-w-xl text-lg text-white/80">
+   943→              {locale === 'ar'
+   944→                ? 'انضم إلى آلاف المستخدمين الذين يشترون ويبيعون يومياً على مافورا'
+   945→                : locale === 'fr'
+   946→                  ? 'Rejoignez des milliers d\'utilisateurs qui achètent et vendent chaque jour sur MAVORA'
+   947→                  : 'Join thousands of users who buy and sell on MAVORA every day'}
+   948→            </p>
+   949→            <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
+   950→              <Button
+   951→                size="lg"
+   952→                className="gap-2 bg-emerald px-8 text-base font-semibold text-white shadow-lg shadow-emerald/30 hover:bg-emerald/90"
+   953→                onClick={() => useNavigationStore.getState().navigateCreateListing()}
+   954→              >
+   955→                <Gift className="size-5" />
+   956→                {t('common.post_ad')}
+   957→              </Button>
+   958→              <Button
+   959→                size="lg"
+   960→                variant="outline"
+   961→                className="gap-2 border-white/30 bg-transparent px-8 text-base font-semibold text-white hover:bg-white/10"
+   962→                onClick={() => document.getElementById('categories')?.scrollIntoView({ behavior: 'smooth' })}
+   963→              >
+   964→                {t('categories.title')}
+   965→                <ArrowRight className={`size-5 ${isRtl ? 'rotate-180' : ''}`} />
+   966→              </Button>
+   967→            </div>
+   968→          </div>
+   969→        </div>
+   970→      </section>
+   971→
+   972→      {/* Latest Listings Section */}
+   973→      <section className="pb-16">
+   974→        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   975→          <div className="mb-6 flex items-center justify-between">
+   976→            <div>
+   977→              <h2 className="text-h3 text-foreground">{t('listings.latest')}</h2>
+   978→            </div>
+   979→            <Button 
+   980→              variant="ghost" 
+   981→              size="sm"
+   982→              className="gap-1.5 text-emerald"
+   983→              onClick={() => window.location.hash = '#browse'}
+   984→            >
+   985→              {t('common.view_all')}
+   986→              <ArrowRight className={`size-4 ${isRtl ? 'rotate-180' : ''}`} />
+   987→            </Button>
+   988→          </div>
+   989→
+   990→          {listingsLoading ? (
+   991→            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   992→              {Array.from({ length: 8 }).map((_, i) => (
+   993→                <div key={i} className="overflow-hidden rounded-xl border border-border">
+   994→                  <Skeleton className="aspect-[4/3] w-full" />
+   995→                  <div className="p-3">
+   996→                    <Skeleton className="mb-2 h-4 w-3/4" />
+   997→                    <Skeleton className="mb-1 h-3 w-1/2" />
+   998→                    <Skeleton className="h-3 w-1/3" />
+   999→                  </div>
+  1000→                </div>
+  1001→              ))}
+  1002→            </div>
+  1003→          ) : listings && listings.data.length > 0 ? (
+  1004→            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  1005→              {listings.data.map((listing) => (
+  1006→                <ListingCard
+  1007→                  key={listing.id}
+  1008→                  listing={listing}
+  1009→                  onClick={() => onSelectListing(listing.id)}
+  1010→                />
+  1011→              ))}
+  1012→            </div>
+  1013→          ) : (
+  1014→            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16">
+  1015→              <Inbox className="mb-3 size-10 text-muted-foreground/50" />
+  1016→              <p className="text-sm text-muted-foreground">{t('listings.no_listings')}</p>
+  1017→              <p className="mt-1 text-xs text-muted-foreground/70">{t('listings.no_listings_subtitle')}</p>
+  1018→            </div>
+  1019→          )}
+  1020→        </div>
+  1021→      </section>
+  1022→    </>
+  1023→  );
+  1024→}
+  1025→
+  1026→// ─── Listing Card ───────────────────────────────────────────────────
+  1027→
+  1028→function ListingCard({ listing, onClick, isFavorited }: { listing: Listing; onClick: () => void; isFavorited?: boolean }) {
+  1029→  const { t, locale } = useTranslation();
+  1030→  const { user } = useAuthStore();
+  1031→  const [favorited, setFavorited] = useState(isFavorited ?? false);
+  1032→  const [toggling, setToggling] = useState(false);
+  1033→  const primaryImage = listing.media?.find((m) => m.is_primary) ?? listing.media?.[0];
+  1034→  const categoryName = listing.category
+  1035→    ? getLocalizedName(listing.category, locale)
+  1036→    : '';
+  1037→
+  1038→  const handleToggleFavorite = useCallback(async (e: React.MouseEvent) => {
+  1039→    e.stopPropagation();
+  1040→    if (!user) {
+  1041→      toast.error(t('favorites.login_required'));
+  1042→      return;
+  1043→    }
+  1044→    setToggling(true);
+  1045→    try {
+  1046→      const res = await fetch(`/api/listings/${listing.id}/favorite`, { method: 'POST' });
+  1047→      if (res.ok) {
+  1048→        const data = await res.json();
+  1049→        setFavorited(data.favorited);
+  1050→        toast.success(data.favorited ? t('favorites.added') : t('favorites.removed'));
+  1051→      }
+  1052→    } catch {
+  1053→      toast.error(t('common.error'));
+  1054→    } finally {
+  1055→      setToggling(false);
+  1056→    }
+  1057→  }, [user, listing.id, t]);
+  1058→
+  1059→  return (
+  1060→    <button
+  1061→      onClick={onClick}
+  1062→      className="group overflow-hidden rounded-xl border border-border bg-card text-start transition-all duration-200 hover:border-emerald/40 hover:shadow-lg hover:shadow-emerald/5"
+  1063→    >
+  1064→      {/* Image */}
+  1065→      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+  1066→        {primaryImage ? (
+  1067→          <img
+  1068→            src={primaryImage.url}
+  1069→            alt={listing.title}
+  1070→            className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+  1071→          />
+  1072→        ) : (
+  1073→          <div className="flex size-full items-center justify-center text-muted-foreground/30">
+  1074→            <Search className="size-10" />
+  1075→          </div>
+  1076→        )}
+  1077→        {/* Badges */}
+  1078→        <div className="absolute start-2 top-2 flex gap-1.5">
+  1079→          {listing.is_featured && (
+  1080→            <Badge className="border-0 bg-gold text-primary text-[10px] font-semibold">
+  1081→              {t('common.featured')}
+  1082→            </Badge>
+  1083→          )}
+  1084→          {listing.is_urgent && (
+  1085→            <Badge className="border-0 bg-destructive text-white text-[10px] font-semibold">
+  1086→              {t('common.urgent')}
+  1087→            </Badge>
+  1088→          )}
+  1089→        </div>
+  1090→        {/* Heart button */}
+  1091→        <button
+  1092→          onClick={handleToggleFavorite}
+  1093→          disabled={toggling}
+  1094→          className="absolute end-2 top-2 z-10 flex size-8 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur-sm transition-all hover:bg-white hover:scale-110 disabled:opacity-50"
+  1095→          aria-label={favorited ? t('listing.detail.remove_from_favorites') : t('listing.detail.add_to_favorites')}
+  1096→        >
+  1097→          {toggling ? (
+  1098→            <Loader2 className="size-4 animate-spin text-muted-foreground" />
+  1099→          ) : (
+  1100→            <Heart className={`size-4 transition-colors ${favorited ? 'fill-red-500 text-red-500' : 'text-muted-foreground hover:text-red-400'}`} />
+  1101→          )}
+  1102→        </button>
+  1103→        {/* Price overlay */}
+  1104→        {listing.price != null && listing.currency && (
+  1105→          <div className="absolute bottom-0 end-0 start-0 bg-gradient-to-t from-black/60 to-transparent px-3 pb-2 pt-6">
+  1106→            <span className="text-base font-bold text-white">
+  1107→              {listing.currency.symbol}{listing.price.toLocaleString(locale)}
+  1108→            </span>
+  1109→          </div>
+  1110→        )}
+  1111→      </div>
+  1112→
+  1113→      {/* Content */}
+  1114→      <div className="p-3">
+  1115→        <h3 className="mb-1 line-clamp-2 text-sm font-semibold leading-snug text-foreground group-hover:text-emerald">
+  1116→          {listing.title}
+  1117→        </h3>
+  1118→        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+  1119→          {categoryName && (
+  1120→            <span className="truncate">{categoryName}</span>
+  1121→          )}
+  1122→        </div>
+  1123→        <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground/70">
+  1124→          <span className="flex items-center gap-1">
+  1125→            <Clock className="size-3" />
+  1126→            {timeAgo(listing.created_at, locale)}
+  1127→          </span>
+  1128→          <span className="flex items-center gap-1">
+  1129→            <Eye className="size-3" />
+  1130→            {listing.view_count}
+  1131→          </span>
+  1132→        </div>
+  1133→      </div>
+  1134→    </button>
+  1135→  );
+  1136→}
+  1137→
+  1138→// ─── Browse View ────────────────────────────────────────────────────
+  1139→
+  1140→function BrowseView({
+  1141→  categories,
+  1142→  categoriesLoading,
+  1143→}: {
+  1144→  categories: Category[] | null;
+  1145→  categoriesLoading: boolean;
+  1146→}) {
+  1147→  const { t, locale } = useTranslation();
+  1148→  const { selectedCategoryId, searchQuery, navigateHome, navigateDetail } = useNavigationStore();
+  1149→  const [listings, setListings] = useState<PaginatedResponse<Listing> | null>(null);
+  1150→  const [listingsLoading, setListingsLoading] = useState(true);
+  1151→  const [sortBy, setSortBy] = useState('newest');
+  1152→  const [page, setPage] = useState(1);
+  1153→
+  1154→  // Filter states
+  1155→  const [countries, setCountries] = useState<Country[] | null>(null);
+  1156→  const [cities, setCities] = useState<City[] | null>(null);
+  1157→  const [currencies, setCurrencies] = useState<Currency[] | null>(null);
+  1158→  const [selectedCountryId, setSelectedCountryId] = useState<string | null>(null);
+  1159→  const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
+  1160→  const [minPrice, setMinPrice] = useState('');
+  1161→  const [maxPrice, setMaxPrice] = useState('');
+  1162→
+  1163→  // Fetch countries & currencies on mount
+  1164→  useEffect(() => {
+  1165→    Promise.all([
+  1166→      fetch('/api/countries').then((r) => r.ok ? r.json() : []),
+  1167→      fetch('/api/currencies').then((r) => r.ok ? r.json() : []),
+  1168→    ]).then(([countriesData, currenciesData]) => {
+  1169→      setCountries(countriesData);
+  1170→      setCurrencies(currenciesData);
+  1171→    });
+  1172→  }, []);
+  1173→
+  1174→  // Fetch cities when country changes
+  1175→  useEffect(() => {
+  1176→    if (!selectedCountryId) {
+  1177→      setCities(null);
+  1178→      return;
+  1179→    }
+  1180→    fetch(`/api/cities?country_id=${selectedCountryId}`)
+  1181→      .then((r) => r.ok ? r.json() : [])
+  1182→      .then((data) => setCities(data));
+  1183→  }, [selectedCountryId]);
+  1184→
+  1185→  // Compute active filter count
+  1186→  const activeFilterCount = [
+  1187→    selectedCountryId,
+  1188→    selectedCityId,
+  1189→    minPrice,
+  1190→    maxPrice,
+  1191→  ].filter(Boolean).length;
+  1192→
+  1193→  const fetchListings = useCallback(async () => {
+  1194→    setListingsLoading(true);
+  1195→    try {
+  1196→      const params = new URLSearchParams({
+  1197→        sort_by: sortBy,
+  1198→        page: String(page),
+  1199→        per_page: '12',
+  1200→      });
+  1201→      if (selectedCategoryId) params.set('category_id', selectedCategoryId);
+  1202→      if (searchQuery) params.set('search', searchQuery);
+  1203→      if (selectedCountryId) params.set('country_id', selectedCountryId);
+  1204→      if (selectedCityId) params.set('city_id', selectedCityId);
+  1205→      if (minPrice) params.set('min_price', minPrice);
+  1206→      if (maxPrice) params.set('max_price', maxPrice);
+  1207→
+  1208→      const res = await fetch(`/api/listings?${params}`);
+  1209→      if (res.ok) {
+  1210→        const data = await res.json();
+  1211→        setListings(data);
+  1212→      }
+  1213→    } catch {
+  1214→      // silent
+  1215→    } finally {
+  1216→      setListingsLoading(false);
+  1217→    }
+  1218→  }, [selectedCategoryId, searchQuery, sortBy, page, selectedCountryId, selectedCityId, minPrice, maxPrice]);
+  1219→
+  1220→  useEffect(() => {
+  1221→    fetchListings();
+  1222→  }, [fetchListings]);
+  1223→
+  1224→  // Reset page on filter change
+  1225→  useEffect(() => {
+  1226→    setPage(1);
+  1227→  }, [selectedCategoryId, searchQuery, sortBy, selectedCountryId, selectedCityId, minPrice, maxPrice]);
+  1228→
+  1229→  const handleClearAllFilters = useCallback(() => {
+  1230→    setSelectedCountryId(null);
+  1231→    setSelectedCityId(null);
+  1232→    setMinPrice('');
+  1233→    setMaxPrice('');
+  1234→  }, []);
+  1235→
+  1236→  const selectedCategory = categories?.find((c) => c.id === selectedCategoryId);
+  1237→
+  1238→  return (
+  1239→    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+  1240→      {/* Back + Title */}
+  1241→      <div className="mb-6 flex items-center gap-3">
+  1242→        <Button
+  1243→          variant="ghost"
+  1244→          size="sm"
+  1245→          onClick={navigateHome}
+  1246→          className="gap-1.5 text-muted-foreground hover:text-foreground"
+  1247→        >
+  1248→          <ArrowLeft className="size-4" />
+  1249→          {t('common.back')}
+  1250→        </Button>
+  1251→      </div>
+  1252→
+  1253→      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  1254→        <div className="flex items-center gap-2">
+  1255→          <h1 className="text-xl font-bold text-foreground sm:text-2xl">
+  1256→            {searchQuery
+  1257→              ? `${t('listings.search_results')} "${searchQuery}"`
+  1258→              : selectedCategory
+  1259→                ? getLocalizedName(selectedCategory, locale)
+  1260→                : t('listings.latest')}
+  1261→          </h1>
+  1262→          {listings && (
+  1263→            <Badge variant="secondary" className="text-xs">
+  1264→              {listings.total}
+  1265→            </Badge>
+  1266→          )}
+  1267→        </div>
+  1268→
+  1269→        {/* Sort */}
+  1270→        <div className="flex items-center gap-2">
+  1271→          <select
+  1272→            value={sortBy}
+  1273→            onChange={(e) => setSortBy(e.target.value)}
+  1274→            className="h-9 rounded-lg border border-border bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald"
+  1275→          >
+  1276→            <option value="newest">{t('filters.sort_newest')}</option>
+  1277→            <option value="oldest">{t('filters.sort_oldest')}</option>
+  1278→            <option value="price_asc">{t('filters.sort_price_low')}</option>
+  1279→            <option value="price_desc">{t('filters.sort_price_high')}</option>
+  1280→          </select>
+  1281→        </div>
+  1282→      </div>
+  1283→
+  1284→      {/* Active filter badges */}
+  1285→      {activeFilterCount > 0 && (
+  1286→        <div className="mb-4 flex flex-wrap items-center gap-2">
+  1287→          {selectedCountryId && countries && (
+  1288→            <Badge
+  1289→              variant="secondary"
+  1290→              className="cursor-pointer gap-1.5 hover:bg-destructive/10"
+  1291→              onClick={() => setSelectedCountryId(null)}
+  1292→            >
+  1293→              {countries.find((c) => c.id === selectedCountryId)?.flag_emoji}{' '}
+  1294→              {getLocalizedName(countries.find((c) => c.id === selectedCountryId)!, locale)}
+  1295→              <X className="size-3" />
+  1296→            </Badge>
+  1297→          )}
+  1298→          {selectedCityId && cities && (
+  1299→            <Badge
+  1300→              variant="secondary"
+  1301→              className="cursor-pointer gap-1.5 hover:bg-destructive/10"
+  1302→              onClick={() => setSelectedCityId(null)}
+  1303→            >
+  1304→              {getLocalizedName(cities.find((c) => c.id === selectedCityId)!, locale)}
+  1305→              <X className="size-3" />
+  1306→            </Badge>
+  1307→          )}
+  1308→          {minPrice && (
+  1309→            <Badge
+  1310→              variant="secondary"
+  1311→              className="cursor-pointer gap-1.5 hover:bg-destructive/10"
+  1312→              onClick={() => setMinPrice('')}
+  1313→            >
+  1314→              {t('filters.min_price')}: {minPrice}
+  1315→              <X className="size-3" />
+  1316→            </Badge>
+  1317→          )}
+  1318→          {maxPrice && (
+  1319→            <Badge
+  1320→              variant="secondary"
+  1321→              className="cursor-pointer gap-1.5 hover:bg-destructive/10"
+  1322→              onClick={() => setMaxPrice('')}
+  1323→            >
+  1324→              {t('filters.max_price')}: {maxPrice}
+  1325→              <X className="size-3" />
+  1326→            </Badge>
+  1327→          )}
+  1328→          <button
+  1329→            onClick={handleClearAllFilters}
+  1330→            className="text-xs font-medium text-emerald hover:text-emerald/80 transition-colors"
+  1331→          >
+  1332→            {t('filters.clear_all')}
+  1333→          </button>
+  1334→        </div>
+  1335→      )}
+  1336→
+  1337→      {/* Subcategories if a parent is selected */}
+  1338→      {selectedCategory && selectedCategory.children && selectedCategory.children.length > 0 && (
+  1339→        <div className="mb-6 flex flex-wrap gap-2">
+  1340→          {selectedCategory.children.map((child) => {
+  1341→            const Icon = getCategoryIcon(child.slug);
+  1342→            return (
+  1343→              <button
+  1344→                key={child.id}
+  1345→                onClick={() => useNavigationStore.getState().navigateBrowse(child.id, searchQuery)}
+  1346→                className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm text-foreground transition-all hover:border-emerald/50 hover:bg-emerald/5"
+  1347→              >
+  1348→                <Icon className="size-4 text-emerald" />
+  1349→                {getLocalizedName(child, locale)}
+  1350→                <ChevronRight className="size-3 text-muted-foreground" />
+  1351→              </button>
+  1352→            );
+  1353→          })}
+  1354→        </div>
+  1355→      )}
+  1356→
+  1357→      {/* Main content: filter sidebar + listings grid */}
+  1358→      <div className="flex flex-col gap-6 lg:flex-row">
+  1359→        {/* Filter Sidebar (desktop) */}
+  1360→        <div className="hidden lg:block">
+  1361→          <FilterSidebar
+  1362→            countries={countries}
+  1363→            cities={cities}
+  1364→            currencies={currencies}
+  1365→            selectedCountryId={selectedCountryId}
+  1366→            selectedCityId={selectedCityId}
+  1367→            minPrice={minPrice}
+  1368→            maxPrice={maxPrice}
+  1369→            onCountryChange={setSelectedCountryId}
+  1370→            onCityChange={setSelectedCityId}
+  1371→            onMinPriceChange={setMinPrice}
+  1372→            onMaxPriceChange={setMaxPrice}
+  1373→            onClearAll={handleClearAllFilters}
+  1374→            activeFilterCount={activeFilterCount}
+  1375→          />
+  1376→        </div>
+  1377→
+  1378→        {/* Listings Grid */}
+  1379→        <div className="min-w-0 flex-1">
+  1380→          {listingsLoading ? (
+  1381→            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+  1382→              {Array.from({ length: 6 }).map((_, i) => (
+  1383→                <div key={i} className="overflow-hidden rounded-xl border border-border">
+  1384→                  <Skeleton className="aspect-[4/3] w-full" />
+  1385→                  <div className="p-3">
+  1386→                    <Skeleton className="mb-2 h-4 w-3/4" />
+  1387→                    <Skeleton className="mb-1 h-3 w-1/2" />
+  1388→                    <Skeleton className="h-3 w-1/3" />
+  1389→                  </div>
+  1390→                </div>
+  1391→              ))}
+  1392→            </div>
+  1393→          ) : listings && listings.data.length > 0 ? (
+  1394→            <>
+  1395→              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+  1396→                {listings.data.map((listing) => (
+  1397→                  <ListingCard
+  1398→                    key={listing.id}
+  1399→                    listing={listing}
+  1400→                    onClick={() => navigateDetail(listing.id)}
+  1401→                  />
+  1402→                ))}
+  1403→              </div>
+  1404→
+  1405→              {/* Pagination */}
+  1406→              {listings.total_pages > 1 && (
+  1407→                <div className="mt-8 flex items-center justify-center gap-2">
+  1408→                  <Button
+  1409→                    variant="outline"
+  1410→                    size="sm"
+  1411→                    disabled={page <= 1}
+  1412→                    onClick={() => setPage((p) => p - 1)}
+  1413→                  >
+  1414→                    {t('common.previous')}
+  1415→                  </Button>
+  1416→                  <span className="px-3 text-sm text-muted-foreground">
+  1417→                    {page} / {listings.total_pages}
+  1418→                  </span>
+  1419→                  <Button
+  1420→                    variant="outline"
+  1421→                    size="sm"
+  1422→                    disabled={page >= listings.total_pages}
+  1423→                    onClick={() => setPage((p) => p + 1)}
+  1424→                  >
+  1425→                    {t('common.next')}
+  1426→                  </Button>
+  1427→                </div>
+  1428→              )}
+  1429→            </>
+  1430→          ) : (
+  1431→            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20">
+  1432→              <Inbox className="mb-3 size-12 text-muted-foreground/40" />
+  1433→              <p className="text-sm text-muted-foreground">
+  1434→                {searchQuery ? t('listings.search_no_results') : t('listings.no_listings')}
+  1435→              </p>
+  1436→            </div>
+  1437→          )}
+  1438→        </div>
+  1439→      </div>
+  1440→
+  1441→      {/* Mobile Filter Sidebar (rendered separately for the floating button) */}
+  1442→      <div className="lg:hidden">
+  1443→        <FilterSidebar
+  1444→          countries={countries}
+  1445→          cities={cities}
+  1446→          currencies={currencies}
+  1447→          selectedCountryId={selectedCountryId}
+  1448→          selectedCityId={selectedCityId}
+  1449→          minPrice={minPrice}
+  1450→          maxPrice={maxPrice}
+  1451→          onCountryChange={setSelectedCountryId}
+  1452→          onCityChange={setSelectedCityId}
+  1453→          onMinPriceChange={setMinPrice}
+  1454→          onMaxPriceChange={setMaxPrice}
+  1455→          onClearAll={handleClearAllFilters}
+  1456→          activeFilterCount={activeFilterCount}
+  1457→        />
+  1458→      </div>
+  1459→    </div>
+  1460→  );
+  1461→}
+  1462→
+  1463→// ─── Detail View ────────────────────────────────────────────────────
+  1464→
+  1465→function DetailView() {
+  1466→  const { t, locale } = useTranslation();
+  1467→  const { selectedListingId, navigateBrowse, navigateHome, navigateEditListing, navigateMessages, navigateSeller, selectListing } = useNavigationStore();
+  1468→  const { user } = useAuthStore();
+  1469→  const [listing, setListing] = useState<Listing | null>(null);
+  1470→  const [favorited, setFavorited] = useState(false);
+  1471→  const [togglingFav, setTogglingFav] = useState(false);
+  1472→  const [deleting, setDeleting] = useState(false);
+  1473→  const [listingFields, setListingFields] = useState<ListingFieldValue[]>([]);
+  1474→
+  1475→  useEffect(() => {
+  1476→    if (!selectedListingId) return;
+  1477→    let cancelled = false;
+  1478→    fetch(`/api/listings/${selectedListingId}`)
+  1479→      .then((res) => (res.ok ? res.json() : null))
+  1480→      .then((data) => { if (!cancelled) setListing(data); })
+  1481→      .catch(() => { if (!cancelled) setListing(null); });
+  1482→    return () => { cancelled = true; };
+  1483→  }, [selectedListingId]);
+  1484→
+  1485→  // Fetch listing dynamic field values
+  1486→  useEffect(() => {
+  1487→    if (!selectedListingId) return;
+  1488→    let cancelled = false;
+  1489→    setListingFields([]);
+  1490→    fetch(`/api/listings/${selectedListingId}/fields`)
+  1491→      .then((res) => (res.ok ? res.json() : []))
+  1492→      .then((data) => { if (!cancelled) setListingFields(Array.isArray(data) ? data : []); })
+  1493→      .catch(() => { if (!cancelled) setListingFields([]); });
+  1494→    return () => { cancelled = true; };
+  1495→  }, [selectedListingId]);
+  1496→
+  1497→  const handleToggleFavorite = useCallback(async () => {
+  1498→    if (!user || !listing) {
+  1499→      toast.error(t('favorites.login_required'));
+  1500→      return;
+  1501→    }
+  1502→    setTogglingFav(true);
+  1503→    try {
+  1504→      const res = await fetch(`/api/listings/${listing.id}/favorite`, { method: 'POST' });
+  1505→      if (res.ok) {
+  1506→        const data = await res.json();
+  1507→        setFavorited(data.favorited);
+  1508→        toast.success(data.favorited ? t('favorites.added') : t('favorites.removed'));
+  1509→      }
+  1510→    } catch {
+  1511→      toast.error(t('common.error'));
+  1512→    } finally {
+  1513→      setTogglingFav(false);
+  1514→    }
+  1515→  }, [user, listing, t]);
+  1516→
+  1517→  const handleShare = useCallback(async () => {
+  1518→    try {
+  1519→      await navigator.clipboard.writeText(window.location.href);
+  1520→      toast.success(locale === 'ar' ? 'تم نسخ الرابط' : locale === 'fr' ? 'Lien copié !' : 'Link copied!');
+  1521→    } catch {
+  1522→      toast.error(t('common.error'));
+  1523→    }
+  1524→  }, [locale, t]);
+  1525→
+  1526→  const [contacting, setContacting] = useState(false);
+  1527→  const [reportOpen, setReportOpen] = useState(false);
+  1528→
+  1529→  const handleContact = useCallback(async () => {
+  1530→    if (!user) {
+  1531→      toast.error(t('favorites.login_required'));
+  1532→      return;
+  1533→    }
+  1534→    if (!listing) return;
+  1535→    if (listing.seller_id === user.id) {
+  1536→      toast.error(locale === 'ar' ? 'لا يمكنك التواصل مع نفسك' : locale === 'fr' ? 'Vous ne pouvez pas vous contacter' : 'You cannot contact yourself');
+  1537→      return;
+  1538→    }
+  1539→    setContacting(true);
+  1540→    try {
+  1541→      const res = await fetch('/api/conversations', {
+  1542→        method: 'POST',
+  1543→        headers: { 'Content-Type': 'application/json' },
+  1544→        body: JSON.stringify({ listing_id: listing.id }),
+  1545→      });
+  1546→      if (res.ok) {
+  1547→        const data = await res.json();
+  1548→        if (data.id) {
+  1549→          selectListing(null);
+  1550→          navigateMessages();
+  1551→        }
+  1552→      } else {
+  1553→        const err = await res.json().catch(() => ({ error: t('common.error') }));
+  1554→        toast.error(err.error || t('common.error'));
+  1555→      }
+  1556→    } catch {
+  1557→      toast.error(t('common.error'));
+  1558→    } finally {
+  1559→      setContacting(false);
+  1560→    }
+  1561→  }, [user, listing, t, locale, navigateMessages]);
+  1562→
+  1563→  const handleReport = useCallback(() => {
+  1564→    if (!user) {
+  1565→      toast.error(t('report.login_required'));
+  1566→      return;
+  1567→    }
+  1568→    setReportOpen(true);
+  1569→  }, [user, t]);
+  1570→
+  1571→  const handleDelete = useCallback(async () => {
+  1572→    if (!listing) return;
+  1573→    if (!window.confirm(t('listing.confirm_delete'))) return;
+  1574→    setDeleting(true);
+  1575→    try {
+  1576→      const res = await fetch(`/api/listings/${listing.id}`, { method: 'DELETE' });
+  1577→      if (res.ok) {
+  1578→        toast.success(t('listing.deleted'));
+  1579→        navigateHome();
+  1580→      } else {
+  1581→        toast.error(t('common.error'));
+  1582→      }
+  1583→    } catch {
+  1584→      toast.error(t('common.error'));
+  1585→    } finally {
+  1586→      setDeleting(false);
+  1587→    }
+  1588→  }, [listing, t, navigateHome]);
+  1589→
+  1590→  if (listing === null) {
+  1591→    return (
+  1592→      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+  1593→        <Button variant="ghost" size="sm" className="mb-6 gap-1.5" onClick={navigateHome}>
+  1594→          <ArrowLeft className="size-4" />
+  1595→          {t('common.back')}
+  1596→        </Button>
+  1597→        <div className="grid gap-8 lg:grid-cols-5">
+  1598→          <div className="lg:col-span-3">
+  1599→            <Skeleton className="aspect-[4/3] w-full rounded-xl" />
+  1600→          </div>
+  1601→          <div className="lg:col-span-2">
+  1602→            <Skeleton className="mb-4 h-8 w-3/4" />
+  1603→            <Skeleton className="mb-4 h-10 w-1/3" />
+  1604→            <Skeleton className="h-32 w-full" />
+  1605→          </div>
+  1606→        </div>
+  1607→      </div>
+  1608→    );
+  1609→  }
+  1610→
+  1611→  if (!listing) {
+  1612→    return (
+  1613→      <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-20">
+  1614→        <p className="text-sm text-muted-foreground">{t('error.not_found')}</p>
+  1615→        <Button variant="outline" onClick={navigateHome}>
+  1616→          {t('common.back')}
+  1617→        </Button>
+  1618→      </div>
+  1619→    );
+  1620→  }
+  1621→
+  1622→  const primaryImage = listing.media?.find((m) => m.is_primary) ?? listing.media?.[0];
+  1623→  const sellerName = listing.seller?.display_name ?? '';
+  1624→  const categoryName = listing.category
+  1625→    ? getLocalizedName(listing.category, locale)
+  1626→    : '';
+  1627→  const currencySymbol = listing.currency?.symbol ?? '';
+  1628→
+  1629→  return (
+  1630→    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+  1631→      <Button
+  1632→        variant="ghost"
+  1633→        size="sm"
+  1634→        onClick={() => navigateBrowse(listing.category_id)}
+  1635→        className="mb-6 gap-1.5 text-muted-foreground hover:text-foreground"
+  1636→      >
+  1637→        <ArrowLeft className="size-4" />
+  1638→        {t('common.back')}
+  1639→      </Button>
+  1640→
+  1641→      <div className="grid gap-8 lg:grid-cols-5">
+  1642→        {/* Images */}
+  1643→        <div className="lg:col-span-3">
+  1644→          <div className="overflow-hidden rounded-xl border border-border bg-muted">
+  1645→            {primaryImage ? (
+  1646→              <div className="relative aspect-[4/3]">
+  1647→                <img
+  1648→                  src={primaryImage.url}
+  1649→                  alt={listing.title}
+  1650→                  className="size-full object-cover"
+  1651→                />
+  1652→                {listing.video_url && (
+  1653→                  <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+  1654→                    <div className="flex size-16 items-center justify-center rounded-full bg-black/50 text-white">
+  1655→                      <Play className="size-8" />
+  1656→                    </div>
+  1657→                  </div>
+  1658→                )}
+  1659→              </div>
+  1660→            ) : (
+  1661→              <div className="flex aspect-[4/3] items-center justify-center text-muted-foreground/30">
+  1662→                <Search className="size-16" />
+  1663→              </div>
+  1664→            )}
+  1665→          </div>
+  1666→          {/* Thumbnails */}
+  1667→          {listing.media && listing.media.length > 1 && (
+  1668→            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+  1669→              {listing.media.map((m) => (
+  1670→                <div
+  1671→                  key={m.id}
+  1672→                  className={`size-16 flex-shrink-0 overflow-hidden rounded-lg border-2 ${
+  1673→                    m.is_primary ? 'border-emerald' : 'border-border'
+  1674→                  }`}
+  1675→                >
+  1676→                  <img src={m.url} alt="" className="size-full object-cover" />
+  1677→                </div>
+  1678→              ))}
+  1679→            </div>
+  1680→          )}
+  1681→
+  1682→          {/* Video Embed */}
+  1683→          {listing.video_url && (() => {
+  1684→            const embedUrl = getVideoEmbedUrl(listing.video_url);
+  1685→            if (!embedUrl) return null;
+  1686→            return (
+  1687→              <div className="mt-4">
+  1688→                <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-muted">
+  1689→                  <iframe
+  1690→                    src={embedUrl}
+  1691→                    className="size-full"
+  1692→                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  1693→                    allowFullScreen
+  1694→                    title="Listing video"
+  1695→                  />
+  1696→                </div>
+  1697→              </div>
+  1698→            );
+  1699→          })()}
+  1700→
+  1701→          {/* Description */}
+  1702→          <div className="mt-6">
+  1703→            <h2 className="mb-3 text-lg font-bold text-foreground">
+  1704→              {t('listing.detail.description')}
+  1705→            </h2>
+  1706→            <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+  1707→              {listing.description}
+  1708→            </p>
+  1709→          </div>
+  1710→
+  1711→          {/* Dynamic Fields (Properties) */}
+  1712→          {listingFields.length > 0 && (
+  1713→            <div className="mt-6">
+  1714→              <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-foreground">
+  1715→                <Settings2 className="size-5 text-[#0E9F6E]" />
+  1716→                {t('listing.dynamic_fields')}
+  1717→              </h2>
+  1718→              <div className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2">
+  1719→                {listingFields.map((fv) => {
+  1720→                  if (!fv.field) return null;
+  1721→                  const fieldName = getLocalizedName(fv.field, locale);
+  1722→                  const unit = locale === 'ar'
+  1723→                    ? fv.field.unit_ar ?? ''
+  1724→                    : locale === 'fr'
+  1725→                      ? fv.field.unit_fr ?? ''
+  1726→                      : fv.field.unit_en ?? '';
+  1727→                  let displayValue = fv.value;
+  1728→
+  1729→                  // For boolean fields
+  1730→                  if (fv.field.field_type === 'boolean') {
+  1731→                    displayValue = fv.value === 'true' ? t('common.yes') : t('common.no');
+  1732→                  }
+  1733→                  // For select fields, resolve option name
+  1734→                  else if (fv.field.field_type === 'select' && fv.field.options) {
+  1735→                    const opt = fv.field.options.find((o) => o.id === fv.value);
+  1736→                    if (opt) {
+  1737→                      displayValue = locale === 'ar'
+  1738→                        ? opt.value_ar
+  1739→                        : locale === 'fr'
+  1740→                          ? opt.value_fr
+  1741→                          : opt.value_en;
+  1742→                    }
+  1743→                  }
+  1744→                  // For multiselect fields, resolve option names
+  1745→                  else if (fv.field.field_type === 'multiselect' && fv.field.options) {
+  1746→                    const ids = fv.value.split(',').filter(Boolean);
+  1747→                    const names = ids
+  1748→                      .map((id) => {
+  1749→                        const opt = fv.field!.options!.find((o) => o.id === id);
+  1750→                        if (!opt) return null;
+  1751→                        return locale === 'ar'
+  1752→                          ? opt.value_ar
+  1753→                          : locale === 'fr'
+  1754→                            ? opt.value_fr
+  1755→                            : opt.value_en;
+  1756→                      })
+  1757→                      .filter(Boolean);
+  1758→                    displayValue = names.join(', ');
+  1759→                  }
+  1760→                  // For number fields, append unit
+  1761→                  else if (fv.field.field_type === 'number' && unit) {
+  1762→                    displayValue = `${fv.value} ${unit}`;
+  1763→                  }
+  1764→
+  1765→                  return (
+  1766→                    <div key={fv.id} className="flex flex-col gap-1 rounded-lg bg-muted/40 px-3 py-2.5">
+  1767→                      <span className="text-xs font-medium text-muted-foreground">{fieldName}</span>
+  1768→                      <span className="text-sm font-semibold text-foreground">{displayValue}</span>
+  1769→                    </div>
+  1770→                  );
+  1771→                })}
+  1772→              </div>
+  1773→            </div>
+  1774→          )}
+  1775→
+  1776→          {/* Reviews */}
+  1777→          <ReviewsSection listingId={listing.id} />
+  1778→        </div>
+  1779→
+  1780→        {/* Info Sidebar */}
+  1781→        <div className="lg:col-span-2">
+  1782→          <div className="sticky top-24 space-y-6">
+  1783→            {/* Badges */}
+  1784→            <div className="flex flex-wrap gap-2">
+  1785→              {listing.is_featured && (
+  1786→                <Badge className="border-0 bg-gold text-primary">
+  1787→                  <Star className="me-1 size-3" />
+  1788→                  {t('common.featured')}
+  1789→                </Badge>
+  1790→              )}
+  1791→              {listing.is_urgent && (
+  1792→                <Badge className="border-0 bg-destructive text-white">
+  1793→                  {t('common.urgent')}
+  1794→                </Badge>
+  1795→              )}
+  1796→              {categoryName && (
+  1797→                <Badge variant="secondary">{categoryName}</Badge>
+  1798→              )}
+  1799→            </div>
+  1800→
+  1801→            {/* Title */}
+  1802→            <h1 className="text-2xl font-bold leading-tight text-foreground">
+  1803→              {listing.title}
+  1804→            </h1>
+  1805→
+  1806→            {/* Price */}
+  1807→            {listing.price != null && (
+  1808→              <div className="text-3xl font-bold text-emerald">
+  1809→                {currencySymbol}{listing.price.toLocaleString(locale)}
+  1810→              </div>
+  1811→            )}
+  1812→
+  1813→            {/* Meta */}
+  1814→            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+  1815→              <span className="flex items-center gap-1.5">
+  1816→                <Eye className="size-4" />
+  1817→                {listing.view_count} {t('listings.views')}
+  1818→              </span>
+  1819→              <span className="flex items-center gap-1.5">
+  1820→                <Clock className="size-4" />
+  1821→                {timeAgo(listing.created_at, locale)}
+  1822→              </span>
+  1823→            </div>
+  1824→
+  1825→            {/* Owner actions */}
+  1826→            {user && listing.seller_id === user.id && (
+  1827→              <div className="flex gap-2">
+  1828→                <Button
+  1829→                  variant="outline"
+  1830→                  size="sm"
+  1831→                  className="flex-1 gap-2"
+  1832→                  onClick={() => navigateEditListing(listing.id)}
+  1833→                >
+  1834→                  <Pencil className="size-4" />
+  1835→                  {t('listing.edit')}
+  1836→                </Button>
+  1837→                <Button
+  1838→                  variant="outline"
+  1839→                  size="sm"
+  1840→                  className="flex-1 gap-2 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
+  1841→                  onClick={handleDelete}
+  1842→                  disabled={deleting}
+  1843→                >
+  1844→                  {deleting ? (
+  1845→                    <Loader2 className="size-4 animate-spin" />
+  1846→                  ) : (
+  1847→                    <Trash2 className="size-4" />
+  1848→                  )}
+  1849→                  {t('listing.delete')}
+  1850→                </Button>
+  1851→              </div>
+  1852→            )}
+  1853→
+  1854→            {/* Contact Button + Favorite, Share, Report */}
+  1855→            <div className="flex gap-2">
+  1856→              <Button
+  1857→                className="flex-1 bg-emerald text-white hover:bg-emerald/90"
+  1858→                size="lg"
+  1859→                onClick={handleContact}
+  1860→                disabled={contacting}
+  1861→              >
+  1862→                {contacting ? <Loader2 className="me-2 size-4 animate-spin" /> : null}
+  1863→                {t('listings.contact_seller')}
+  1864→              </Button>
+  1865→              <Button
+  1866→                variant="outline"
+  1867→                size="lg"
+  1868→                className="shrink-0"
+  1869→                onClick={handleToggleFavorite}
+  1870→                disabled={togglingFav}
+  1871→                aria-label={favorited ? t('listing.detail.remove_from_favorites') : t('listing.detail.add_to_favorites')}
+  1872→              >
+  1873→                {togglingFav ? (
+  1874→                  <Loader2 className="size-5 animate-spin" />
+  1875→                ) : (
+  1876→                  <Heart className={`size-5 ${favorited ? 'fill-red-500 text-red-500' : ''}`} />
+  1877→                )}
+  1878→              </Button>
+  1879→            </div>
+  1880→            <div className="flex gap-2">
+  1881→              <Button variant="outline" size="sm" className="flex-1 gap-2" onClick={handleShare}>
+  1882→                <Share2 className="size-4" />
+  1883→                {t('listing.detail.share')}
+  1884→              </Button>
+  1885→              <Button variant="outline" size="sm" className="flex-1 gap-2" onClick={handleReport}>
+  1886→                <Flag className="size-4" />
+  1887→                {t('listing.detail.report')}
+  1888→              </Button>
+  1889→            </div>
+  1890→
+  1891→            {listing && (
+  1892→              <ReportDialog
+  1893→                listingId={listing.id}
+  1894→                open={reportOpen}
+  1895→                onOpenChange={setReportOpen}
+  1896→              />
+  1897→            )}
+  1898→
+  1899→            {/* Seller Card */}
+  1900→            {listing.seller && (
+  1901→              <button
+  1902→                type="button"
+  1903→                onClick={() => navigateSeller(listing.seller_id)}
+  1904→                className="w-full cursor-pointer rounded-xl border border-border p-4 text-start transition-colors hover:border-emerald/30 hover:bg-accent/50"
+  1905→              >
+  1906→                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+  1907→                  {t('listing.detail.seller')}
+  1908→                </p>
+  1909→                <div className="flex items-center gap-3">
+  1910→                  <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+  1911→                    {sellerName.charAt(0).toUpperCase()}
+  1912→                  </div>
+  1913→                  <div>
+  1914→                    <p className="text-sm font-semibold text-foreground">{sellerName}</p>
+  1915→                    <p className="text-xs text-muted-foreground">
+  1916→                      {listing.seller.is_verified && (
+  1917→                        <span className="inline-flex items-center gap-1 text-emerald">
+  1918→                          <Star className="size-3" />
+  1919→                          {t('common.active')}
+  1920→                        </span>
+  1921→                      )}
+  1922→                    </p>
+  1923→                  </div>
+  1924→                </div>
+  1925→              </button>
+  1926→            )}
+  1927→          </div>
+  1928→        </div>
+  1929→      </div>
+  1930→    </div>
+  1931→  );
+  1932→}
+  1933→
+  1934→// ─── Main Page ──────────────────────────────────────────────────────
+  1935→
+  1936→export default function Home() {
+  1937→  const { locale } = useTranslation();
+  1938→  const { view, selectedListingId, selectedSellerId, dbConfigured, setDbConfigured, navigateBrowse, navigateDetail, navigateHome } =
+  1939→    useNavigationStore();
+  1940→
+  1941→  const [categories, setCategories] = useState<Category[] | null>(null);
+  1942→  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  1943→
+  1944→  // Sync locale direction
+  1945→  useEffect(() => {
+  1946→    const dir = locale === 'ar' ? 'rtl' : 'ltr';
+  1947→    document.documentElement.lang = locale;
+  1948→    document.documentElement.dir = dir;
+  1949→  }, [locale]);
+  1950→
+  1951→  // Check DB setup
+  1952→  useEffect(() => {
+  1953→    fetch('/api/setup/check')
+  1954→      .then((res) => res.json())
+  1955→      .then((data) => setDbConfigured(data.configured ?? false))
+  1956→      .catch(() => setDbConfigured(false));
+  1957→  }, [setDbConfigured]);
+  1958→
+  1959→  // Fetch categories
+  1960→  useEffect(() => {
+  1961→    async function fetchCategories() {
+  1962→      try {
+  1963→        const res = await fetch('/api/categories');
+  1964→        if (res.ok) {
+  1965→          const data = await res.json();
+  1966→          setCategories(data);
+  1967→        }
+  1968→      } catch {
+  1969→        // silent
+  1970→      } finally {
+  1971→        setCategoriesLoading(false);
+  1972→      }
+  1973→    }
+  1974→    fetchCategories();
+  1975→  }, []);
+  1976→
+  1977→  // Navigation handlers
+  1978→  const handleSearch = useCallback(
+  1979→    (query: string) => {
+  1980→      navigateBrowse(null, query);
+  1981→    },
+  1982→    [navigateBrowse]
+  1983→  );
+  1984→
+  1985→  const handleSelectCategory = useCallback(
+  1986→    (categoryId: string) => {
+  1987→      navigateBrowse(categoryId);
+  1988→    },
+  1989→    [navigateBrowse]
+  1990→  );
+  1991→
+  1992→  // Show setup view if DB not configured
+  1993→  if (dbConfigured === false && view === 'home') {
+  1994→    return (
+  1995→      <>
+  1996→        <Header />
+  1997→        <SetupView />
+  1998→        <Footer />
+  1999→      </>
+  2000→    );
+
+[showing lines 1-2000 of 2037; use offset=2001 with limit to continue reading]

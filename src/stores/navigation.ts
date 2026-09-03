@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useRouter } from 'next/navigation';
 
 export type ViewType = 'home' | 'browse' | 'detail' | 'setup' | 'create-listing' | 'profile' | 'favorites' | 'messages' | 'admin' | 'seller' | 'organization' | 'wallet' | 'invoices';
 
@@ -16,6 +17,8 @@ interface NavigationState {
   selectListing: (listingId: string | null) => void;
   setSearchQuery: (query: string | null) => void;
   setDbConfigured: (configured: boolean) => void;
+  
+  // Navigation methods - now using Next.js router
   navigateHome: () => void;
   navigateBrowse: (categoryId?: string | null, search?: string | null) => void;
   navigateDetail: (listingId: string) => void;
@@ -32,7 +35,14 @@ interface NavigationState {
   navigateInvoices: () => void;
 }
 
-export const useNavigationStore = create<NavigationState>((set) => ({
+// We'll use a singleton router reference that gets initialized on client side
+let routerInstance: ReturnType<typeof useRouter> | null = null;
+
+export const setRouterInstance = (router: ReturnType<typeof useRouter>) => {
+  routerInstance = router;
+};
+
+export const useNavigationStore = create<NavigationState>((set, get) => ({
   view: 'home',
   selectedCategoryId: null,
   selectedListingId: null,
@@ -41,13 +51,37 @@ export const useNavigationStore = create<NavigationState>((set) => ({
   searchQuery: null,
   dbConfigured: null,
 
-  setView: (view) => set({ view }),
+  setView: (view) => {
+    set({ view });
+    // Also update URL based on view
+    const urlMap: Record<ViewType, string> = {
+      'home': '/',
+      'browse': '/listings',
+      'detail': `/listings/${get().selectedListingId || ''}`,
+      'setup': '/setup',
+      'create-listing': '/listings/create',
+      'profile': '/profile',
+      'favorites': '/favorites',
+      'messages': '/messages',
+      'admin': '/admin',
+      'seller': `/seller/${get().selectedSellerId || ''}`,
+      'organization': `/organization/${get().selectedCategoryId || ''}`,
+      'wallet': '/wallet',
+      'invoices': '/invoices',
+    };
+    
+    if (routerInstance) {
+      routerInstance.push(urlMap[view]);
+    }
+  },
+  
   selectCategory: (categoryId) => set({ selectedCategoryId: categoryId }),
   selectListing: (listingId) => set({ selectedListingId: listingId }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setDbConfigured: (configured) => set({ dbConfigured: configured }),
 
-  navigateHome: () =>
+  // Updated navigation methods that use Next.js router
+  navigateHome: () => {
     set({
       view: 'home',
       selectedCategoryId: null,
@@ -55,9 +89,11 @@ export const useNavigationStore = create<NavigationState>((set) => ({
       selectedSellerId: null,
       editingListingId: null,
       searchQuery: null,
-    }),
+    });
+    if (routerInstance) routerInstance.push('/');
+  },
 
-  navigateBrowse: (categoryId = null, search = null) =>
+  navigateBrowse: (categoryId = null, search = null) => {
     set({
       view: 'browse',
       selectedCategoryId: categoryId,
@@ -65,46 +101,60 @@ export const useNavigationStore = create<NavigationState>((set) => ({
       selectedSellerId: null,
       editingListingId: null,
       searchQuery: search,
-    }),
+    });
+    let url = '/listings';
+    const params = new URLSearchParams();
+    if (categoryId) params.set('category', categoryId);
+    if (search) params.set('q', search);
+    if (params.toString()) url += `?${params.toString()}`;
+    if (routerInstance) routerInstance.push(url);
+  },
 
-  navigateDetail: (listingId) =>
+  navigateDetail: (listingId) => {
     set({
       view: 'detail',
       selectedListingId: listingId,
       selectedSellerId: null,
       editingListingId: null,
-    }),
+    });
+    if (routerInstance) routerInstance.push(`/listings/${listingId}`);
+  },
 
-  navigateCreateListing: () =>
+  navigateCreateListing: () => {
     set({
       view: 'create-listing',
       selectedListingId: null,
       selectedSellerId: null,
       editingListingId: null,
-    }),
+    });
+    if (routerInstance) routerInstance.push('/listings/create');
+  },
 
-  navigateEditListing: (id) =>
+  navigateEditListing: (id) => {
     set({
       view: 'create-listing',
       editingListingId: id,
       selectedListingId: null,
       selectedSellerId: null,
-    }),
+    });
+    if (routerInstance) routerInstance.push(`/listings/create?edit=${id}`);
+  },
 
   clearEditingListing: () =>
     set({ editingListingId: null }),
 
-  navigateProfile: (userId) =>
+  navigateProfile: (userId) => {
     set({
       view: 'profile',
       selectedListingId: null,
       selectedSellerId: null,
       editingListingId: null,
-      // Store userId in selectedCategoryId temporarily for profile viewing
       selectedCategoryId: userId ?? null,
-    }),
+    });
+    if (routerInstance) routerInstance.push('/profile');
+  },
 
-  navigateFavorites: () =>
+  navigateFavorites: () => {
     set({
       view: 'favorites',
       selectedListingId: null,
@@ -112,9 +162,11 @@ export const useNavigationStore = create<NavigationState>((set) => ({
       selectedSellerId: null,
       editingListingId: null,
       searchQuery: null,
-    }),
+    });
+    if (routerInstance) routerInstance.push('/favorites');
+  },
 
-  navigateMessages: () =>
+  navigateMessages: () => {
     set({
       view: 'messages',
       selectedListingId: null,
@@ -122,9 +174,11 @@ export const useNavigationStore = create<NavigationState>((set) => ({
       selectedSellerId: null,
       editingListingId: null,
       searchQuery: null,
-    }),
+    });
+    if (routerInstance) routerInstance.push('/messages');
+  },
 
-  navigateAdmin: () =>
+  navigateAdmin: () => {
     set({
       view: 'admin',
       selectedListingId: null,
@@ -132,9 +186,11 @@ export const useNavigationStore = create<NavigationState>((set) => ({
       selectedSellerId: null,
       editingListingId: null,
       searchQuery: null,
-    }),
+    });
+    if (routerInstance) routerInstance.push('/admin');
+  },
 
-  navigateSeller: (userId) =>
+  navigateSeller: (userId) => {
     set({
       view: 'seller',
       selectedSellerId: userId,
@@ -142,9 +198,11 @@ export const useNavigationStore = create<NavigationState>((set) => ({
       selectedCategoryId: null,
       editingListingId: null,
       searchQuery: null,
-    }),
+    });
+    if (routerInstance) routerInstance.push(`/seller/${userId}`);
+  },
 
-  navigateOrganization: (orgId) =>
+  navigateOrganization: (orgId) => {
     set({
       view: 'organization',
       selectedCategoryId: orgId ?? null,
@@ -152,9 +210,11 @@ export const useNavigationStore = create<NavigationState>((set) => ({
       selectedListingId: null,
       editingListingId: null,
       searchQuery: null,
-    }),
+    });
+    if (routerInstance) routerInstance.push(`/organization/${orgId || ''}`);
+  },
 
-  navigateWallet: () =>
+  navigateWallet: () => {
     set({
       view: 'wallet',
       selectedCategoryId: null,
@@ -162,9 +222,11 @@ export const useNavigationStore = create<NavigationState>((set) => ({
       selectedListingId: null,
       editingListingId: null,
       searchQuery: null,
-    }),
+    });
+    if (routerInstance) routerInstance.push('/wallet');
+  },
 
-  navigateInvoices: () =>
+  navigateInvoices: () => {
     set({
       view: 'invoices',
       selectedCategoryId: null,
@@ -172,5 +234,7 @@ export const useNavigationStore = create<NavigationState>((set) => ({
       selectedListingId: null,
       editingListingId: null,
       searchQuery: null,
-    }),
+    });
+    if (routerInstance) routerInstance.push('/invoices');
+  },
 }));

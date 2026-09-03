@@ -209,16 +209,17 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     
     fetchingRef.current = true;
     
-    const user = await fetchSession({
-      setUser: (user) => {
-        if (mounted.current) setUser(user);
-      },
-    });
-    
-    fetchingRef.current = false;
-    
-    if (user && mounted.current) {
-      console.log('[AuthProvider] User profile updated');
+    try {
+      const updatedUser = await fetchSession({});
+      
+      if (updatedUser && mounted.current) {
+        // Direct update since we have the full user object
+        setUser(updatedUser);
+        
+        console.log('[AuthProvider] User profile updated');
+      }
+    } finally {
+      fetchingRef.current = false;
     }
   }, [setUser]);
 

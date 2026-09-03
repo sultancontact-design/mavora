@@ -283,7 +283,7 @@ export default function WalletPage() {
     if (user) {
       fetchTransactions(txFilter, 1);
     }
-  }, [txFilter, user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [txFilter, user]); // fetchTransactions is stable (useCallback), user changes trigger refetch
 
   const handleBuyTokens = useCallback((pkg: TokenPackage) => {
     setSelectedPackage(pkg);

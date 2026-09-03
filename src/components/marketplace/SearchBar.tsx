@@ -100,12 +100,9 @@ export default function SearchBar({
   // Filter cities based on selected country
   const filteredCities = cities?.filter((c) => c.country_id === selectedCountry) ?? [];
 
-  // Reset city when country changes
-  useEffect(() => {
-    if (selectedCountry) {
-      setSelectedCity('');
-    }
-  }, [selectedCountry]);
+  // Reset city when country changes - use key-based reset instead of setState in effect
+  // The city select component uses selectedCountry as part of its key to force re-render
+  const citySelectKey = `city-select-${selectedCountry || 'none'}`;
 
   // Handle search submit
   const handleSearch = useCallback(

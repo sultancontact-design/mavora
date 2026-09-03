@@ -28,7 +28,7 @@ export default function AdminLayout({
         router.push('/');
         return;
       }
-      setIsChecking(false);
+      // isChecking will be set to false when component re-renders with user data
     }
   }, [user, isLoading, router]);
 

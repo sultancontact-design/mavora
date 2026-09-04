@@ -563,8 +563,11 @@ DROP TABLE IF EXISTS _mavora_schema_cache;
 -- ============================================================
 -- SUMMARY
 -- ============================================================
-RAISE NOTICE '============================================================';
-RAISE NOTICE 'MAVORA RLS FIX COMPLETED SUCCESSFULLY';
-RAISE NOTICE 'All policies now use dynamically-discovered column names';
-RAISE NOITCE 'No hardcoded column names - adapts to your actual schema';
-RAISE NOTICE '============================================================';
+DO $$
+BEGIN
+    RAISE NOTICE '============================================================';
+    RAISE NOTICE 'MAVORA RLS FIX COMPLETED SUCCESSFULLY';
+    RAISE NOTICE 'All policies now use dynamically-discovered column names';
+    RAISE NOTICE 'No hardcoded column names - adapts to your actual schema';
+    RAISE NOTICE '============================================================';
+END $$;

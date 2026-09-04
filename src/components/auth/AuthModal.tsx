@@ -697,20 +697,19 @@ export default function AuthModal({
     }
   };
 
-  const getHeaderIcon = () => {
+  // Get the header icon component based on current view
+  const renderHeaderIcon = () => {
     switch (view) {
       case 'login':
-        return ShieldCheck;
+        return <ShieldCheck className="size-4.5" />;
       case 'signup':
-        return Sparkles;
+        return <Sparkles className="size-4.5" />;
       case 'forgot-password':
-        return KeyRound;
+        return <KeyRound className="size-4.5" />;
       default:
-        return ShieldCheck;
+        return <ShieldCheck className="size-4.5" />;
     }
   };
-
-  const HeaderIcon = getHeaderIcon();
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -727,7 +726,7 @@ export default function AuthModal({
           <DialogHeader className="text-start relative">
             <DialogTitle className="text-xl font-bold flex items-center gap-2.5">
               <div className="flex size-8 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm">
-                <HeaderIcon className="size-4.5" />
+                {renderHeaderIcon()}
               </div>
               {isLogin && t('auth.welcome_back')}
               {isSignup && t('auth.signup_title') || 'Create Account'}

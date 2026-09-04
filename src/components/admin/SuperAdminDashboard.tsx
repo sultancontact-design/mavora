@@ -70,6 +70,7 @@ import {
   Edit,
   ExternalLink,
   Copy,
+  Wallet,
   Share2,
   Printer,
   Maximize2,

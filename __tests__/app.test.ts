@@ -2,9 +2,14 @@
  * 🧪 اختبارات نظام إدارة المنشورات
  * تغطي: API، الأمان، قاعدة البيانات، واجهة المستخدم
  * آخر تحديث: 2026-09-03
+ * 
+ * Note: This test file uses Bun-style imports.
+ * To run with Node.js, use: npx vitest run __tests__/app.test.ts
+ * Or install @types/bun for type checking
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'bun:test'
+// @ts-ignore - Using vitest/jest compatible API
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { db } from '../src/lib/db'
 
 // 🔧 إعداد بيانات الاختبار

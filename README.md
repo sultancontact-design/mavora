@@ -1,436 +1,362 @@
-# 🛒 Mavora - سوقك الإلكتروني الموثوق
+# 🛒 Mavora - سوق مافورا الإلكتروني
 
-<div align="center">
+<p align="center">
+  <img src="public/icons/icon-512x512.svg" alt="Mavora Logo" width="120" height="120">
+</p>
 
-![Mavora Logo](https://via.placeholder.com/120x120/0E9F6E/ffffff?text=M)
+<p align="center">
+  <strong>منصة إعلانات مبوعة شاملة للمغرب</strong><br>
+  <em>A Comprehensive Classifieds Marketplace for Morocco</em>
+</p>
 
-**منصة إعلانات مبوبة متقدة للمغرب وشمال إفريقيا**
-
-[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)](https://www.typescript.org/)
-[![Supabase](https://img.shields.io/badge/Supabase-3ECFF8?style=flat-square&logo=supabase)](https://supabase.com/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
-
-**العربية** | [Français](#) | [English](#)
-
-</div>
-
----
-
-## 📋 جدول المحتويات
-
-- [🌟 نظرة عامة](#-نظرة-عامة)
-- [✨ الميزات](#-الميزات)
-- [🛠️ التقنيات المستخدمة](#-التنيات-المستخدمة)
-- [🚀 البدء السريع](#-البدء-السريع)
-- [📁 هيكل المشروع](#-هيكل-المشروع)
-- [⚙️ الإعدادات](#-الإعدادات)
-- [🧪 الاختبارات](#-الاختبارات)
-- [📦 النشر](#-النشر)
-- [🤝 المساهمة](#-المساهمة)
-- [📄 الرخصة](#-الرخصة)
+<p align="center">
+  <a href="#ميزات-المشروع">الميزات</a> •
+  <a href="#تقنيات-المشروع">التقنيات</a> •
+  <a href="#البدء-السريع">البدء السريع</a> •
+  <a href="#هيكل-المشروع">الهيكل</a> •
+  <a href="#النشر">النشر</a> •
+  <a href="#المساهمة">المساهمة</a>
+</p>
 
 ---
 
-## 🌟 نظرة عامة
+## 🌟 عن المشروع | About
 
-**مافورا (Mavora)** هي منصة إعلانات مبوعة متطورة مصممة خصيصاً لسوق المغرب وشمال إفريقيا. تجمع المنصة بين سهولة الاستخدام والميزات المتقدمة لتوفير تجربة تسوق إلكتروني آمنة وموثوقة.
+**مافورا (Mavora)** هي منصة إعلانات مبوبة متكاملة مصممة خصيصاً للمغرب. تجمع المنصة بين سهولة الاستخدام والميزات المتقدمة لتوفير تجربة تسوق إلكتروني آمنة وموثوقة.
 
-### 🎯 الرؤية
+**Mavora** is a comprehensive classifieds marketplace platform designed specifically for Morocco. The platform combines ease of use with advanced features to provide a secure and reliable online shopping experience.
 
-أن نكون المنصة الرائدة للتجارة الإلكترونية في المنطقة، مع التركيز على:
-- **الثقة**: نظام تحقق شامل للمستخدمين والبائعين
-- **الأمان**: حماية متقدمة للبيانات والمعاملات
-- **سهولة الاستخدام**: واجهة عربية سلسة ومتجاوبة
-- **الأداء**: سرعة فائقة وتجربة مستخدم محسنة
+### 🎯 الرؤية | Vision
 
----
-
-## ✨ الميزات
-
-### 👤 نظام المستخدمين
-- ✅ تسجيل/تسجيل الدخول (بريد إلكتروني/هاتف)
-- ✅ ملف شخصي متقدم مع صورة/avatar
-- ✅ نظام تحقق (Email, Phone, Identity)
-- ✅ إعادة تعيين كلمة المرور الآمنة
-- ✅ المصادقة ثنائية (2FA) - قيد التطوير
-- ✅ أدوار متعددة (مستخدم، بائع، مشرف، مسؤول)
-
-### 🏪 نظام الإعلانات
-- ✅ إنشاء/تعديل/حذف الإعلانات
-- ✅ تصنيفات متعددة المستويات
-- ✅ بحث متقدم مع فلترة ذكية
-- ✅ رفع صور متعددة مع تحسين تلقائي
-- ✅ حالة الإعلان (نشط، معلق، مباع، منتهي)
-- ✅ تمييز الإعلانات والإعلانات المميزة
-
-### 💬 نظام الرسائل
-- ✅ محادثات فورية بين المشترين والبائعين
-- ✅ إشعارات في الوقت الفعلي
-- ✅ رفع الصور في الرسائل
-- ✅ الإبلاغ عن المحادثات المشبوهة
-
-### ❤️ المفضلات والإشعارات
-- ✅ حفظ الإعلانات في المفضلات
-- ✅ إشعارات للسعر المنخفض/متاح
-- ✅ بحث محفوظ مع تنبيهات
-
-### 💰 نظام الدفع والمحفظة
-- ✅ رصيد محفظة إلكترونية
-- ✅ سجل المعاملات التفصيلي
-- ✅ باقات الرموز (Token Packages)
-- ✅ نظام اشتراكات - قيد التطوير
-
-### 🛡️ الأمان والأداء
-- ✅ حماية XSS و SQL Injection
-- ✅ Rate Limiting متقدم
-- ✅ تحميل كسول (Lazy Loading) للمكونات
-- ✅ تحسين الصور (WebP/AVIF)
-- ✅ مراقبة Core Web Vitals
-- ✅ Skeleton Loading States
-
-### 🌐 التدويل (i18n)
-- ✅ العربية (الافتراضي) - RTL
-- ✅ الفرنسية
-- ✅ الإنجليزية
-- ✅ تبديل اللغة بسلاسة
-
-### 📱 PWA
-- ✅ تثبيت على الشاشة الرئيسية
-- ✅ عمل بدون اتصال (قيد التطوير)
-- ✅ إشعارات الدفع - قيد التطوير
+أن نكون المنصة الأولى للتجارة الإلكترونية في المغرب، معتمدين على:
+- 🇲🇦 **تخصيص محلي**: دعم كامل للغة العربية والدرهم المغربي
+- 🔒 **أمان عالي**: حماية متقدمة للمستخدمين والمعاملات
+- ⚡ **أداء ممتاز**: سرعة فائقة وتجربة مستخدم سلسة
+- 📱 **متجاوب بالكامل**: يعمل على جميع الأجهزة
 
 ---
 
-## 🛠️ التقنيات المستخدمة
+## ✨ ميزات المشروع | Features
 
-### الواجهة الأمامية (Frontend)
+### 🛍️ للمشترين | For Buyers
+
+| الميزة | الوصف |
+|--------|-------|
+| 🔍 بحث متقدم | بحث بالنص، الفئة، الموقع، السعر، والمزيد |
+| 📍 موقع جغرافي | فلترة الإعلانات حسب المدن المغربية |
+| 💰 تفضيلات | حفظ الإعلانات المفضلة |
+| 💬 مراسلة فورية | تواصل مب Sellers |
+| ⭐ تقييمات ومراجعات | قراءة تجارب المستخدمين الآخرين |
+| 🔔 إشعارات | تنبيهات للإعلانات الجديدة والعروض |
+
+### 👨‍💼 للبائعين | For Sellers
+
+| الميزة | الوصف |
+|--------|-------|
+| 📝 إنشاء إعلانات | رفع حتى 10 صور لكل إعلان |
+| 🏪 متجر شخصي | لوحة تحكم شاملة |
+| 📊 إحصائيات تفصيلية | مشاهدات، استفسارات، أداء |
+| 💳 دفع آمن | PayPal و Payoneer |
+| 🔄 مفاوضات | نظام العروض والسوم |
+| 🚚 حساب الشحن | حساب تكلفة التوصيل |
+
+### 🔧 ميزات تقنية | Technical Features
+
+```
+✅ PWA - تطبيق ويب تقدمي (قابل للتثبيت)
+✅ RTL - دعم كامل للكتابة من اليمين لليسار
+✅ SEO - تحسين محركات البحث (Schema.org)
+✅ Offline - عمل بدون اتصال بالإنترنت
+✅ Push Notifications - إشعارات فورية
+✅ 2FA - المصادقة الثنائية
+✅ Real-time - تحديثات فورية (Supabase Realtime)
+✅ Image Optimization - ضغط الصور تلقائياً
+✅ Rate Limiting - الحد من الطلبات
+✅ Security Headers - رؤوس أمان متقدمة
+```
+
+---
+
+## 🛠️ تقنيات المشروع | Tech Stack
+
+### Frontend (المواجهة الأمامية)
+
 | التقنية | الاستخدام |
 |---------|----------|
-| **Next.js 16** | إطار العمل الأساسي (App Router) |
-| **TypeScript 5** | لغة برمجة نوعية |
-| **React 19** | مكتبة واجهة المستخدم |
-| **Tailwind CSS 4** | إطار التنسيقات |
-| **shadcn/ui** | مكونات UI جاهزة |
-| **Zustand** | إدارة الحالة |
-| **React Hook Form** | إدارة النماذج |
-| **Zod** | التحقق من البيانات |
-| **Lucide React** | الأيقونات |
+| [Next.js 14](https://nextjs.org/) | إطار العمل الرئيسي (App Router) |
+| [TypeScript](https://www.typescriptlang/) | لغة برمجة نوعية |
+| [Tailwind CSS](https://tailwindcss.com/) | تصميم وأنيقات |
+| [Zustand](https://zustand-demo.pmnd.rs/) | إدارة الحالة |
+| [React Hook Form](https://react-hook-form.com/) | نماذج الاستمارات |
+| [Zod](https://zod.dev/) | التحقق من البيانات |
+| [TanStack Query](https://tanstack.com/query) | إدارة حالة الخادم |
 
-### الخلفية (Backend)
+### Backend (الخلفية)
+
 | التقنية | الاستخدام |
 |---------|----------|
-| **Supabase** | قاعدة البيانات والمصادقة |
-| **PostgreSQL** | قاعدة البيانات العلائقية |
-| **Prisma ORM** | التعامل مع قاعدة البيانات |
-| **Next.js API Routes** | نقاط نهاية API |
+| [Supabase](https://supabase.com/) | قاعدة بيانات + مصادقة + تخزين |
+| [Next.js API Routes](https://nextjs.org/docs/api-routes/introduction) | واجهات برمجة التطبيقات |
+| [Prisma](https://www.prisma.io/) | ORM (اختياري) |
+| [Redis](https://redis.io/) | التخزين المؤقت والجلسات |
 
-### البنية التحتية
-| التقنية | الاستخدام |
+### الدفع | Payments
+
+| الخدمة | الاستخدام |
 |---------|----------|
-| **Vercel** | استضافة ونشر |
-| **Sharp** | معالجة الصور |
-| **Vitest** | اختبارات الوحدة والتكامل |
-| **ESLint** | فحص الكود |
-| **Prettier** | تنسيق الكود |
+| [PayPal REST API](https://developer.paypal.com/) | الدفع الدولي |
+| [Payoneer API](https://developer.payoneer.com/) | التحويلات المالية في المغرب |
+
+### الأدوات | Tools
+
+| الأداة | الاستخدام |
+|--------|----------|
+| [Vitest](https://vitest.dev/) | اختبارات الوحدات |
+| [ESLint](https://eslint.org/) | جودة الكود |
+| [Prettier](https://prettier.io/) | تنسيق الكود |
+| [Docker](https://www.docker.com/) | الحاوية |
+| [Vercel](https://vercel.com/) | الاستضافة (موصى به) |
 
 ---
 
-## 🚀 البدء السريع
+## 🚀 البدء السريع | Quick Start
 
-### المتطلبات المسبقة
+### المتطلبات المسبقة | Prerequisites
 
 - **Node.js** >= 18.x
-- **npm** >= 9.x أو **pnpm** >= 8.x
-- **حساب Supabase** (مجاني)
+- **npm** >= 9.x أو **yarn** >= 1.22.x
+- **Git** (للاستنساخ)
 
-### التثبيت
+### التثبيت | Installation
 
 ```bash
-# استنساخ المستودع
-git clone https://github.com/sultancontact-design/mavora.git
+# 1. استنساخ المستودع
+git clone https://github.com/yourusername/mavora.git
 cd mavora
 
-# تثبيت الاعتماديات
+# 2. تثبيت الاعتماديات
 npm install
 
-# نسخ ملف البيئة
+# 3. نسخ ملف البيئة
 cp .env.example .env
+# عدل ملف .env بقيمك الحقيقية
 
-# تعديل ملف .env بإعدادات Supabase الخاصة بك
-# NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-# NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-
-# تشغيل خادم التطوير
+# 4. تشغيل خادم التطوير
 npm run dev
 ```
 
 افتح [http://localhost:3000](http://localhost:3000) في المتصفح.
 
-### الأوامر المتاحة
+### المتغيرات البيئية الأساسية | Essential Environment Variables
 
-```bash
-# تشغيل خادم التطوير
-npm run dev
+```env
+# Supabase (مطلوب)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-# بناء المشروع للإنتاج
-npm run build
+# أمان (مطلوب)
+JWT_SECRET=your-secret-minimum-32-characters
 
-# تشغيل بناء الإنتاج
-npm run start
-
-# تشغيل الاختبارات
-npm test
-
-# فحص جودة الكود
-npm run lint
-
-# تنسيق الكود
-npm run format
+# PayPal (للدفع)
+PAYPAL_MODE=sandbox
+PAYPAL_CLIENT_ID=your-client-id
+PAYPAL_CLIENT_SECRET=your-client-secret
 ```
 
 ---
 
-## 📁 هيكل المشروع
+## 📁 هيكل المشروع | Project Structure
 
 ```
 mavora/
+├── public/                    # الملفات العامة
+│   ├── icons/                 # أيقونات PWA
+│   ├── screenshots/           # لقطات الشاشة
+│   ├── manifest.json          # ملف PWA
+│   ├── sw.js                  # Service Worker
+│   └── offline.html           # صفحة عدم الاتصال
+│
 ├── src/
-│   ├── app/                    # صفحات Next.js App Router
-│   │   ├── api/               # نقاط نهاية API
-│   │   │   ├── auth/          # المصادقة (login, signup, reset-password)
-│   │   │   ├── listings/      # الإعلانات
-│   │   │   ├── categories/    # التصنيفات
-│   │   │   ├── messages/      # الرسائل
-│   │   │   ├── users/         # المستخدمين
-│   │   │   └── upload/        # رفع الملفات
-│   │   ├── auth/              # صفحات المصادقة
-│   │   ├── listings/          # صفحات الإعلانات
-│   │   ├── admin/             # لوحة التحكم
-│   │   └── ...
+│   ├── app/                   # صفحات Next.js App Router
+│   │   ├── api/               # واجهات البرمجة
+│   │   │   ├── auth/          #   المصادقة
+│   │   │   ├── listings/      #   الإعلانات
+│   │   │   ├── payments/      #   الدفع
+│   │   │   └── ...            #   المزيد
+│   │   ├── (marketing)/       # صفحات تسويقية
+│   │   ├── (auth)/            # صفحات المصادقة
+│   │   └── layout.tsx         # التخطيط الرئيسي
 │   │
-│   ├── components/            # مكونات React
-│   │   ├── ui/                # مكونات UI الأساسية (shadcn)
-│   │   ├── layout/            # Header, Footer, Sidebar
-│   │   ├── listing/           # مكونات الإعلانات
-│   │   ├── auth/              # مكونات المصادقة
-│   │   ├── common/            # مكونات مشتركة
-│   │   │   ├── Skeleton.tsx       # حالات التحميل
-│   │   │   ├── OptimizedImage.tsx # صور محسنة
-│   │   │   ├── LazyComponents.tsx # تحميل كسول
-│   │   │   └── PerformanceMonitor.tsx
-│   │   └── ...
+│   ├── components/            # المكونات
+│   │   ├── ui/                #   مكونات UI أساسية
+│   │   ├── listings/          #   مكونات الإعلانات
+│   │   ├── auth/              #   مكونات المصادقة
+│   │   ├── payments/          #   مكونات الدفع
+│   │   ├── seo/               #   مكونات SEO
+│   │   └── ...                #   المزيد
 │   │
-│   ├── lib/                   # مكتبات وأدوات مساعدة
-│   │   ├── supabase.ts        # عميل Supabase
-│   │   ├── auth.ts            # وظائف المصادقة
-│   │   ├── email.ts           # خدمة البريد
-│   │   ├── password-reset.ts  # إعادة تعيين كلمة المرور
-│   │   ├── storage/           # نظام التخزين
-│   │   │   ├── adapter.ts     # واجهة التخزين
-│   │   │   ├── manager.ts     # مدير التخزين
-│   │   │   └── image-processor.ts
-│   │   ├── performance/       # أدوات الأداء
-│   │   └── validations/       # مخططات التحقق (Zod)
+│   ├── lib/                   # المكتبات المساعدة
+│   │   ├── auth/              #   منطق المصادقة
+│   │   ├── payments/          #   منطق الدفع
+│   │   ├── storage-system.ts  #   نظام التخزين
+│   │   └── utils.ts           #   أدوات مساعدة
 │   │
-│   ├── hooks/                 # React Hooks مخصصة
-│   │   ├── useTranslation.ts  # الترجمة
-│   │   └── useAuth.ts         # حالة المصادقة
-│   │
-│   ├── i18n/                  # ملفات الترجمة
-│   │   ├── ar.json            # العربية
-│   │   ├── en.json            # الإنجليزية
-│   │   └── fr.json            # الفرنسية
-│   │
-│   └── types/                 # أنواع TypeScript
+│   ├── hooks/                 # Custom Hooks
+│   ├── stores/                # Zustand Stores
+│   ├── types/                 # TypeScript Types
+│   └── __tests__/             # الاختبارات
 │
-├── prisma/
-│   └── schema.prisma          # مخطط قاعدة البيانات
-│
-├── __tests__/                 # الاختبارات
-│   ├── integration/           # اختبارات التكامل
-│   ├── e2e/                   # اختبارات E2E
-│   └── *.test.ts              # اختبارات الوحدة
-│
-├── public/                    # الملفات الثابتة
-├── docs/                      # التوثيق
+├── scripts/                   # سكربتات النشر والإعداد
+├── __tests__/                 # اختبارات إضافية
+├── Dockerfile                 # بناء Docker
+├── docker-compose.yml         # Docker Compose
+├── vercel.json                # إعدادات Vercel
 ├── next.config.ts             # إعدادات Next.js
 ├── tailwind.config.ts         # إعدادات Tailwind
 ├── tsconfig.json              # إعدادات TypeScript
-├── package.json               # اعتماديات المشروع
-└── README.md                  # هذا الملف
+├── .env.example               # قالب المتغيرات البيئية
+└── DEPLOYMENT.md              # دليل النشر
 ```
 
 ---
 
-## ⚙️ الإعدادات
+## 📖 التوثيق | Documentation
 
-### متغيرات البيئة
-
-انسخ `.env.example` إلى `.env` وعدّل القيم:
-
-```env
-# Supabase (من لوحة تحكم Supabase → Settings → API)
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
-
-# التطبيق
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_APP_NAME=Mavora
-
-# اختياري: إعدادات البريد (للمستقبل)
-RESEND_API_KEY=re_xxxxxxxx
-EMAIL_FROM=noreply@mavora.com
-```
-
-### إعداد Supabase
-
-1. أنشئ مشروعاً جديداً على [Supabase](https://supabase.com)
-2. انسخ URL و API Key إلى `.env`
-3. شغّل `npm run db:push` لتطبيق مخطط قاعدة البيانات
-4 فعّل Email Auth في إعدادات Authentication
+| المستند | الوصف |
+|---------|-------|
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | دليل النشر الشامل |
+| [.env.example](./.env.example) | قائمة المتغيرات البيئية |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | كيف تساهم في المشروع |
+| [CHANGELOG.md](./CHANGELOG.md) | سجل التغييرات |
 
 ---
 
-## 🧪 الاختبارات
+## 🚀 النشر | Deployment
+
+### Vercel (موصى به)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/mavora)
+
+```bash
+# تثبيت Vercel CLI
+npm i -g vercel
+
+# النشر
+vercel
+
+# النشر للإنتاج
+vercel --prod
+```
+
+### Docker
+
+```bash
+# بناء وتشغيل الحاويات
+docker-compose up -d --build
+
+# فحص الحالة
+docker-compose ps
+docker-compose logs -f app
+```
+
+اقرأ [DEPLOYMENT.md](./DEPLOYMENT.md) للتفاصيل الكاملة.
+
+---
+
+## 🧪 الاختبارات | Testing
 
 ```bash
 # تشغيل جميع الاختبارات
 npm test
 
-# تشغيل اختبارات محددة
-npx vitest run auth.test.ts
+# اختبارات الوحدات فقط
+npm test -- __tests__/unit/
 
-# تشغيل في وضع المراقبة (watch mode)
-npm test -- --watch
-
-# تغطية الكود
+# مع تغطية الكود
 npm test -- --coverage
+
+# في وضع المراقبة
+npm test -- --watch
 ```
-
-### أنواع الاختبارات
-
-| النوع | المسار | الوصف |
-|------|--------|-------|
-| **Unit Tests** | `__tests__/*.test.ts` | اختبارات الوحدات |
-| **Integration Tests** | `__tests__/integration/*.test.ts` | اختبارات التكامل |
-| **E2E Tests** | `__tests__/e2e/*.test.ts` | اختبارات نهاية لنهاية |
 
 ### تغطية الاختبارات الحالية
 
 ```
-✅ نظام المصادقة (Login, Signup, Password Reset)
-✅ الإعلانات (CRUD, Search, Filters)
-✅ الأمان (XSS, SQL Injection, Rate Limiting)
-✅ الأداء (Debounce, Throttle, Memoization)
-✅ الصور (Optimization, Lazy Loading)
+✅ اختبارات الواجهة (UI Tests)
+✅ اختبارات الأداء (Performance)
+✅ اختبارات نظام التخزين (Storage System)
+✅ اختبارات إعادة كلمة المرور (Password Reset)
+⏳ اختبارات API (تحتاج خادم يعمل)
 ```
 
 ---
 
-## 📦 النشر
+## 🤝 المساهمة | Contribing
 
-### Vercel (موصى به)
+نرحب بمساهماتكم! يرجى قراءة [CONTRIBUTING.md](./CONTRIBUTING.md) للتفاصيل.
 
-1. ادفع الكود إلى GitHub
-2. [استيراد المشروع على Vercel](https://vercel.com/new)
-3. أضف متغيرات البيئة:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-4. انقر **Deploy**
+### كيف تبدأ؟
 
-### Docker (قيد التطوير)
-
-```dockerfile
-# قريباً...
-```
-
-### يدوي (VPS)
-
-```bash
-# بناء المشروع
-npm run build
-
-# تشغيل مع PM2
-pm2 start npm --name "mavora" -- start
-```
+1. Fork المستودع
+2 أنشئ فرعاً (`git checkout -b feature/amazing-feature`)
+3. اcommit التغييرات (`git commit -m 'Add amazing feature'`)
+4. ادفع الفرع (`git push origin feature/amazing-feature`)
+5. افتح Pull Request
 
 ---
 
-## 🤝 المساهمة
+## 📊 حالة المشروع | Project Status
 
-نرحب بمساهماتكم! يرجى اتباع هذه الخطوات:
+### المراحل المكتملة | Completed Phases
 
-1. Fork المشروع
-2. إنشاء فرع (`git checkout -b feature/AmazingFeature`)
-3. Commit التغييرات (`git commit -m 'Add some AmazingFeature'`)
-4. Push إلى الفرع (`git push origin feature/AmazingFeature`)
-2. افتح Pull Request
-
-### معايير الكود
-
-- اتبع [Conventional Commits](https://www.conventionalcommits.org/)
-- استخدم TypeScript للأصناف والدوال
-- أضف اختبارات للملفات الجديدة
-- تأكد من مرور جميع الاختبارات
-
----
-
-## 📊 تقدم المشروع
-
-### المراحل المكتملة
-
-| Phase | الوصف | الحالة |
-|-------|-------|--------|
-| 1-7 | الأساسيات (Auth, Listings, Messages, Wallet) | ✅ |
-| 8 | نظام رفع الصور والتخزين | ✅ |
-| 9 | إعادة تعيين كلمة المرور | ✅ |
-| 10 | تحسينات الأداء والتحميل | ✅ |
-| 11 | الاختبار الشامل والإصدار | ✅ |
-
-### قائمة الرغبات (Roadmap)
-
-- [ ] نظام دفع متكامل (Stripe/Paypal)
-- [ ] تطبيق موبايل (React Native/Flutter)
-- [ ] نظام تقييمات ومراجعات متقدم
-- [ ] دردشة مباشرة (WebSocket)
-- [ ] خريطة تفاعلية للإعلانات
-- [ ] نظام إعلانات مدفوعة
-- [ ] API للمطورين الخارجيين
-- [ ] دعم لغات إضافية
+| المرحلة | الوصف | الحالة |
+|---------|-------|--------|
+| Phase 1 | الأساس والتوثيق | ✅ مكتمل |
+| Phase 2 | نظام المصادقة | ✅ مكتمل |
+| Phase 3 | إدارة الإعلانات | ✅ مكتمل |
+| Phase 4 | نظام البحث والفلترة | ✅ مكتمل |
+| Phase 5 | نظام الرسائل | ✅ مكتمل |
+| Phase 6 | نظام الدفع | ✅ مكتمل |
+| Phase 7 | نظام المحفظة | ✅ مكتمل |
+| Phase 8 | نظام الإشعارات | ✅ مكتمل |
+| Phase 9 | لوحة التحكم | ✅ مكتمل |
+| Phase 10 | PWA والتقدميات | ✅ مكتمل |
+| Phase 11 | SEO والأداء | ✅ مكتمل |
+| Phase 12 | الأمان والحماية | ✅ مكتمل |
+| Phase 13 | إعداد الإنتاج | ✅ مكتمل |
 
 ---
 
-## 📄 الرخصة
+## 📄 الرخصة | License
 
-هذا المشروع مرخص تحت رخصة [MIT](LICENSE). راجع ملف `LICENSE` للتفاصيل.
-
----
-
-## 🙏 الشكر والتقدير
-
-- [Next.js](https://nextjs.org/) - إطار React الإنتاجي
-- [Supabase](https://supabase.com/) - منصة Backend كخدمة
-- [Tailwind CSS](https://tailwindcss.com/) - إطار CSS أولوية الأدوات
-- [shadcn/ui](https://ui.shadcn.com/) - مكونات UI جميلة
-- [Lucide](https://lucide.dev/) - أيقونات رائعة
+هذا المشروع مرخص تحت رخصة MIT - راجع ملف [LICENSE](./LICENSE) للتفاصيل.
 
 ---
 
-## 📞 الدعم
+## 🙏 الشكر والتقدير | Acknowledgments
+
+- [Next.js Team](https://nextjs.org/) - إطار عمل رائع
+- [Supabase](https://supabase.com/) - backend كخدمة ممتاز
+- [Tailwind CSS](https://tailwindcss.com/) - framework CSS أولي
+- المجتمع المغربي التقني للإلهام والدعم
+
+---
+
+## 📞 تواصل معنا | Contact
 
 - **البريد الإلكتروني**: support@mavora.ma
-- **GitHub Issues**: [فتح issue جديد](https://github.com/sultancontact-design/mavora/issues)
-- **الوثائق**: [docs.mavora.ma](https://docs.mavora.ma) (قريباً)
+- **الموقع**: [https://mavora.ma](https://mavora.ma)
+- **GitHub Issues**: [Report a bug](../../issues)
 
 ---
 
 <div align="center">
 
-**صُنع بـ ❤️ للمغرب وشمال إفريقيا**
+**صُنع بـ ❤️ للمغرب 🇲🇦**
 
-[⬆️ العودة للأعلى](#--mavora---سوقك-الإلكتروني-الموثوق)
+*Made with ❤️ for Morocco*
+
+[⬆️ العودة للأعلى](#--mavora---سوق-مافورا-الإلكتروني)
 
 </div>

@@ -823,3 +823,77 @@ Stage Summary:
 - `src/app/api/auth/reset-password/route.ts` 🆕
 - `src/lib/password-reset.ts` 🆕
 - `__tests__/password-reset.test.ts` 🆕
+
+---
+Task ID: 10
+Agent: Main Agent
+Task: تحسينات الأداء والتحميل (Performance & Loading Optimizations)
+
+Work Log:
+- إنشاء مكتبة أداء شاملة (`src/lib/performance/utils.ts`)
+  - `useLazyLoad` Hook للتحميل الكسول بناءً على الرؤية
+  - `debounce` و `throttle` لتحسين الأداء
+  - `useDebouncedValue` و `useThrottledValue` Hooks
+  - `useOnlineStatus` و `useMediaQuery` و `useBreakpoints`
+  - `createMemoizedSelector` للتخزين المؤقت الذكي
+  - أدوات قياس الأداء (measurePerformance, getPerformanceMetrics)
+
+- إنشاء مكونات Skeleton للتحميل (`src/components/common/Skeleton.tsx`)
+  - Skeleton أساسي مع رسوم متحركة
+  - TextSkeleton, AvatarSkeleton, ImageSkeleton
+  - CardSkeleton, ListingGridSkeleton, TableSkeleton
+  - ProfileSkeleton, ConversationListSkeleton
+  - MessageThreadSkeleton, FormSkeleton, DashboardStatsSkeleton
+
+- إنشاء صورة محسنة (`src/components/common/OptimizedImage.tsx`)
+  - OptimizedImage مع lazy loading و blur placeholder
+  - Avatar component مع fallback initials
+  - ThumbnailGrid للمعرض المتعدد
+  - دعم WebP/AVIF تلقائياً
+
+- إنشاء نظام التحميل الكسول (`src/components/common/LazyComponents.tsx`)
+  - LazyLoader wrapper مع Suspense
+  - createLazyComponent factory function
+  - 15+ مكون جاهز للتحميل الكسول (Admin, Auth, Marketplace, etc.)
+  - prefetchComponents للتحميل المسبق
+
+- إنشاء مراقب الأداء (`src/components/common/PerformanceMonitor.tsx`)
+  - تتبع Core Web Vitals (LCP, FID, CLS, INP, TTFB, FCP)
+  - كشف نوع الاتصال والجهاز
+  - لوحة تحكم في وضع التطوير
+  - دعم إرسال البيانات لـ Analytics
+
+- تحسين إعدادات Next.js (`next.config.ts`)
+  - تهيئة الصور (AVIF/WebP, deviceSizes, imageSizes)
+  - رؤوس أمان وتخزين مؤقت (Cache-Control)
+  - تحسين Webpack (code splitting, vendor chunks)
+  - optimizePackageImports للحزم الشائعة
+
+- تحديث التخطيط الرئيسي (`src/app/layout.tsx`)
+  - إضافة PerformanceMonitor في وضع التطوير
+
+- إنشاء اختبارات شاملة (`__tests__/performance.test.ts`)
+  - 16 اختبار ناجح يغطي:
+    * Debounce (تأخير التنفيذ، الإلغاء، leading edge)
+    * Throttle (التنفيذ الفوري، تقييد التكرار)
+    * URL Generation (srcSet, sizes)
+    * Memoized Selector (التخزين المؤقت، الحد الأقصى)
+
+Stage Summary:
+- تم بناء نظام أداء كامل ومتكامل
+- تحسين كبير في تجربة المستخدم مع Loading States
+- دعم كامل للصور المحسنة مع Lazy Loading
+- مراقبة Core Web Vitals في الوقت الفعلي
+- جميع الاختبارات تمر بنجاح (16/16)
+
+الملفات المنشأة/المحدثة:
+- `src/lib/performance/utils.ts` 🆕
+- `src/lib/performance/index.ts` 🆕
+- `src/components/common/Skeleton.tsx` 🆕
+- `src/components/common/OptimizedImage.tsx` 🆕
+- `src/components/common/LazyComponents.tsx` 🆕
+- `src/components/common/PerformanceMonitor.tsx` 🆕
+- `src/components/common/index.ts` 🆕
+- `__tests__/performance.test.ts` 🆕
+- `next.config.ts` ✏️
+- `src/app/layout.tsx` ✏️

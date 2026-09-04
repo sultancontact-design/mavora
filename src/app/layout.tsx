@@ -180,6 +180,22 @@ export default function RootLayout({
         {/* MS Tiles */}
         <meta name="msapplication-TileColor" content="#0D9488" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
+        
+        {/* PWA Manifest */}
+        <link rel="manifest" href="/manifest.json" />
+        
+        {/* Service Worker Registration (PWA) */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').catch(function() {});
+                });
+              }
+            `,
+          }}
+        />
       </head>
       <body
         className={`${tajawal.variable} ${inter.variable} font-sans antialiased bg-background text-foreground min-h-screen flex flex-col`}

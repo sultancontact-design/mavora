@@ -1,57 +1,175 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# ===========================================
+# Mavora - Comprehensive .gitignore
+# ===========================================
 
-# dependencies
-node_modules
+# -------------------------------------------
+# Dependencies
+# -------------------------------------------
+node_modules/
 /.pnp
-.pnp.*
+.pnp.js
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
 
-# testing
+# -------------------------------------------
+# Testing
+# -------------------------------------------
 /coverage
+.nyc_output/
+test-results/
+junit.xml
 
-# next.js
-/.next/
-/out/
-
-# production
+# -------------------------------------------
+# Next.js Build Outputs
+# -------------------------------------------
+.next/
+out/
 /build
+dist/
 
-# misc
-.DS_Store
-*.pem
+# -------------------------------------------
+# Production Files (generated)
+# -------------------------------------------
+*.tsbuildinfo
+next-env.d.ts
 
-# debug
+# -------------------------------------------
+# Environment Variables (SECURITY: Never commit!)
+# -------------------------------------------
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# -------------------------------------------
+# Vercel
+# -------------------------------------------
+.vercel/
+
+# -------------------------------------------
+# Debug Logs
+# -------------------------------------------
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-!.env.example
-
-# vercel
-.vercel
-
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-local-*
-.claude
-.z-ai-config
 *.log
 dev.log
 dev.out.log
-test
-prompt
-
 server.log
-# Skills directory
+logs/
+
+# -------------------------------------------
+# OS Generated Files
+# -------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+
+# -------------------------------------------
+# IDE / Editor
+# -------------------------------------------
+.idea/
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# -------------------------------------------
+# Misc
+# -------------------------------------------
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# -------------------------------------------
+# Temporary Files
+# -------------------------------------------
+tmp/
+temp/
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+# -------------------------------------------
+# Docker
+# -------------------------------------------
+.docker/
+
+# -------------------------------------------
+# Database
+# -------------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+
+# -------------------------------------------
+# Secrets & Credentials (NEVER COMMIT!)
+# -------------------------------------------
+secrets/
+*.secret
+credentials.json
+service-account.json
+google-credentials.json
+
+# -------------------------------------------
+# Backup Files
+# -------------------------------------------
+*.bak
+*.backup
+*.old
+*~
+
+# -------------------------------------------
+# AI/LLM Config (Optional)
+# -------------------------------------------
+.claude/
+.z-ai-config/
+prompt/
+.agent-ctx/
+
+# -------------------------------------------
+# Skills Directory
+# -------------------------------------------
 /skills/.env
-.env.local
-scripts/run-enhancements.ts
+
+# -------------------------------------------
+# Generated Icons (keep source, ignore generated)
+# -------------------------------------------
+public/icons/generated/
+
+# -------------------------------------------
+# Download/Output Directory
+# -------------------------------------------
+download/
+downloads/
+output/
+
+# -------------------------------------------
+# Local Development Only
+# -------------------------------------------
+local-*
+.dev/

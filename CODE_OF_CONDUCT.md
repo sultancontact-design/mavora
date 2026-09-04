@@ -1,100 +1,88 @@
-# 🤝 مدونة السلوك | Code of Conduct
+# قواعد السلوك - Code of Conduct
 
-## تعهدنا
+## Pledge / تعهدنا
 
-في مجتمع مافورا، نلتزم بتوفير تجربة ترحيبية وآمنة للجميع، بغض النظر عن:
+في سبيل تعزيز بيئة مفتوحة ومرحبة، نتعهد نحن والمساهمون والمحافظون على جعل المشاركة في مشروع **مافورا (Mavora)** تجربة خالية من المضايقات للجميع، بغض النظر عن العمر أو حجم الجسم أو الحجم أو العرق أو الهوية أو التعبير عن الجنس أو مستوى الخبراء أو الجنسية أو المظهر الشخصي أو العرق أو الدين أو التوجه الجنسي أو الهوية الجنسية أو اللغة.
 
-- **العمر**
-- **الجنس** / **الهوية الجندرية**
-- **التوجه الجنسي**
-- **العرق/الأثنية**
-- **الدين**
-- **الإعاقة**
-- **الموقع الجغرافي**
-- **مستوى الخبرة**
+## Standards / معاييرنا
 
----
+السلوك الإيجابي يشمل:
 
-## معايير سلوكنا
+- ✅ استخدام لغة ترحيبية ومشمولة
+- ✅ احترام وجهات النظر والخبرات المختلفة
+- ✅ قبول النقد البناء بأريحية
+- ✅ إظهار التعاطف تجاه أعضاء المجتمع الآخرين
+- ✅ المساعدة في تعليم الآخرين بصبر
+- ✅ احترام الخصوصية وعدم نشر معلومات شخصية
 
-### ✅ ما نشجعه
+السلوك غير المقبول يشمل:
 
-- **احترام الآخرين**: تعامل مع الجميع باحترام وتسامح
-- **التقبل**: تقبل الاختلافات في الرأي والخلفية
-- **المساهمة الإيجابية**: ساعد في بناء مجتمع داعم
-- **التعلم**: كن فضولاً ومستعداً للتعلم
-- **التعاون**: اعمل مع الآخرين لتحقيق أهداف مشتركة
+- ❌ استخدام اللغة أو الصور الجنسية أو الانتباهات الجنسية
+- ❌ الشتائم والإهانات والتعليقات المسيئة
+- ❌ المضايقات العامة أو الخاصة
+- ❌ نشر معلومات الآخرين الخاصة دون إذن
+- ❌ السلوك الذي يمكن اعتباره غير مناسب في بيئة مهنية
+- ❌ التمييز بناء على أي من الخصائص المذكورة أعلاه
 
-### ❌ ما لا نتقبله
+## Enforcement / إنفاذ القواعد
 
-- **التنمر**: أي شكل من أشكال المضايقة
-- **التمييز**:_comments أو أفعال تمييزية
-- **التحرش**: لفظي أو جنسي أو صوري
-- **الإزعاج المتعمد**: مقاطعة أو إلهاء مستمر
-- **نشر معلومات خاصة**: بدون موافقة صريحة
-- **سوء الاستخدام**: استغلال الثغرات الأمنية
-- **الدعاية السياسية/دينية**: غير ذات صلة بالمشروع
+يمكن الإبل عن السلوك المخالف إلى فريق الصيانة عبر:
 
----
+- 📧 البريد الإلكتروني: `security@mavora.ma`
+- 🔗 GitHub Issues: استخدم وسم `conduct-issue`
+- 💬 Discord: [رابط خادم الدعم]
 
-## في حالة الانتهاك
+ستتم مراجعة جميع الشكاوى وتحقيقها بشكل عادل ومCONFIDENTIAL.
 
-### الخطوات المتخذة:
+## Consequences / العواقب
 
-1. **تحذير رسمي**: عبر بريد إلكتروني خاص
-2. **تعليق مؤقت**: من الوصول إلى المشروع (7-30 يوم)
-3. **حظر دائم**: للحالات الخطيرة أو المتكررة
+قد تتراوح responses غير المقبولة من:
 
-### كيف تبلغ عن انتهاك؟
+⚠️ تحذير رسمي
+🚫 تعليق مؤقت للمشاركة
+🔒 حظر دائم من المشروع
 
-أرسل بريداً إلى: **conduct@mavora.ma**
+## Attribution / المصدر
 
-أو راسل أي من الصيانة:
-- @admin (GitHub)
-- @maintainers (Discord/Slack)
+تم تبني هذه القواعد بناءً على [Contributor Covenant](https://www.contributorcovenant.org/) الإصدار 2.1.
 
 ---
 
-## توقعات إضافية
+## English Version
 
-### للمساهمين بالكود:
+### Our Pledge
 
-- [ ] اكتب كوداً نظيفاً وموثقاً
-- [ ] راجع الكود بلطف وبناءة
-- [ ] قبل التغييرات بحذر
-- [ ] ساعد المبتدئين على التعلم
+We as members and pledges make participation in our project and our community a harassment-free experience for everyone, regardless of age, body size, disability, ethnicity, gender identity and expression, level of experience, nationality, personal appearance, race, religion, or sexual identity and orientation.
 
-### للمستخدمين:
+### Our Standards
 
-- [ ] اطرح أسئلة بذكاء واحترام
-- [ ] شارك المعرفة بحرية
-- [ ] أبلغ عن الأخطاء بشكل بنّاء
-- [ ] كن صبوراً مع المبتدئين
+**Positive behavior includes:**
+- Using welcoming and inclusive language
+- Being respectful of differing viewpoints and experiences
+- Gracefully accepting constructive criticism
+- Focusing on what is best for the community
+- Showing empathy towards other community members
 
-### للصيانة:
+**Unacceptable behavior includes:**
+- The use of sexualized language or imagery
+- Trolling, insulting/derogatory comments, and personal or political attacks
+- Public or private harassment
+- Publishing others' private information without explicit permission
+- Other conduct which could reasonably be considered inappropriate in a professional setting
 
-- [ ] كن قدوة حسنة
-- [ ] رد على الاستفسارات بسرعة
-- [ ] عامل الجميع بعدالة
-- [ ] طبق هذه القواعد بشكل عادل
+### Enforcement
 
----
+Report issues to:
+- Email: `security@mavora.ma`
+- GitHub Issues: Use `conduct-issue` label
 
-## الترخيص
+### Consequences
 
-هذه المدونة مرخصة تحت [Contributor Covenant](https://www.contributorcovenant.org/version/2/1/code_of_conduct.html)، الإصدار 2.1.
-
----
-
-## اتصل بنا
-
-للاستفسارات حول مدونة السلوك:
-
-- **البريد**: conduct@mavora.ma
-- **GitHub**: @mavora/admins
+Inappropriate behavior may result in:
+- Warning
+- Temporary suspension
+- Permanent ban from the project
 
 ---
 
-*آخر تحديث: يناير 2025*
-
-**بمشاركتكم، نجعل مافورا مكاناً أفضل للجميع! 🌟**
+© 2024 Mavora. Licensed under MIT License.

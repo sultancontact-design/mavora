@@ -1,43 +1,67 @@
 ---
-name: ✨ اقتراح ميزة جديدة
-about: اقترح ميزة جديدة لتحسين المشروع
-title: '[FEATURE] وصف الميزة المقترحة'
-labels: 'enhancement'
+name: ✨ طلب ميزة جديدة / Feature Request
+about: اقترح فكرة أو ميزة جديدة للمشروع
+title: '[FEATURE] وصف الميزة المطلوبة'
+labels: 'enhancement, triage'
 assignees: ''
 ---
 
-## 🎯 وصف الميزة | Feature Description
+## 📝 وصف الميزة / Feature Description
 
-صف الميزة التي تقترحها بوضوح.
+وصف واضح ومختصر للميزة التي ترغب في إضافتها.
 
-## 📋 الدافع | Motivation
+## 🎯 حالة الاستخدام / Use Case
 
-لماذا هذه الميزة مهمة؟ ما المشكلة التي تحلها؟
+لماذا تحتاج هذه الميزة؟ ما المشكلة التي تحلها؟
 
-## 💡 الحل المقترح | Proposed Solution
+## 💡 الحل المقترح / Proposed Solution
 
-كيف تقترح تنفيذ هذه الميزة؟
+صف كيف يمكن تنفيذ هذه الميزة.
 
-## 📐 تصميم مقترح (اختياري) | Mockups (Optional)
+## 🔄 البدائل / Alternatives
 
-أضف رسومات أو وصف بصري لكيف ستبدو الميزة.
+هل هناك حلول بديلة أو طرق أخرى لتحقيق نفس الهدف؟
 
-## 🔄 البدائل Alternatives
+## 📊 الأولوية / Priority
 
-هل فكرت في حلول أخرى؟ لماذا اخترت هذا الحل؟
+- 🔴 عالية - مطلوب بشكل عاجل
+- 🟠 متوسطة - سيكون مفيداً قريباً
+- 🟢 منخفضة - سيكون لطيفاً أن يكون متاحاً
 
-## 📊 الأولوية | Priority
+## 📚 مراجع إضافية / Additional References
 
-- [ ] عالية - High (مهمة للمشروع)
-- [ ] متوسطة - Medium (سيكون من الجيد إضافتها)
-- [ ] منخفضة - Low (فكرة جيدة لل مستقبل)
-
-## 🤝 المساهمة | Contribution
-
-- [ ] أنا مستعد للعمل على هذه الميزة
-- [ ] يمكنني المساعدة في الاختبار
-- [ ] أريد فقط اقتراح الفكرة
+- روابط ذات صلة
+- أمثلة من مشاريع مشابهة
+- وثائق أو مقالات
 
 ---
 
-**ملاحظة**: تأكد أن الميزة تتوافق مع رؤية المشروع وأهدافه.
+## English Version
+
+### Feature Description
+
+A clear and concise description of the feature you'd like to see added.
+
+### Use Case
+
+Why do you need this feature? What problem does it solve?
+
+### Proposed Solution
+
+Describe how this feature could be implemented.
+
+### Alternatives
+
+Are there alternative solutions or other ways to achieve the same goal?
+
+### Priority
+
+- 🔴 High - urgently needed
+- 🟠 Medium - would be useful soon
+- 🟢 Low - nice to have
+
+### Additional References
+
+- Relevant links
+- Examples from similar projects
+- Documentation or articles

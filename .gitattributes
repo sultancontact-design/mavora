@@ -1,0 +1,84 @@
+# =============================================================================
+# Mavora - Git Attributes Configuration
+# Arabic Marketplace Platform (Morocco)
+# =============================================================================
+
+# Text file normalization
+* text=auto eol=lf
+
+# Source files - always LF
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.xml text eol=lf
+*.sh text eol=lf
+*.sql text eol=lf
+*.env.* text eol=lf
+*.example text eol=lf
+
+# Binary files - no normalization
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.svg text
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.otf binary
+
+# Archives and packages
+*.zip binary
+*.tar.gz binary
+*.rar binary
+*.7z binary
+*.gz binary
+
+# Database files
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+
+# Lock files (should not be modified by git)
+package-lock.json binary
+yarn.lock binary
+pnpm-lock.yaml binary
+
+# Generated files
+next-env.d.ts text eol=lf
+*.map binary
+
+# Docker
+Dockerfile text eol=lf
+docker-compose*.yml text eol=lf
+.dockerignore text eol=lf
+
+# CI/CD
+.github/**/* text eol=lf
+
+# Documentation
+docs/**/* text eol=lf
+*.md text eol=lf
+LICENSE text eol=lf
+CHANGELOG.md text eol=lf
+CONTRIBUTING.md text eol=lf
+CODE_OF_CONDUCT.md text eol=lf
+SECURITY.md text eol=lf
+
+# RTL/Arabic specific - ensure proper encoding
+**/*.ts linguist-language=TypeScript
+**/*.tsx linguist-language=TypeScript-React
+README.md linguist-language=Arabic
+CONTRIBUTING.md linguist-language=Arabic
+CHANGELOG.md linguist-language=Arabic

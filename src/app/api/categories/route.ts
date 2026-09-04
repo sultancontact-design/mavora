@@ -6,27 +6,27 @@ export async function GET() {
     const supabase = getSupabaseServerClient();
 
     // Fetch all active categories
-    // Note: Supabase/PostgreSQL typically uses snake_case columns
+    // IMPORTANT: Schema uses CAMELCASE columns (parentId, sortOrder, isActive)
     const { data, error } = await supabase
       .from('categories')
       .select('*')
-      .eq('is_active', true)  // Use snake_case for DB column
-      .order('sort_order', { ascending: true });  // Use snake_case for DB column
+      .eq('isActive', true)  // camelCase - matches schema
+      .order('sortOrder', { ascending: true });  // camelCase - matches schema
 
     if (error) {
       console.error('Categories fetch error:', error);
-      return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to fetch categories', details: error.message }, { status: 500 });
     }
 
     // Group into parent-child hierarchy
     const allCategories = data ?? [];
     const parentCategories = allCategories
-      .filter((cat) => cat.parent_id === null)  // Use snake_case for DB column
+      .filter((cat) => cat.parentId === null)  // camelCase - matches schema
       .map((parent) => ({
         ...parent,
         children: allCategories
-          .filter((cat) => cat.parent_id === parent.id)
-          .sort((a, b) => a.sort_order - b.sort_order),  // Use snake_case
+          .filter((cat) => cat.parentId === parent.id)
+          .sort((a, b) => a.sortOrder - b.sortOrder),  // camelCase
       }));
 
     return NextResponse.json(parentCategories);

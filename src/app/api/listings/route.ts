@@ -287,25 +287,16 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const {
-      title,
-      description,
-      price,
-      categoryId,
-      condition,
-      locationAddress,
-      contactPhone,
-      negotiable,
-    } = body as {
-      title?: string;
-      description?: string;
-      price?: number | string | null;
-      categoryId?: string;
-      condition?: string;
-      locationAddress?: string;
-      contactPhone?: string;
-      negotiable?: boolean;
-    };
+    
+    // Support both camelCase (API standard) and snake_case (frontend form)
+    const categoryId = body.categoryId || body.category_id;
+    const title = body.title;
+    const description = body.description;
+    const price = body.price;
+    const condition = body.condition;
+    const locationAddress = body.locationAddress || body.location;
+    const contactPhone = body.contactPhone || body.phone;
+    const negotiable = body.negotiable;
 
     // Validate required fields
     const errors: Record<string, string> = {};
@@ -319,7 +310,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!categoryId) {
-      errors.categoryId = 'Category is required';
+      errors.categoryId = 'Category is required (category_id)';
     }
 
     if (Object.keys(errors).length > 0) {

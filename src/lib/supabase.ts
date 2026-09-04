@@ -2,15 +2,28 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const isProduction = process.env.NODE_ENV === 'production';
 
-// Create a dummy client for build time when env vars are not available
+// Create Supabase client with proper error handling
 function createSupabaseClient(): SupabaseClient {
   if (!supabaseUrl || !supabaseAnonKey) {
-    // Return a minimal client-like object that won't crash during build
-    // This allows the build to succeed even without real credentials
-    console.warn('⚠️ Supabase credentials not found. Some features may not work in development.');
+    // In PRODUCTION: Fail loudly - do NOT use placeholder
+    if (isProduction) {
+      throw new Error(
+        '❌ CRITICAL: Supabase credentials (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY) are required in production. ' +
+        'Set them in your environment variables or Vercel dashboard.'
+      );
+    }
     
-    // Return a mock client that has the same interface but does nothing
+    // In DEVELOPMENT: Allow build to succeed with warning
+    console.warn(
+      '⚠️ [DEV] Supabase credentials not found. ' +
+      'Using placeholder client - features requiring database will not work. ' +
+      'Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local'
+    );
+    
+    // Return a minimal client that won't crash during dev/build
+    // This client will fail gracefully on actual API calls
     return createClient(
       'https://placeholder.supabase.co', 
       'placeholder-key',
@@ -37,7 +50,14 @@ export const supabase = createSupabaseClient();
 
 export function getSupabaseServerClient(): SupabaseClient {
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn('⚠️ Supabase credentials not found. Using placeholder client.');
+    // In production, this is a critical error
+    if (isProduction) {
+      throw new Error(
+        '❌ CRITICAL: Supabase credentials missing in production. Cannot create server client.'
+      );
+    }
+    
+    console.warn('⚠️ [DEV] Supabase credentials not found. Using placeholder client.');
     return createClient('https://placeholder.supabase.co', 'placeholder-key');
   }
   

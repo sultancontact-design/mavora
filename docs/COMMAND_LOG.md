@@ -6,7 +6,126 @@
 
 ---
 
-## Commands Executed
+## Phase 2: Critical Security Fixes (2026-09-04)
+
+### ✅ FIX #1: Removed Hardcoded SERVICE_ROLE_KEY
+
+**File:** `src/app/api/listings/route.ts`
+
+**Before (CRITICAL - SECURITY VULNERABILITY):**
+```typescript
+// ❌ SECURITY RISK: Key exposed in source code
+const SUPABASE_URL = 'https://kyanecjjautqmuowbtvy.supabase.co';
+const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
+
+const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {...});
+```
+
+**After (SECURE):**
+```typescript
+// ✅ Uses environment variable via secure helper
+import { getSupabaseAdminClient } from '@/lib/supabase';
+const supabase = getSupabaseAdminClient();
+```
+
+**Impact:**
+- Removes full database access key from GitHub/repository
+- Key now only in Vercel Environment Variables
+- Uses centralized, secure client creation
+
+**Status:** ✅ FIXED
+
+---
+
+### ✅ FIX #2: Removed Fake userId from Listing Creation
+
+**File:** `src/app/api/listings/route.ts` (POST handler)
+
+**Before (DATA INTEGRITY ISSUE):**
+```typescript
+// ❌ Creates orphaned listings with fake user
+const defaultUserId = 'test-user-001';  // NOT A REAL USER!
+// ...
+userId: defaultUserId,
+```
+
+**After (REQUIRES AUTHENTICATION):**
+```typescript
+// ✅ Requires valid authentication
+let userId: string | null = null;
+
+// Check session cookie
+const accessToken = request.cookies.get('sb-access-token')?.value;
+if (accessToken) {
+  const { data: { user } } = await supabase.auth.getUser(accessToken);
+  if (user) userId = user.id;
+}
+
+// Check Authorization header (for API usage)
+if (!userId && authHeader?.startsWith('Bearer ')) {
+  // ... verify token
+}
+
+// REJECT if not authenticated
+if (!userId) {
+  return NextResponse.json(
+    { error: 'Authentication required. Please log in to create a listing.' },
+    { status: 401 }
+  );
+}
+
+// Use real user ID
+userId: userId,  // ✅ Real authenticated user
+```
+
+**Impact:**
+- Listings now linked to real users
+- Prevents orphaned data
+- Enforces authentication requirement
+
+**Status:** ✅ FIXED
+
+---
+
+### ✅ FIX #3: Improved Supabase Client Error Handling
+
+**File:** `src/lib/supabase.ts`
+
+**Before (SILENT FAILURE):**
+```typescript
+// ❌ Silently uses fake client in production
+if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn('⚠️ Supabase credentials not found.');
+    return createClient('https://placeholder.supabase.co', 'placeholder-key');
+}
+```
+
+**After (FAIL LOUDLY IN PRODUCTION):**
+```typescript
+if (!supabaseUrl || !supabaseAnonKey) {
+    // In PRODUCTION: Fail loudly
+    if (isProduction) {
+      throw new Error(
+        '❌ CRITICAL: Supabase credentials are required in production...'
+      );
+    }
+    
+    // In DEVELOPMENT: Allow build with warning
+    console.warn('⚠️ [DEV] Supabase credentials not found...');
+    return createClient('https://placeholder.supabase.co', ...);
+}
+```
+
+**Impact:**
+- Production crashes clearly if config missing
+- Development still works for testing
+- Better debugging experience
+
+**Status:** ✅ FIXED
+
+---
+
+## Previous Commands Executed (Phase 1)
 
 ### 1. ESLint (Code Quality)
 

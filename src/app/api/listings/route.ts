@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdminClient } from '@/lib/supabase';
 
 // ============================================================
-// Configuration - Direct DB access for reliability
+// Configuration - Uses secure admin client from lib/supabase
 // ============================================================
 
-const SUPABASE_URL = 'https://kyanecjjautqmuowbtvy.supabase.co';
-const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5YW5lY2pqYXV0cW11b3didHZ5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODI5ODM2MiwiZXhwIjoyMTAzODc0MzYyfQ.CfYJjFHkacydBjS7U2kE44K9o4k8fH5DexC9Xd7sdN0';
-
-const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false }
-});
+// Get admin client with service role (only works server-side)
+// This uses environment variables, NOT hardcoded keys
+const supabase = getSupabaseAdminClient();
 
 // XSS Prevention: Sanitize string input
 function sanitizeInput(str: string): string {
@@ -208,11 +205,44 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create new listing (requires auth via DB-first)
+// POST - Create new listing (REQUIRES AUTHENTICATION)
 export async function POST(request: NextRequest) {
   try {
-    // For now, allow creating listings with basic validation
-    // In production, require proper authentication
+    // ============================================================
+    // AUTHENTICATION CHECK - Must be authenticated to create listing
+    // ============================================================
+    const authHeader = request.headers.get('authorization');
+    let userId: string | null = null;
+
+    // Method 1: Check for session cookie (from login)
+    const accessToken = request.cookies.get('sb-access-token')?.value;
+    
+    if (accessToken) {
+      // Verify the token and get user
+      const { data: { user } } = await supabase.auth.getUser(accessToken);
+      if (user) {
+        userId = user.id;
+      }
+    }
+
+    // Method 2: Check Authorization header (for API usage)
+    if (!userId && authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const { data: { user } } = await supabase.auth.getUser(token);
+      if (user) {
+        userId = user.id;
+      }
+    }
+
+    // REJECT if not authenticated
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Authentication required. Please log in to create a listing.' },
+        { status: 401 }
+      );
+    }
+
+    // Parse request body
     const body = await request.json();
     const {
       title,
@@ -260,15 +290,13 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString();
     const listingId = crypto.randomUUID();
     
-    // Use a default user ID for demo purposes (in production, get from auth)
-    const defaultUserId = 'test-user-001';
-
+    // Use authenticated user's ID (NOT a fake/hardcoded one)
     const insertData = {
       id: listingId,
       title: sanitizeInput(title!),
       description: sanitizeInput(description!),
       categoryId: categoryId!,
-      userId: defaultUserId,
+      userId: userId,
       price: price ? Number(price) : null,
       currencyCode: 'MAD',
       condition: condition || 'used',

@@ -114,7 +114,15 @@ export default function CreateListingForm() {
   const [dynamicFieldValues, setDynamicFieldValues] = useState<Record<string, string>>({});
 
   // ── Images state ──
-  const [images, setImages] = useState<Array<{ id?: string; url: string; is_primary: boolean }>>([]);
+  const [images, setImages] = useState<Array<{ 
+    id?: string; 
+    url: string; 
+    path?: string;
+    is_primary: boolean;
+    _uploading?: boolean;
+    _progress?: number;
+    _error?: string;
+  }>>([]);
 
   // ── Fetch dropdown data ──
   const [categories, setCategories] = useState<Category[]>([]);

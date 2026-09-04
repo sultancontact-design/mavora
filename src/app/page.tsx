@@ -63,6 +63,7 @@ export default function HomePage() {
   useNavigationInit();
   
   const [featuredListings, setFeaturedListings] = useState<Listing[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<{ listings: number; users: number; categories: number; cities: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,16 +79,27 @@ export default function HomePage() {
     try {
       setIsLoading(true);
       
-      // Fetch featured listings
-      const listingsRes = await fetch('/api/listings?limit=8&sort=featured&status=active');
+      // Fetch featured listings (using correct API parameters)
+      const listingsRes = await fetch('/api/listings?per_page=8&sort_by=popular');
       if (listingsRes.ok) {
         const listingsData = await listingsRes.json();
-        setFeaturedListings(Array.isArray(listingsData) ? listingsData : listingsData.data || []);
+        setFeaturedListings(listingsData.data || []);
       }
 
-      // Fetch real stats from API
+      // Fetch real categories from API
       try {
-        const statsRes = await fetch('/api/admin/stats');
+        const categoriesRes = await fetch('/api/categories');
+        if (categoriesRes.ok) {
+          const categoriesData = await categoriesRes.json();
+          setCategories(categoriesData || []);
+        }
+      } catch (catError) {
+        console.warn('Categories not available:', catError);
+      }
+
+      // Fetch stats from public endpoint (no auth required)
+      try {
+        const statsRes = await fetch('/api/public/stats');
         if (statsRes.ok) {
           const statsData = await statsRes.json();
           setStats({
@@ -236,7 +248,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Categories Section ── */}
+      {/* ── Categories Section (Real Data) ── */}
       <section id="categories" className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
@@ -251,26 +263,60 @@ export default function HomePage() {
             </p>
           </div>
           
-          {/* Categories Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {CATEGORIES_DATA.map((category) => {
-              const Icon = category.icon;
-              return (
-                <button
-                  key={category.id}
-                  onClick={() => handleCategoryClick(category.id)}
-                  className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-gray-100 bg-white hover:border-teal-300 hover:shadow-xl hover:shadow-teal-500/10 transition-all duration-300 hover:-translate-y-1"
-                >
-                  <div className={`flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br ${category.color} text-white group-hover:scale-110 transition-transform shadow-lg`}>
-                    <Icon className="size-7" strokeWidth={1.5} />
-                  </div>
-                  <span className="text-sm font-semibold text-center text-gray-700 group-hover:text-teal-700 transition-colors">
-                    {t(category.key)}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          {/* Categories Grid - Using REAL data from API */}
+          {categories.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {categories.slice(0, 12).map((category) => {
+                // Find matching icon from CATEGORIES_DATA or use default
+                const categoryConfig = CATEGORIES_DATA.find(c => c.slug === category.slug);
+                const Icon = categoryConfig?.icon || (category.slug === 'vehicles' ? Car : category.slug === 'real-estate' ? Home : Smartphone);
+                const color = categoryConfig?.color || 'from-gray-500 to-gray-600';
+                
+                // Get localized name
+                const categoryName = locale === 'ar' 
+                  ? (category.nameAr || category.name_ar || category.name)
+                  : locale === 'fr'
+                    ? (category.nameFr || category.name_fr || category.name)
+                    : (category.name);
+                
+                return (
+                  <button
+                    key={category.id}
+                    onClick={() => handleCategoryClick(category.id)}
+                    className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-gray-100 bg-white hover:border-teal-300 hover:shadow-xl hover:shadow-teal-500/10 transition-all duration-300 hover:-translate-y-1"
+                  >
+                    <div className={`flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br ${color} text-white group-hover:scale-110 transition-transform shadow-lg`}>
+                      <Icon className="size-7" strokeWidth={1.5} />
+                    </div>
+                    <span className="text-sm font-semibold text-center text-gray-700 group-hover:text-teal-700 transition-colors">
+                      {categoryName}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            /* Fallback to static categories if API returns empty */
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {CATEGORIES_DATA.map((category) => {
+                const Icon = category.icon;
+                return (
+                  <button
+                    key={category.id}
+                    onClick={() => handleCategoryClick(category.id)}
+                    className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-gray-100 bg-white hover:border-teal-300 hover:shadow-xl hover:shadow-teal-500/10 transition-all duration-300 hover:-translate-y-1"
+                  >
+                    <div className={`flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br ${category.color} text-white group-hover:scale-110 transition-transform shadow-lg`}>
+                      <Icon className="size-7" strokeWidth={1.5} />
+                    </div>
+                    <span className="text-sm font-semibold text-center text-gray-700 group-hover:text-teal-700 transition-colors">
+                      {t(category.key)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 

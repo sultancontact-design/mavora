@@ -1,0 +1,80 @@
+{
+  // ===========================================
+  // Mavora - Prettier Configuration
+  // Code formatter settings
+  // ===========================================
+
+  // Print Width - Maximum line length
+  "printWidth": 100,
+
+  // Tab Width - Spaces per indentation level
+  "tabWidth": 2,
+
+  // Use Tabs - Use spaces instead of tabs
+  "useTabs": false,
+
+  // Semicolons - Add semicolons at end of statements
+  "semi": true,
+
+  // Quotes - Use double quotes
+  "singleQuote": false,
+
+  // Quote Props - Quote object properties when needed
+  "quoteProps": "as-needed",
+
+  // Trailing Commas - Use trailing commas where valid (ES5)
+  "trailingComma": "es5",
+
+  // Bracket Spacing - Print spaces between brackets in object literals
+  "bracketSpacing": true,
+
+  // Bracket Same Line - Put > of JSX elements on the last line
+  "bracketSameLine": false,
+
+  // Arrow Function Parentheses - Always include parens for arrow functions
+  "arrowParens": "always",
+
+  // End of Line - Line feed (LF)
+  "endOfLine": "lf",
+
+  // HTML Whitespace Sensitivity - Respect whitespace in HTML
+  "htmlWhitespaceSensitivity": "css",
+
+  // Vue Scripts and Style Indentation
+  "vueIndentScriptAndStyle": false,
+
+  // Prose Wrap - Preserve markdown line breaks
+  "proseWrap": "preserve",
+
+  // Insert Pragma - Do not insert @format pragma
+  "insertPragma": false,
+
+  // Require Pragma - Do not require @format pragma
+  "requirePragma": false,
+
+  // Embedded Language Formatting - Format embedded code
+  "embeddedLanguageFormatting": "auto",
+
+  // Single Attribute Per Line - For HTML/Vue/JSX
+  "singleAttributePerLine": false,
+
+  // Plugins
+  "plugins": [],
+
+  // Overrides for specific file patterns
+  "overrides": [
+    {
+      "files": "*.md",
+      "options": {
+        "printWidth": 80,
+        "proseWrap": "preserve"
+      }
+    },
+    {
+      "files": ["*.json", "*.yml", "*.yaml"],
+      "options": {
+        "tabWidth": 2
+      }
+    }
+  ]
+}

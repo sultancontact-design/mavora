@@ -1,0 +1,44 @@
+{
+  "totalUniqueKeys": 710,
+  "languages": {
+    "ar": {
+      "count": 710,
+      "missing": []
+    },
+    "en": {
+      "count": 710,
+      "missing": []
+    },
+    "fr": {
+      "count": 710,
+      "missing": []
+    }
+  },
+  "suspiciousKeys": [
+    {
+      "key": "home.featured_listings_subtitle",
+      "lang": "fr",
+      "value": "Les meilleures offres pour vous"
+    },
+    {
+      "key": "categories.subtitle",
+      "lang": "ar",
+      "value": "اختر التصنيف الذي يناسبك واكتشف آلاف الإعلانات"
+    },
+    {
+      "key": "categories.subtitle",
+      "lang": "en",
+      "value": "Choose your category and discover thousands of listings"
+    },
+    {
+      "key": "tokens.best_value",
+      "lang": "en",
+      "value": "Best Value"
+    },
+    {
+      "key": "tokens.best_value",
+      "lang": "fr",
+      "value": "Meilleur rapport qualité-prix"
+    }
+  ]
+}

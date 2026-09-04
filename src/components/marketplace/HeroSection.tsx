@@ -87,7 +87,7 @@ export default function HeroSection({ onSearch }: HeroSectionProps) {
         <div className="mb-6 flex justify-center">
           <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm text-white/90 backdrop-blur-sm animate-fade-in">
             <Sparkles className="size-4 text-gold" />
-            <span>{locale === 'ar' ? 'أكبر سوق إلكتروني في المنطقة' : locale === 'fr' ? 'Le plus grand marché en ligne de la région' : 'The largest marketplace in the region'}</span>
+            <span>{locale === 'ar' ? 'سوقك الإلكتروني في المغرب وشمال إفريقيا' : locale === 'fr' ? 'Votre marché en ligne au Maroc et en Afrique du Nord' : 'Your marketplace in Morocco & North Africa'}</span>
             <TrendingUp className="size-4 text-emerald" />
           </div>
         </div>
@@ -198,7 +198,7 @@ export default function HeroSection({ onSearch }: HeroSectionProps) {
           <div className="hidden sm:block w-px h-5 bg-white/20" />
           <div className="flex items-center gap-2 text-white/60">
             <TrendingUp className="size-5 text-gold" />
-            <span className="text-sm">{locale === 'ar' ? '+100,000 إعلان' : locale === 'fr' ? '+100 000 annonces' : '+100K Listings'}</span>
+            <span className="text-sm">{locale === 'ar' ? 'إعلانات متنوعة' : locale === 'fr' ? 'Annonces variées' : 'Diverse Listings'}</span>
           </div>
           <div className="hidden sm:block w-px h-5 bg-white/20" />
           <div className="flex items-center gap-2 text-white/60">

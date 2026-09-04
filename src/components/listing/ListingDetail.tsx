@@ -566,7 +566,7 @@ export default function ListingDetail({ listingId: propListingId }: ListingDetai
           )}
 
           {/* Reviews Section */}
-          <ReviewsSection listingId={listing.id} sellerId={listing.seller_id} />
+          <ReviewsSection listingId={listing.id} sellerId={listing.userId} />
         </div>
 
         {/* Right Column - Seller Info & Actions */}

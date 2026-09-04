@@ -26,7 +26,7 @@ export async function POST(
     // Verify user owns the listing
     const { data: listing, error: listingError } = await supabase
       .from('listings')
-      .select('seller_id')
+      .select('userId')
       .eq('id', listingId)
       .single();
 
@@ -34,7 +34,7 @@ export async function POST(
       return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
     }
 
-    if (listing.seller_id !== userId) {
+    if (listing.userId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -109,7 +109,7 @@ export async function DELETE(
     // Verify user owns the listing
     const { data: listing, error: listingError } = await supabase
       .from('listings')
-      .select('seller_id')
+      .select('userId')
       .eq('id', listingId)
       .single();
 
@@ -117,7 +117,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
     }
 
-    if (listing.seller_id !== userId) {
+    if (listing.userId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -226,7 +226,7 @@ export async function PATCH(
     // Verify user owns the listing
     const { data: listing, error: listingError } = await supabase
       .from('listings')
-      .select('seller_id')
+      .select('userId')
       .eq('id', listingId)
       .single();
 
@@ -234,7 +234,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
     }
 
-    if (listing.seller_id !== userId) {
+    if (listing.userId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

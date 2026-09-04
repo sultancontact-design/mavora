@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
     // Get listing and seller
     const { data: listing, error: listingError } = await supabase
       .from('listings')
-      .select('seller_id')
+      .select('userId')
       .eq('id', listing_id)
       .single();
 
@@ -209,11 +209,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
     }
 
-    if (listing.seller_id === userId) {
+    if (listing.userId === userId) {
       return NextResponse.json({ error: 'Cannot message yourself' }, { status: 400 });
     }
 
-    const sellerId = listing.seller_id;
+    const sellerId = listing.userId;
 
     // Check for existing conversation between these two users for this listing
     const { data: existingMembers } = await supabase

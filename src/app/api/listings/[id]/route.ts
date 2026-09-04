@@ -127,7 +127,7 @@ export async function PUT(
     const isAdmin = session.user.app_metadata?.role && 
       ADMIN_ROLES.includes(session.user.app_metadata.role as UserRole);
 
-    if (existing.seller_id !== userId && !isAdmin) {
+    if (existing.userId !== userId && !isAdmin) {
       return NextResponse.json({ error: 'Forbidden', message: 'You can only update your own listings' }, { status: 403 });
     }
 
@@ -401,7 +401,7 @@ export async function DELETE(
     const isAdmin = session.user.app_metadata?.role && 
       ADMIN_ROLES.includes(session.user.app_metadata.role as UserRole);
 
-    if (listing.seller_id !== userId && !isAdmin) {
+    if (listing.userId !== userId && !isAdmin) {
       return NextResponse.json({ error: 'Forbidden', message: 'You can only delete your own listings' }, { status: 403 });
     }
 

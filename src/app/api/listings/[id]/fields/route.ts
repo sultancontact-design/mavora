@@ -72,7 +72,7 @@ export async function PATCH(
     // Verify user owns the listing
     const { data: listing, error: fetchError } = await supabase
       .from('listings')
-      .select('seller_id')
+      .select('userId')
       .eq('id', id)
       .single();
 
@@ -80,7 +80,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
     }
 
-    if (listing.seller_id !== userId) {
+    if (listing.userId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

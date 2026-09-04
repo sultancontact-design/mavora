@@ -24,14 +24,14 @@ export async function GET(
     const { count: listingCount } = await supabase
       .from('listings')
       .select('id', { count: 'exact', head: true })
-      .eq('seller_id', id)
+      .eq(['userId'], id)
       .eq('status', 'active');
 
     // Average review rating (from listing_reviews table)
     const { data: reviewData } = await supabase
       .from('listing_reviews')
       .select('rating')
-      .eq('seller_id', id);
+      .eq(['userId'], id);
 
     let avgRating: number | null = null;
     const ratings = (reviewData ?? []).map((r: { rating: number }) => r.rating).filter((r: number) => r > 0);

@@ -128,7 +128,7 @@ export default function SellerProfilePage() {
     setLoadingListings(true);
     try {
       const params = new URLSearchParams({
-        seller_id: selectedSellerId,
+        userId: selectedSellerId,
         status: 'active',
         per_page: '24',
       });

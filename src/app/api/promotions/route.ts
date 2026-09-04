@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
     }
 
-    if (listing.seller_id !== userId) {
+    if (listing.userId !== userId) {
       return NextResponse.json(
         { error: 'You do not own this listing' },
         { status: 403 }

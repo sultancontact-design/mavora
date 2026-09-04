@@ -54,7 +54,7 @@ interface AdminListing {
   view_count: number;
   created_at: string;
   published_at: string | null;
-  seller_id: string;
+  userId: string;
   seller?: {
     id: string;
     display_name: string;

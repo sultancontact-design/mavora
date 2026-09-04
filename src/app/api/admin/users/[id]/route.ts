@@ -60,7 +60,7 @@ export async function GET(
     const { count: listingCount } = await adminClient
       .from('listings')
       .select('id', { count: 'exact', head: true })
-      .eq('seller_id', userId);
+      .eq(['userId'], userId);
 
     // Get user's reports (as reporter)
     const { data: reportsMade } = await adminClient
@@ -83,7 +83,7 @@ export async function GET(
     const { data: recentListings } = await adminClient
       .from('listings')
       .select('id, title, status, view_count, created_at')
-      .eq('seller_id', userId)
+      .eq(['userId'], userId)
       .order('created_at', { ascending: false })
       .limit(10);
 

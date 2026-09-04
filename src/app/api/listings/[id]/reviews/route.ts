@@ -12,7 +12,7 @@ export async function GET(
     // Verify listing exists
     const { data: listing, error: listingError } = await supabase
       .from('listings')
-      .select('seller_id')
+      .select('userId')
       .eq('id', id)
       .single();
 
@@ -24,7 +24,7 @@ export async function GET(
     const { data, error } = await supabase
       .from('reviews')
       .select('*, reviewer:profiles!reviews_reviewer_id_fkey(id, display_name, avatar_url)')
-      .eq('seller_id', listing.seller_id)
+      .eq(['userId'], listing.userId)
       .eq('is_visible', true)
       .order('created_at', { ascending: false });
 
@@ -70,7 +70,7 @@ export async function POST(
     // Verify listing exists
     const { data: listing, error: listingError } = await supabase
       .from('listings')
-      .select('seller_id')
+      .select('userId')
       .eq('id', id)
       .single();
 
@@ -79,7 +79,7 @@ export async function POST(
     }
 
     // Cannot review yourself
-    if (listing.seller_id === userId) {
+    if (listing.userId === userId) {
       return NextResponse.json({ error: 'Cannot review yourself' }, { status: 400 });
     }
 
@@ -103,7 +103,7 @@ export async function POST(
       .from('reviews')
       .select('id')
       .eq('reviewer_id', userId)
-      .eq('seller_id', listing.seller_id)
+      .eq(['userId'], listing.userId)
       .maybeSingle();
 
     if (existingReview) {
@@ -114,7 +114,7 @@ export async function POST(
     const { data: review, error } = await supabase
       .from('reviews')
       .insert({
-        seller_id: listing.seller_id,
+        userId: listing.userId,
         reviewer_id: userId,
         listing_id: id,
         rating,

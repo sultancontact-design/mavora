@@ -62,7 +62,7 @@ interface AdminReport {
   };
   listing?: {
     title: string;
-    seller_id: string;
+    userId: string;
   } | null;
 }
 

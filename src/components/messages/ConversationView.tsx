@@ -58,7 +58,7 @@ interface ConversationDetail {
   listing: {
     id: string;
     title: string;
-    seller_id: string;
+    userId: string;
     status: string;
     thumbnail: string | null;
   } | null;

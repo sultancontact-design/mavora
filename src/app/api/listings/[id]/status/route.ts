@@ -35,7 +35,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
     }
 
-    if (existing.seller_id !== userId) {
+    if (existing.userId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

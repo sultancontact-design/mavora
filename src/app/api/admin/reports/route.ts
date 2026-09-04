@@ -36,7 +36,7 @@ export async function GET() {
       .filter((r: Record<string, unknown>) => r.target_type === 'listing')
       .map((r: Record<string, unknown>) => r.target_id as string);
 
-    let listingMap: Record<string, { title: string; seller_id: string }> = {};
+    let listingMap: Record<string, { title: string; userId: string }> = {};
     if (listingIds.length > 0) {
       const { data: listings } = await supabase
         .from('listings')
@@ -47,7 +47,7 @@ export async function GET() {
         listingMap = Object.fromEntries(
           listings.map((l: Record<string, unknown>) => [
             l.id,
-            { title: l.title as string, seller_id: l.seller_id as string },
+            { title: l.title as string, userId: l.seller_id as string },
           ])
         );
       }

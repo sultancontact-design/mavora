@@ -34,7 +34,7 @@ export async function POST(
     }
 
     // Prevent self-reporting
-    if (listing.seller_id === session.user.id) {
+    if (listing.userId === session.user.id) {
       return NextResponse.json(
         { error: 'Cannot report your own listing' },
         { status: 400 }

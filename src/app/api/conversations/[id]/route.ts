@@ -117,7 +117,7 @@ export async function GET(
         ? {
             id: listing.id as string,
             title: listing.title as string,
-            seller_id: listing.seller_id as string,
+            userId: listing.userId as string,
             status: listing.status as string,
             thumbnail: (primaryMedia?.url as string) ?? null,
           }

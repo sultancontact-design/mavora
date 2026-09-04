@@ -164,7 +164,7 @@ export type ListingStatus =
 
 export interface Listing {
   id: string;
-  seller_id: string;
+  userId: string;
   seller?: User;
   title: string;
   description: string;
@@ -332,7 +332,7 @@ export interface Notification {
 export interface Review {
   id: string;
   reviewer_id: string;
-  seller_id: string;
+  userId: string;
   listing_id: string | null;
   rating: number;
   comment: string | null;

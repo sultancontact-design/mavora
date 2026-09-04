@@ -1,0 +1,591 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState, useCallback, useMemo } from 'react';
+     4→import { 
+     5→  Search, 
+     6→  Plus, 
+     7→  Menu, 
+     8→  Globe, 
+     9→  ChevronDown, 
+    10→  User, 
+    11→  LogOut, 
+    12→  Heart, 
+    13→  MessageSquare, 
+    14→  Settings, 
+    15→  Package, 
+    16→  MapPin, 
+    17→  Loader2, 
+    18→  Wallet, 
+    19→  FileText,
+    20→  X,
+    21→  ArrowRight
+    22→} from 'lucide-react';
+    23→import { toast } from 'sonner';
+    24→import { Button } from '@/components/ui/button';
+    25→import { Input } from '@/components/ui/input';
+    26→import {
+    27→  DropdownMenu,
+    28→  DropdownMenuContent,
+    29→  DropdownMenuItem,
+    30→  DropdownMenuTrigger,
+    31→  DropdownMenuSeparator,
+    32→  DropdownMenuLabel,
+    33→} from '@/components/ui/dropdown-menu';
+    34→import {
+    35→  Sheet,
+    36→  SheetContent,
+    37→  SheetHeader,
+    38→  SheetTitle,
+    39→  SheetTrigger,
+    40→  SheetClose,
+    41→} from '@/components/ui/sheet';
+    42→import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+    43→import { Badge } from '@/components/ui/badge';
+    44→import { useLocaleStore } from '@/stores/locale';
+    45→import { useAuthStore } from '@/stores/auth';
+    46→import { useNavigationStore } from '@/stores/navigation';
+    47→import { useTranslation } from '@/hooks/useTranslation';
+    48→import AuthModal, { type AuthView } from '@/components/auth/AuthModal';
+    49→import NotificationBell from '@/components/common/NotificationBell';
+    50→import MavoraLogo from '@/components/common/MavoraLogo';
+    51→import type { Locale } from '@/lib/types';
+    52→
+    53→/* ── Constants ── */
+    54→
+    55→const LOCALE_OPTIONS: { value: Locale; flag: string; label: string; nativeName: string }[] = [
+    56→  { value: 'ar', flag: '🇲🇦', label: 'AR', nativeName: 'العربية' },
+    57→  { value: 'fr', flag: '🇫🇷', label: 'FR', nativeName: 'Français' },
+    58→  { value: 'en', flag: '🇬🇧', label: 'EN', nativeName: 'English' },
+    59→];
+    60→
+    61→const COUNTRIES = [
+    62→  { code: 'MA', flag: '🇲🇦', nameAr: 'المغرب', nameFr: 'Maroc', nameEn: 'Morocco' },
+    63→  { code: 'DZ', flag: '🇩🇿', nameAr: 'الجزائر', nameFr: 'Algérie', nameEn: 'Algeria' },
+    64→  { code: 'TN', flag: '🇹🇳', nameAr: 'تونس', nameFr: 'Tunisie', nameEn: 'Tunisia' },
+    65→  { code: 'EG', flag: '🇪🇬', nameAr: 'مصر', nameFr: 'Égypte', nameEn: 'Egypt' },
+    66→  { code: 'SA', flag: '🇸🇦', nameAr: 'السعودية', nameFr: 'Arabie Saoudite', nameEn: 'Saudi Arabia' },
+    67→  { code: 'AE', flag: '🇦🇪', nameAr: 'الإمارات', nameFr: 'Émirats', nameEn: 'UAE' },
+    68→];
+    69→
+    70→const NAV_LINKS = [
+    71→  { key: 'categories.title', href: '#categories', icon: null },
+    72→  { key: 'listings.featured', href: '#featured', icon: null },
+    73→  { key: 'footer.about', href: '#about', icon: null },
+    74→] as const;
+    75→
+    76→/* ── Main Component ── */
+    77→
+    78→export default function Header() {
+    79→  const { t, locale } = useTranslation();
+    80→  const { setLocale } = useLocaleStore();
+    81→  const { user, setUser, isLoading } = useAuthStore();
+    82→  const { navigateCreateListing, navigateProfile, navigateFavorites, navigateMessages, navigateWallet, navigateInvoices } = useNavigationStore();
+    83→  
+    84→  // State
+    85→  const [searchQuery, setSearchQuery] = useState('');
+    86→  const [isSearchFocused, setIsSearchFocused] = useState(false);
+    87→  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
+    88→  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+    89→  const [authModalOpen, setAuthModalOpen] = useState(false);
+    90→  const [authView, setAuthView] = useState<AuthView>('login');
+    91→  const [isLoggingOut, setIsLoggingOut] = useState(false);
+    92→  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    93→
+    94→  const isRtl = locale === 'ar';
+    95→  const direction = isRtl ? 'rtl' : 'ltr';
+    96→
+    97→  /* ── Effects ── */
+    98→
+    99→  const updateDocumentDirection = useCallback(
+   100→    (newLocale: Locale) => {
+   101→      const dir = newLocale === 'ar' ? 'rtl' : 'ltr';
+   102→      document.documentElement.lang = newLocale;
+   103→      document.documentElement.dir = dir;
+   104→    },
+   105→    []
+   106→  );
+   107→
+   108→  useEffect(() => {
+   109→    updateDocumentDirection(locale);
+   110→  }, [locale, updateDocumentDirection]);
+   111→
+   112→  /* ── Handlers ── */
+   113→
+   114→  const handleLocaleChange = useCallback(
+   115→    (newLocale: Locale) => {
+   116→      setLocale(newLocale);
+   117→    },
+   118→    [setLocale]
+   119→  );
+   120→
+   121→  const handleSearchSubmit = useCallback(
+   122→    (e: React.FormEvent) => {
+   123→      e.preventDefault();
+   124→      if (searchQuery.trim()) {
+   125→        toast.info(t('common.search') + ': ' + searchQuery.trim());
+   126→        // Navigate to search results would go here
+   127→      }
+   128→    },
+   129→    [searchQuery, t]
+   130→  );
+   131→
+   132→  const openAuth = useCallback((view: AuthView) => {
+   133→    setAuthView(view);
+   134→    setAuthModalOpen(true);
+   135→  }, []);
+   136→
+   137→  const handlePostAd = useCallback(() => {
+   138→    if (!user) {
+   139→      openAuth('login');
+   140→      return;
+   141→    }
+   142→    navigateCreateListing();
+   143→  }, [user, openAuth, navigateCreateListing]);
+   144→
+   145→  const handleLogout = useCallback(async () => {
+   146→    setIsLoggingOut(true);
+   147→    try {
+   148→      const res = await fetch('/api/auth/logout', { method: 'POST' });
+   149→      if (res.ok) {
+   150→        setUser(null);
+   151→        toast.success(t('auth.logout_success'));
+   152→      } else {
+   153→        toast.error(t('common.error'));
+   154→      }
+   155→    } catch {
+   156→      toast.error(t('auth.error_occurred'));
+   157→    } finally {
+   158→      setIsLoggingOut(false);
+   159→    }
+   160→  }, [setUser, t]);
+   161→
+   162→  /* ── Computed Values ── */
+   163→
+   164→  const currentLocaleOption = useMemo(
+   165→    () => LOCALE_OPTIONS.find((o) => o.value === locale) ?? LOCALE_OPTIONS[0],
+   166→    [locale]
+   167→  );
+   168→
+   169→  const getCountryName = useCallback(
+   170→    (country: (typeof COUNTRIES)[0]) => {
+   171→      switch (locale) {
+   172→        case 'ar': return country.nameAr;
+   173→        case 'fr': return country.nameFr;
+   174→        default: return country.nameEn;
+   175→      }
+   176→    },
+   177→    [locale]
+   178→  );
+   179→
+   180→  const userInitials = useMemo(() => {
+   181→    if (!user?.display_name) return '?';
+   182→    return user.display_name
+   183→      .split(' ')
+   184→      .map((n) => n[0])
+   185→      .join('')
+   186→      .toUpperCase()
+   187→      .slice(0, 2);
+   188→  }, [user?.display_name]);
+   189→
+   190→  /* ── Render ── */
+   191→
+   192→  return (
+   193→    <>
+   194→      <header className="sticky top-0 z-50 w-full border-b border-gray-200/80 bg-white/90 backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 shadow-sm">
+   195→        <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:px-6 lg:px-8">
+   196→          
+   197→          {/* ── Mobile: Hamburger + Logo ── */}
+   198→          <div className="flex items-center gap-2 lg:hidden">
+   199→            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+   200→              <SheetTrigger asChild>
+   201→                <Button 
+   202→                  variant="ghost" 
+   203→                  size="icon" 
+   204→                  className="shrink-0 touch-target rounded-xl hover:bg-gray-100" 
+   205→                  aria-label={isRtl ? 'فتح القائمة' : 'Open menu'}
+   206→                >
+   207→                  <Menu className="size-5 text-gray-700" />
+   208→                </Button>
+   209→              </SheetTrigger>
+   210→              <SheetContent side={isRtl ? 'right' : 'left'} className="w-80 overflow-y-auto border-l border-r-0">
+   211→                <SheetHeader>
+   212→                  <SheetTitle className="flex items-center gap-3">
+   213→                    <MavoraLogo size="sm" />
+   214→                  </SheetTitle>
+   215→                </SheetHeader>
+   216→                
+   217→                {/* Mobile Navigation */}
+   218→                <nav className="mt-8 flex flex-col gap-1">
+   219→                  {/* Quick Links */}
+   220→                  <div className="mb-4">
+   221→                    <p className="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-gray-400">
+   222→                      {t('categories.title')}
+   223→                    </p>
+   224→                    {NAV_LINKS.map((link) => (
+   225→                      <SheetClose asChild key={link.key}>
+   226→                        <a
+   227→                          href={link.href}
+   228→                          className="flex items-center justify-between rounded-xl px-3 py-3 text-sm font-medium text-gray-700 transition-all hover:bg-teal-50 hover:text-teal-700"
+   229→                        >
+   230→                          {t(link.key)}
+   231→                          <ArrowRight className={`size-4 ${isRtl ? 'rotate-180' : ''}`} />
+   232→                        </a>
+   233→                      </SheetClose>
+   234→                    ))}
+   235→                  </div>
+   236→
+   237→                  <div className="my-3 h-px bg-gray-100" />
+   238→
+   239→                  {/* Auth State */}
+   240→                  {user ? (
+   241→                    <>
+   242→                      {/* User Info */}
+   243→                      <div className="mb-4 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-teal-50 to-emerald-50 p-4">
+   244→                        <Avatar className="size-12 ring-2 ring-teal-200">
+   245→                          <AvatarImage src={user.avatar_url} alt={user.display_name} />
+   246→                          <AvatarFallback className="bg-gradient-to-br from-teal-500 to-emerald-500 text-white text-sm font-bold">
+   247→                            {userInitials}
+   248→                          </AvatarFallback>
+   249→                        </Avatar>
+   250→                        <div className="flex-1 min-w-0">
+   251→                          <p className="truncate text-sm font-bold text-gray-900">{user.display_name}</p>
+   252→                          <p className="truncate text-xs text-gray-500">{user.email}</p>
+   253→                        </div>
+   254→                      </div>
+   255→
+   256→                      {/* User Links */}
+   257→                      <SheetClose asChild>
+   258→                        <Button variant="ghost" className="justify-start gap-3 w-full h-12 rounded-xl hover:bg-gray-50" onClick={() => navigateProfile(user?.id)}>
+   259→                          <User className="size-5 text-gray-500" />
+   260→                          <span className="font-medium">{t('common.profile')}</span>
+   261→                        </Button>
+   262→                      </SheetClose>
+   263→                      <SheetClose asChild>
+   264→                        <Button variant="ghost" className="justify-start gap-3 w-full h-12 rounded-xl hover:bg-gray-50">
+   265→                          <Package className="size-5 text-gray-500" />
+   266→                          <span className="font-medium">{t('common.my_listings')}</span>
+   267→                        </Button>
+   268→                      </SheetClose>
+   269→                      <SheetClose asChild>
+   270→                        <Button variant="ghost" className="justify-start gap-3 w-full h-12 rounded-xl hover:bg-gray-50" onClick={navigateFavorites}>
+   271→                          <Heart className="size-5 text-gray-500" />
+   272→                          <span className="font-medium">{t('common.favorites')}</span>
+   273→                        </Button>
+   274→                      </SheetClose>
+   275→                      <SheetClose asChild>
+   276→                        <Button variant="ghost" className="justify-start gap-3 w-full h-12 rounded-xl hover:bg-gray-50" onClick={navigateMessages}>
+   277→                          <MessageSquare className="size-5 text-gray-500" />
+   278→                          <span className="font-medium">{t('common.messages')}</span>
+   279→                        </Button>
+   280→                      </SheetClose>
+   281→                      <SheetClose asChild>
+   282→                        <Button variant="ghost" className="justify-start gap-3 w-full h-12 rounded-xl hover:bg-gray-50" onClick={navigateWallet}>
+   283→                          <Wallet className="size-5 text-gray-500" />
+   284→                          <span className="font-medium">{t('common.wallet')}</span>
+   285→                        </Button>
+   286→                      </SheetClose>
+   287→                      
+   288→                      <div className="my-3 h-px bg-gray-100" />
+   289→                      
+   290→                      <Button
+   291→                        variant="ghost"
+   292→                        className="justify-start gap-3 w-full h-12 rounded-xl text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+   293→                        onClick={handleLogout}
+   294→                        disabled={isLoggingOut}
+   295→                      >
+   296→                        {isLoggingOut ? <Loader2 className="size-5 animate-spin" /> : <LogOut className="size-5" />}
+   297→                        <span className="font-medium">{isLoggingOut ? t('common.loading') : t('common.logout')}</span>
+   298→                      </Button>
+   299→                    </>
+   300→                  ) : (
+   301→                    <div className="flex flex-col gap-2.5">
+   302→                      <SheetClose asChild>
+   303→                        <Button
+   304→                          className="w-full h-12 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 text-white font-semibold shadow-lg shadow-teal-500/25 rounded-xl btn-lift"
+   305→                          onClick={() => openAuth('login')}
+   306→                        >
+   307→                          {t('common.login')}
+   308→                        </Button>
+   309→                      </SheetClose>
+   310→                      <SheetClose asChild>
+   311→                        <Button
+   312→                          variant="outline"
+   313→                          className="w-full h-12 rounded-xl border-gray-200 hover:bg-gray-50 font-semibold"
+   314→                          onClick={() => openAuth('signup')}
+   315→                        >
+   316→                          {t('common.signup')}
+   317→                        </Button>
+   318→                      </SheetClose>
+   319→                    </div>
+   320→                  )}
+   321→                </nav>
+   322→              </SheetContent>
+   323→            </Sheet>
+   324→            
+   325→            <MavoraLogo size="sm" className="text-teal-600" />
+   326→          </div>
+   327→
+   328→          {/* ── Desktop: Logo ── */}
+   329→          <div className="hidden lg:flex lg:items-center lg:shrink-0">
+   330→            <MavoraLogo size="md" className="text-teal-600" />
+   331→          </div>
+   332→
+   333→          {/* ── Country Selector (Desktop) ── */}
+   334→          <DropdownMenu>
+   335→            <DropdownMenuTrigger asChild>
+   336→              <Button
+   337→                variant="ghost"
+   338→                size="sm"
+   339→                className="hidden gap-1.5 text-sm font-normal text-gray-500 hover:text-gray-700 md:inline-flex rounded-lg"
+   340→              >
+   341→                <MapPin className="size-4 text-teal-500" />
+   342→                <span>{selectedCountry.flag}</span>
+   343→                <span className="hidden xl:inline font-medium">{getCountryName(selectedCountry)}</span>
+   344→                <ChevronDown className="size-3.5" />
+   345→              </Button>
+   346→            </DropdownMenuTrigger>
+   347→            <DropdownMenuContent align="start" className="w-52 rounded-xl p-2">
+   348→              {COUNTRIES.map((country) => (
+   349→                <DropdownMenuItem
+   350→                  key={country.code}
+   351→                  onClick={() => setSelectedCountry(country)}
+   352→                  className="gap-2 cursor-pointer rounded-lg py-2.5"
+   353→                >
+   354→                  <span className="text-base">{country.flag}</span>
+   355→                  <span className="flex-1 font-medium">{getCountryName(country)}</span>
+   356→                  {selectedCountry.code === country.code && (
+   357→                    <Badge className="ms-auto bg-teal-100 text-teal-700 border-0 text-[10px] px-1.5 h-5">✓</Badge>
+   358→                  )}
+   359→                </DropdownMenuItem>
+   360→              ))}
+   361→            </DropdownMenuContent>
+   362→          </DropdownMenu>
+   363→
+   364→          {/* ── Search Bar (Desktop) ── */}
+   365→          <form 
+   366→            onSubmit={handleSearchSubmit}
+   367→            className="hidden flex-1 justify-center px-4 md:flex"
+   368→          >
+   369→            <div className={`relative w-full max-w-xl transition-all duration-300 ${isSearchFocused ? 'scale-[1.01]' : ''}`}>
+   370→              <Search className={`absolute start-4 top-1/2 size-4.5 -translate-y-1/2 transition-colors duration-200 ${isSearchFocused ? 'text-teal-500' : 'text-gray-400'}`} />
+   371→              <Input
+   372→                type="search"
+   373→                placeholder={t('hero.search_placeholder')}
+   374→                value={searchQuery}
+   375→                onChange={(e) => setSearchQuery(e.target.value)}
+   376→                onFocus={() => setIsSearchFocused(true)}
+   377→                onBlur={() => setIsSearchFocused(false)}
+   378→                className={`h-11 rounded-xl border-gray-200 bg-gray-50/80 pe-28 ps-11 text-sm transition-all duration-200 focus-visible:border-teal-400 focus-visible:ring-2 focus-visible:ring-teal-500/20 focus-visible:bg-white ${
+   379→                  isSearchFocused ? 'shadow-lg shadow-teal-500/10 border-teal-300' : ''
+   380→                }`}
+   381→              />
+   382→              <Button
+   383→                type="submit"
+   384→                size="sm"
+   385→                className="absolute end-1.5 top-1/2 h-9 -translate-y-1/2 rounded-lg bg-gradient-to-r from-teal-600 to-teal-500 px-4 text-sm font-semibold text-white shadow-md shadow-teal-500/20 hover:shadow-lg hover:shadow-teal-500/30 transition-all"
+   386→              >
+   387→                {t('common.search')}
+   388→              </Button>
+   389→            </div>
+   390→          </form>
+   391→
+   392→          {/* ── Right Side Actions ── */}
+   393→          <div className="flex items-center gap-1 sm:gap-2 ms-auto lg:ms-0">
+   394→            
+   395→            {/* Mobile Search Toggle */}
+   396→            <Button
+   397→              variant="ghost"
+   398→              size="icon"
+   399→              className="md:hidden touch-target rounded-xl hover:bg-gray-100"
+   400→              onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+   401→              aria-label={t('common.search')}
+   402→            >
+   403→              <Search className="size-5 text-gray-700" />
+   404→            </Button>
+   405→
+   406→            {/* Notification Bell */}
+   407→            {user && <NotificationBell />}
+   408→
+   409→            {/* Language Switcher */}
+   410→            <DropdownMenu>
+   411→              <DropdownMenuTrigger asChild>
+   412→                <Button
+   413→                  variant="ghost"
+   414→                  size="sm"
+   415→                  className="gap-1.5 text-sm font-normal text-gray-500 hover:text-gray-700 touch-target rounded-lg"
+   416→                >
+   417→                  <Globe className="size-4.5" />
+   418→                  <span className="hidden sm:inline-flex items-center gap-1">
+   419→                    <span className="text-base">{currentLocaleOption.flag}</span>
+   420→                    <span className="hidden lg:inline font-medium">{currentLocaleOption.nativeName}</span>
+   421→                  </span>
+   422→                  <ChevronDown className="size-3.5" />
+   423→                </Button>
+   424→              </DropdownMenuTrigger>
+   425→              <DropdownMenuContent align="end" className="w-44 rounded-xl p-2">
+   426→                {LOCALE_OPTIONS.map((opt) => (
+   427→                  <DropdownMenuItem
+   428→                    key={opt.value}
+   429→                    onClick={() => handleLocaleChange(opt.value)}
+   430→                    className="gap-2 cursor-pointer rounded-lg py-2.5"
+   431→                  >
+   432→                    <span className="text-base">{opt.flag}</span>
+   433→                    <span className="flex-1 font-medium">{opt.nativeName}</span>
+   434→                    {locale === opt.value && (
+   435→                      <Badge className="ms-auto bg-teal-100 text-teal-700 border-0 text-[10px] px-1.5 h-5">✓</Badge>
+   436→                    )}
+   437→                  </DropdownMenuItem>
+   438→                ))}
+   439→              </DropdownMenuContent>
+   440→            </DropdownMenu>
+   441→
+   442→            {/* Post Ad Button (Desktop) */}
+   443→            <Button
+   444→              size="sm"
+   445→              className="hidden gap-2 bg-gradient-to-r from-coral to-coral-light hover:from-coral-dark hover:to-coral text-white shadow-lg shadow-coral/25 hover:shadow-coral/35 transition-all sm:inline-flex btn-lift rounded-xl font-semibold"
+   446→              onClick={handlePostAd}
+   447→            >
+   448→              <Plus className="size-4.5" />
+   449→              <span className="hidden lg:inline">{t('common.post_ad')}</span>
+   450→            </Button>
+   451→
+   452→            {/* Auth Buttons or User Menu */}
+   453→            {isLoading ? (
+   454→              <div className="flex items-center justify-center p-2">
+   455→                <Loader2 className="size-5 animate-spin text-teal-500" />
+   456→              </div>
+   457→            ) : user ? (
+   458→              <DropdownMenu>
+   459→                <DropdownMenuTrigger asChild>
+   460→                  <Button variant="ghost" size="icon" className="rounded-full relative touch-target hover:bg-gray-100">
+   461→                    <Avatar className="size-9 ring-2 ring-teal-200 ring-offset-2 ring-offset-white">
+   462→                      <AvatarImage src={user.avatar_url} alt={user.display_name} />
+   463→                      <AvatarFallback className="bg-gradient-to-br from-teal-500 to-emerald-500 text-white text-xs font-bold">
+   464→                        {userInitials}
+   465→                      </AvatarFallback>
+   466→                    </Avatar>
+   467→                  </Button>
+   468→                </DropdownMenuTrigger>
+   469→                <DropdownMenuContent align="end" className="w-56 rounded-xl p-2">
+   470→                  <DropdownMenuLabel className="font-normal p-2">
+   471→                    <div className="flex flex-col gap-1">
+   472→                      <p className="text-sm font-bold text-gray-900">{user.display_name}</p>
+   473→                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+   474→                    </div>
+   475→                  </DropdownMenuLabel>
+   476→                  <DropdownMenuSeparator className="my-1" />
+   477→                  <DropdownMenuItem className="gap-2.5 cursor-pointer rounded-lg py-2.5" onClick={() => navigateProfile(user?.id)}>
+   478→                    <User className="size-4 text-gray-500" />
+   479→                    <span className="font-medium">{t('common.profile')}</span>
+   480→                  </DropdownMenuItem>
+   481→                  <DropdownMenuItem className="gap-2.5 cursor-pointer rounded-lg py-2.5">
+   482→                    <Package className="size-4 text-gray-500" />
+   483→                    <span className="font-medium">{t('common.my_listings')}</span>
+   484→                  </DropdownMenuItem>
+   485→                  <DropdownMenuItem className="gap-2.5 cursor-pointer rounded-lg py-2.5" onClick={navigateFavorites}>
+   486→                    <Heart className="size-4 text-gray-500" />
+   487→                    <span className="font-medium">{t('common.favorites')}</span>
+   488→                  </DropdownMenuItem>
+   489→                  <DropdownMenuItem className="gap-2.5 cursor-pointer rounded-lg py-2.5" onClick={navigateMessages}>
+   490→                    <MessageSquare className="size-4 text-gray-500" />
+   491→                    <span className="font-medium">{t('common.messages')}</span>
+   492→                    <Badge variant="secondary" className="ms-auto h-5 min-w-5 rounded-full px-1.5 bg-violet-100 text-violet-700 border-0 text-[10px]">
+   493→                      3
+   494→                    </Badge>
+   495→                  </DropdownMenuItem>
+   496→                  <DropdownMenuItem className="gap-2.5 cursor-pointer rounded-lg py-2.5" onClick={navigateWallet}>
+   497→                    <Wallet className="size-4 text-gray-500" />
+   498→                    <span className="font-medium">{t('common.wallet')}</span>
+   499→                  </DropdownMenuItem>
+   500→                  <DropdownMenuItem className="gap-2.5 cursor-pointer rounded-lg py-2.5" onClick={navigateInvoices}>
+   501→                    <FileText className="size-4 text-gray-500" />
+   502→                    <span className="font-medium">{t('invoices.title')}</span>
+   503→                  </DropdownMenuItem>
+   504→                  <DropdownMenuSeparator className="my-1" />
+   505→                  <DropdownMenuItem className="gap-2.5 cursor-pointer rounded-lg py-2.5">
+   506→                    <Settings className="size-4 text-gray-500" />
+   507→                    <span className="font-medium">{t('common.settings')}</span>
+   508→                  </DropdownMenuItem>
+   509→                  <DropdownMenuSeparator className="my-1" />
+   510→                  <DropdownMenuItem
+   511→                    className="gap-2.5 text-rose-600 focus:text-rose-700 cursor-pointer rounded-lg py-2.5"
+   512→                    onClick={handleLogout}
+   513→                    disabled={isLoggingOut}
+   514→                  >
+   515→                    {isLoggingOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
+   516→                    <span className="font-medium">{isLoggingOut ? t('common.loading') : t('common.logout')}</span>
+   517→                  </DropdownMenuItem>
+   518→                </DropdownMenuContent>
+   519→              </DropdownMenu>
+   520→            ) : (
+   521→              <div className="hidden items-center gap-2 lg:flex">
+   522→                <Button
+   523→                  variant="ghost"
+   524→                  size="sm"
+   525→                  onClick={() => openAuth('login')}
+   526→                  className="font-semibold text-gray-700 hover:text-teal-600 rounded-lg"
+   527→                >
+   528→                  {t('common.login')}
+   529→                </Button>
+   530→                <Button
+   531→                  size="sm"
+   532→                  className="bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 text-white font-semibold shadow-md shadow-teal-500/20 hover:shadow-lg btn-lift rounded-xl"
+   533→                  onClick={() => openAuth('signup')}
+   534→                >
+   535→                  {t('common.signup')}
+   536→                </Button>
+   537→              </div>
+   538→            )}
+   539→          </div>
+   540→        </div>
+   541→
+   542→        {/* ── Mobile Search Bar (Expandable) ── */}
+   543→        {mobileSearchOpen && (
+   544→          <div className="border-t border-gray-100 bg-white px-4 py-3 md:hidden animate-slide-down">
+   545→            <form onSubmit={handleSearchSubmit} className="relative">
+   546→              <Search className="absolute start-3 top-1/2 size-4.5 -translate-y-1/2 text-gray-400" />
+   547→              <Input
+   548→                type="search"
+   549→                placeholder={t('hero.search_placeholder')}
+   550→                value={searchQuery}
+   551→                onChange={(e) => setSearchQuery(e.target.value)}
+   552→                autoFocus
+   553→                className="h-12 rounded-xl border-gray-200 bg-gray-50 pe-11 ps-11 text-sm focus:border-teal-400 focus:ring-teal-500/20"
+   554→              />
+   555→              <Button
+   556→                type="button"
+   557→                variant="ghost"
+   558→                size="icon"
+   559→                className="absolute end-2 top-1/2 -translate-y-1/2 size-9 rounded-lg hover:bg-gray-100"
+   560→                onClick={() => setMobileSearchOpen(false)}
+   561→                aria-label={t('common.close')}
+   562→              >
+   563→                <X className="size-4.5" />
+   564→              </Button>
+   565→            </form>
+   566→          </div>
+   567→        )}
+   568→
+   569→        {/* ── Mobile Bottom Bar — Post Ad CTA ── */}
+   570→        <div className="border-t border-gray-100 bg-white px-4 py-2.5 md:hidden">
+   571→          <Button
+   572→            size="sm"
+   573→            className="w-full gap-2 bg-gradient-to-r from-coral to-coral-light hover:from-coral-dark hover:to-coral text-white font-semibold shadow-lg shadow-coral/25 btn-lift rounded-xl h-11"
+   574→            onClick={handlePostAd}
+   575→          >
+   576→            <Plus className="size-4.5" />
+   577→            {t('common.post_ad')}
+   578→          </Button>
+   579→        </div>
+   580→      </header>
+   581→
+   582→      {/* Auth Modal */}
+   583→      <AuthModal
+   584→        open={authModalOpen}
+   585→        onOpenChange={setAuthModalOpen}
+   586→        defaultView={authView}
+   587→      />
+   588→    </>
+   589→  );
+   590→}
+   591→

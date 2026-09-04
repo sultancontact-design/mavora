@@ -1,13 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-// Direct DB access for reliability (admin operations)
-const SUPABASE_URL = 'https://kyanecjjautqmuowbtvy.supabase.co';
-const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5YW5lY2pqYXV0cW11b3didHZ5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODI5ODM2MiwiZXhwIjoyMTAzODc0MzYyfQ.CfYJjFHkacydBjS7U2kE44K9o4k8fH5DexC9Xd7sdN0';
-
-const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false }
-});
+import { getAdminClient } from '@/lib/server-client';
 
 // Helper to get date ranges
 function getDateRange(period: 'today' | 'week' | 'month') {
@@ -32,6 +24,8 @@ function getDateRange(period: 'today' | 'week' | 'month') {
 }
 
 export async function GET(request: Request) {
+  // Use secure admin client (server-side only)
+  const supabase = getAdminClient();
   try {
     const url = new URL(request.url);
     const period = (url.searchParams.get('period') as 'today' | 'week' | 'month') || 'month';

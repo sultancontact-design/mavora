@@ -2,18 +2,28 @@
  * Database-First Authentication
  * Works with users table directly when Supabase Auth has issues
  * Supports both login and signup operations
+ * 
+ * SECURITY: Uses environment variables, NOT hardcoded keys
  */
 
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 import { hash, compare } from 'bcryptjs';
 
-const SUPABASE_URL = 'https://kyanecjjautqmuowbtvy.supabase.co';
-const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5YW5lY2pqYXV0cW11b3didHZ5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODI5ODM2MiwiZXhwIjoyMTAzODc0MzYyfQ.CfYJjFHkacydBjS7U2kE44K9o4k8fH5DexC9Xd7sdN0';
+// Use environment variables - NEVER hardcode secrets!
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false }
-});
+// Validate on import (server-side only)
+if (typeof window === 'undefined' && (!SUPABASE_URL || !SERVICE_ROLE_KEY)) {
+  console.warn('[DB Auth] ⚠️ Supabase credentials not set in environment variables');
+}
+
+const supabaseAdmin = SUPABASE_URL && SERVICE_ROLE_KEY 
+  ? createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
+  : null;
 
 // Demo/Seed users with known passwords (for testing) - these are stored in DB now
 // But we keep this as fallback for accounts created before password hashing was added

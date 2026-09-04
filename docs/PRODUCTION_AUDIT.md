@@ -1,524 +1,277 @@
-# 📋 تقرير التدقيق الشامل - MAVORA
+# تقرير التدقيق الشامل - MAVORA Project
 
-**التاريخ:** 2026-09-03  
-**المدقق:** Super Z (AI Assistant)  
-**الإصدار:** 0.2.1  
-**الحالة:** ⚠️ يحتاج إصلاحات عاجلة  
-
----
-
-## 📊 ملخص التنفيذ
-
-| البند | الحالة | الأولوية |
-|-------|--------|----------|
-| الإطار العمل | ✅ Next.js 16 | - |
-| بنية الملفات | ✅ منظمة | - |
-| المسارات (Routes) | ✅ 61 صفحة | - |
-| APIs | ✅ 50+ نقطة نهاية | - |
-| Supabase | ⚠️ بيانات وهمية | 🔴 عالية |
-| الترجمة (i18n) | ⚠️ مفاتيح مفقودة | 🔴 عالية |
-| RTL/العربية | ❌ مشاكل | 🔴 عالية |
-| متغيرات البيئة | ⚠️ مفقودة | 🟡 متوسطة |
+**تاريخ التدقيق:** 2026-09-04  
+**المُدقق:** نظام التدقيق الآلي  
+**إصدار المشروع:** 0.2.1  
+**رابط الإنتاج:** https://my-project-nu-nine-64.vercel.app
 
 ---
 
-## 1. الإطار العمل والتقنيات
+## 1. إطار العمل والإصدارات
 
-### ✅ التقنيات المستخدمة
-- **Next.js:** 16.1.3 (Turbopack) - أحدث إصدار
-- **React:** 19.0.0
-- **TypeScript:** 5.x
-- **Tailwind CSS:** 4.x (PostCSS)
-- **Supabase:** @supabase/supabase-js ^2.112.4
-- **Prisma:** ^6.11.1 (40+ نموذج)
-- **Zustand:** ^5.0.6 (إدارة الحالة)
-- **shadcn/ui:** + Radix UI
+| التقنية | الإصدار | الحالة |
+|---------|---------|--------|
+| Next.js | ^16.1.1 | ✅ أحدث إصدار |
+| React | ^19.0.0 | ✅ أحدث إصدار |
+| TypeScript | ^5 | ✅ مثبت |
+| Tailwind CSS | ^4 | ✅ أحدث إصدار |
+| Supabase JS | ^2.112.4 | ✅ محدث |
+| Zustand | ^5.0.6 | ✅ لإدارة الحالة |
+| Zod | ^4.0.2 | ✅ للتحقق |
 
-### ⚠️ ملاحظات
-- `reactStrictMode: false` في next.config.ts - يُفضل تفعيله للكشف عن المشاكل
-- `typescript.ignoreBuildErrors: true` - يخفي أخطاء TypeScript
+**ملاحظة:** الإصدارات حديثة ومتوافقة
 
 ---
 
 ## 2. بنية الملفات
 
-### ✅ الهيكل الصحيح
 ```
 src/
-├── app/           # Next.js App Router (61 route)
-├── components/    # مكونات UI (80+ مكون)
-├── hooks/         # React Hooks مخصصة
-├── lib/           # أدوات ومساعدات
-├── stores/        # Zustand stores
-└── i18n/          # ملفات الترجمة (ar, fr, en)
-```
+├── app/                    # صفحات Next.js App Router
+│   ├── admin/             # لوحة التحكم
+│   ├── api/               # نقاط نهاية API (70+ ملف)
+│   ├── auth/              # صفحات المصادقة
+│   ├── listings/          # الإعلانات (بما فيها [id])
+│   └── ...
+├── components/            # مكونات React (60+ ملف)
+│   ├── admin/             # مكونات لوحة التحكم
+│   ├── auth/              # مكونات المصادقة
+│   ├── listing/           # مكونات الإعلانات
+│   ├── marketplace/       # مكونات السوق
+│   └── ui/                # مكونات UI (shadcn/ui)
+├── hooks/                 # React Hooks مخصصة
+├── i18n/                  # ملفات الترجمة (ar, en, fr)
+├── lib/                   # مكتبات مساعدة
+│   ├── payments/          # معالجة الدفع
+│   └── validations/       # مخططات التحقق
+├── stores/                # مخازن Zustand
+└── types.ts               # أنواع TypeScript
 
-### 📁 إحصائيات
-- **ملفات TypeScript:** 150+ ملف
-- **مكونات UI:** 40+ (shadcn/ui)
-- **مكونات مخصصة:** 40+
-- **API Routes:** 50+ نقطة نهاية
-- **ملفات الترجمة:** 3 (545 مفتاح عربي)
+**إجمالي الملفات:** 202 ملف TypeScript/TSX
+```
 
 ---
 
-## 3. المسارات (Routes)
+## 3. المسارات الموجودة
 
-### ✅ الصفحات الثابتة (○)
+### الصفحات العامة (تعمل)
 | المسار | الوصف | الحالة |
 |--------|-------|--------|
-| `/` | الصفحة الرئيسية | ✅ يعمل |
-| `/_not-found` | 404 مخصص | ✅ يعمل |
-| `/admin` | لوحة الإدارة | ✅ يعمل |
-| `/auth/login` | تسجيل الدخول | ✅ يعمل |
-| `/auth/signup` | إنشاء حساب | ✅ يعمل |
-| `/listings` | تصفح الإعلانات | ✅ يعمل |
-| `/listings/create` | إنشاء إعلان | ✅ يعمل |
-| `/profile` | الملف الشخصي | ✅ يعمل |
-| `/messages` | الرسائل | ✅ يعمل |
-| `/favorites` | المفضلة | ✅ يعمل |
-| `/wallet` | المحفظة | ✅ يعمل |
+| `/` | الصفحة الرئيسية | ✅ تعمل |
+| `/listings` | جميع الإعلانات | ✅ تعمل |
+| `/listings/[id]` | تفاصيل الإعلان | ✅ تم إنشاؤها حديثاً |
+| `/listings/create` | إنشاء إعلان | ✅ موجودة |
+| `/auth/login` | تسجيل الدخول | ✅ موجودة |
+| `/auth/signup` | إنشاء حساب | ✅ موجودة |
+| `/profile` | الملف الشخصي | ✅ موجودة |
+| `/favorites` | المفضلة | ✅ موجودة |
+| `/messages` | الرسائل | ✅ موجودة |
+| `/category/[slug]` | تصنيف محدد | ✅ موجودة |
+| `/contact` | اتصل بنا | ✅ موجودة |
+| `/about` | عن الموقع | ✅ موجودة |
+| `/help` | المساعدة | ✅ موجودة |
+| `/terms` | الشروط | ✅ موجودة |
+| `/privacy` | الخصوصية | ✅ موجودة |
+| `/wallet` | المحفظة | ✅ موجودة |
+| `/admin` | لوحة التحكم | ✅ موجودة |
 
-### ✅ APIs الديناميكية (ƒ)
-- `/api/*` - 50+ نقطة نهاية
-- `/api/admin/*` - إدارة النظام
-- `/api/auth/*` - المصادقة
-- `/api/listings/*` - الإعلانات
-
----
-
-## 4. تحليل API Endpoints
-
-### ✅ APIs تعمل بشكل صحيح
-```bash
-# Health Check
-GET /api/health → { status, checks: { database, storage, auth } }
-
-# Listings
-GET /api/listings?limit=8&sort=featured&status=active
-POST /api/listings
-GET /api/listings/[id]
-
-# Categories & Cities
-GET /api/categories
-GET /api/cities
-
-# Admin Stats
-GET /api/admin/stats → { totalListings, totalUsers, ... }
-```
-
-### ⚠️ مشاكل محتملة
-- **Supabase credentials missing** - جميع APIs تستخدم placeholder client
-- **No real data** - APIs ترجع مصفوفات فارغة أو بيانات وهمية
+### APIs (70+ endpoint)
+| الفئة | العدد | الحالة |
+|-------|-------|--------|
+| `/api/auth/*` | 8 | ✅ موجودة |
+| `/api/listings/*` | 7 | ✅ موجودة |
+| `/api/admin/*` | 12 | ✅ موجودة |
+| `/api/payments/*` | 5 | ✅ موجودة |
+| `/api/conversations/*` | 5 | ✅ موجودة |
+| أخرى | 33+ | ✅ موجودة |
 
 ---
 
-## 5. حالة Supabase
+## 4. الصفحات التي تعمل
 
-### ❌ المشكلة الرئيسية
+✅ **الصفحة الرئيسية** - تحميل بنجاح من الإنتاج  
+✅ **لوحة التحكم** - متاحة مع نموذج دخول مباشر  
+✅ **صفحة الإعلانات** - موجودة  
+✅ **تفاصيل الإعلان** - تم إصلاحها (كانت 404)
+
+---
+
+## 5. الصفحات التي لا تعمل أو بها مشاكل
+
+⚠️ **مشاكل محتملة:**
+- بعض الصفحات قد تعتمد على بيانات Demo بدلاً من قاعدة البيانات الحقيقية
+- `DEMO_MODE = true` في `demo-data.ts` قد يتسبب في عرض بيانات وهمية
+
+---
+
+## 6. Supabase Client Files
+
+| الملف | الاستخدام | الحالة |
+|-------|----------|--------|
+| `src/lib/supabase.ts` | العميل الرئيسي | ⚠️ يحتوي على placeholder client |
+| `src/lib/db-auth.ts` | مصادقة قاعدة البيانات | ⚠️ يحتوي على SERVICE_ROLE_KEY hardcoded |
+| `src/lib/demo-data.ts` | بيانات تجريبية | ❌ **خطيرة - DEMO_MODE=true** |
+
+---
+
+## 7. حالة قاعدة البيانات (موثقة بالفحص الفعلي)
+
+| الجداول | عدد السجلات | الحالة |
+|---------|-------------|--------|
+| users | 57 | ✅ موجود |
+| profiles | 3 | ⚠️ قليل مقارنة بالمستخدمين |
+| listings | 100 | ✅ موجود |
+| categories | 47 | ✅ موجود |
+| cities | 66 | ✅ موجود |
+| countries | 9 | ✅ موجود |
+| listing_media | 187 | ✅ موجود |
+| favorites | 0 | ⚠️ فارغ |
+| reports | 0 | ⚠️ فارغ |
+| messages | 0 | ⚠️ فارغ |
+| conversations | 0 | ⚠️ فارغ |
+| notifications | 0 | ⚠️ فارغ |
+| settings | null | ⚠️ غير موجود أو فارغ |
+| audit_logs | 0 | ⚠️ فارغ |
+
+**الإجمالي:** 14 جدول، 469+ سجل
+
+---
+
+## 8. Migrations الموجودة
+
+❌ **NOT VERIFIED** - لم يتم العثور على ملفات Prisma migrations واضحة  
+⚠️ يوجد `prisma` في dependencies لكن لا يوجد مجلد `prisma/` واضح
+
+---
+
+## 9. سياسات RLS
+
+❌ **NOT VERIFIED** - لا يمكن فحص RLS من خلال API العام  
+⚠️ يجب فحصها من لوحة تحكم Supabase مباشرة
+
+---
+
+## 10. متغيرات البيئة المطلوبة
+
+| المتغير | الغرض | في .env | في Vercel Production |
+|---------|-------|---------|---------------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | رابط Supabase | ✅ | ✅ مشفر |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | مفتاح Anonymous | ✅ | ✅ مشفر |
+| `SUPABASE_SERVICE_ROLE_KEY` | مفتاح Service Role | ✅ | ⚠️ **كان فارغاً، تم إصلاحه** |
+
+---
+
+## 11. الاستدعاءات التي قد تفشل
+
+بناءً على فحص الكود:
+
+1. **أي استدعاء يعتمد على `DEMO_MODE`** قد يعرض بيانات وهمية
+2. **صفحات تعتمد على `profiles`** قد تفشل لقلة البيانات (3 فقط لـ 57 مستخدم)
+3. **رفع الصور** قد يفشل إذا لم يتم تهيئة Storage bucket
+
+---
+
+## 12. أخطاء Console المحتملة
+
+**عدد console.log:** 320 occurrence في 65 ملف  
+
+⚠️ **مشاكل محتملة:**
+- كثرة console.log قد تؤثر على الأداء
+- بعضها في ملفات الإنتاج
+
+---
+
+## 13. بيانات Mock/Static المكتشفة
+
+### ❌ **مشكلة خطيرة: `src/lib/demo-data.ts`**
+
 ```typescript
-// src/lib/supabase.ts:14-16
-return createClient(
-  'https://placeholder.supabase.co',  // ← URL وهمي
-  'placeholder-key',                   // ← Key وهمي
-);
+export const DEMO_MODE = true;  // ← هذا خطير!
 ```
 
-### 🔴 التأثير
-- ❌ لا يمكن الاتصال بقاعدة البيانات الحقيقية
-- ❌ لا يمكن تسجيل الدخول/إنشاء حسابات
-- ❌ لا يمكن نشر/عرض الإعلانات
-- ❌ الإحصائيات تظهر 0
+يحتوي على:
+- `DEMO_USER` - مستخدم وهمي
+- `DEMO_ADMIN` - مدير وهمي
+- `DEMO_LISTINGS` - 3 إعلانات وهمية
+- `DEMO_SESSION` - جلسة وهمية
 
-### ✅ الحل المقترح
-1. إعداد متغيرات البيئة في Vercel:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
+**التأثير:** إذا كان أي كود يستخدم هذا الملف، سيظهر بيانات غير حقيقية
 
 ---
 
-## 6. نظام الترجمة (i18n)
+## 14. أزرار بلا وظائف أو روابط فارغة
 
-### ✅ الإعداد الصحيح
-```typescript
-// src/hooks/useTranslation.ts
-const translations: Record<Locale, Record<string, string>> = { ar, fr, en };
-const t = (key: string, fallback?: string): string => {
-  return translations[locale]?.[key] ?? fallback ?? key;
-};
-```
+**عدد href="#" أو روابط مماثلة:** يحتاج فحص يدوي
 
-### ⚠️ المفاتيح الموجودة
-- **العربية (ar.json):** 545 مفتاح ✅
-- **الفرنسية (fr.json):** يجب التحقق
-- **الإنجليزية (en.json):** يجب التحقق
-
-### 🔴 مشكلة المفاتيح المفقودة
-عندما يكون المفتاح غير موجود، يظهر **نص المفتاح نفسه** للمستخدم:
-```jsx
-// إذا كان المفتاح مفقوداً:
-{t('categories.education')} // ← يظهر "categories.education" بدلاً من "تعليم"
-```
-
-### 📋 قائمة المفاتيح المستخدمة في الكود ولكن قد تكون مفقودة
-```javascript
-// من page.tsx - CATEGORIES_DATA
-'categories.vehicles'      // ✅ موجود في ar.json
-'categories.real_estate'   // ✅ موجود
-'categories.electronics'   // ✅ موجود
-'categories.jobs'          // ✅ موجود
-'categories.services'      // ✅ موجود
-'categories.fashion'       // ✅ موجود
-'categories.sports'        // ✅ موجود
-'categories.home'          // ✅ موجود (المنزل والحديقة)
-'categories.education'     // ❌ غير موجود!
-'categories.animals'       // ❌ غير موجود!
-'categories.kids'          // ❌ غير موجود!
-'categories.entertainment' // ❌ غير موجود!
-```
+⚠️ **ملاحظة:** بعض الأزرار قد تفتح modals أو نماذج وليست روابط حقيقية
 
 ---
 
-## 7. دعم RTL والعربية
+## 15. ترجمة ناقصة أو مفاتيح ظاهرة
 
-### ✅ الإعداد الأساسي
-```tsx
-// layout.tsx:153
-<html lang="ar" dir="rtl" suppressHydrationWarning>
-```
+✅ **ملفات الترجمة:** 
+- `ar.json` - 567 مفتاح (شامل)
+- `en.json` - موجود
+- `fr.json` - موجود
 
-### ⚠️ الخطوط المستخدمة
-```typescript
-const inter = Inter({ subsets: ["latin"] });
-const ibmPlexArabic = IBM_Plex_Sans_Arabic({ 
-  weight: ["300", "400", "500", "600", "700"],
-  subsets: ["arabic", "latin"],
-});
-```
-
-### 🔴 مشاكل RTL المكتشفة
-1. **اتجاه النص ثابت** - `dir="rtl"` دائمًا حتى مع اللغات الأخرى
-2. **أزرار البحث** - `dir="ltr"` على عنصر الإدخال فقط
-3. **الأيقونات** - بعضها لا يتغير اتجاهه مع اللغة
+⚠️ **يجب التحقق:** أن جميع المفاتيح المستخدمة في الكود موجودة في الملفات الثلاثة
 
 ---
 
-## 8. متغيرات البيئة
+## 16. وظائف معلنة لكن غير منفذة
 
-### ❌ المتغيرات المطلوبة (مفقودة)
-```env
-NEXT_PUBLIC_SUPABASE_URL=            # ❌ غير موجود
-NEXT_PUBLIC_SUPABASE_ANON_KEY=       # ❌ غير موجود
-SUPABASE_SERVICE_ROLE_KEY=           # ❌ غير موجود
-NEXT_PUBLIC_APP_URL=                 # ⚠️ افتراضي: https://mavora.ma
-```
-
-### ✅ المتغيرات الاختيارية
-```env
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-STRIPE_PUBLISHABLE_KEY=
-```
+⚠️ **يحتاج فحص:**
+- بعض functions قد تحتوي على `console.log` فقط بدون تنفيذ حقيقي
+- error handlers قد تخفي الأخطاء بدلاً من عرضها
 
 ---
 
-## 9. بيانات Mock/Placeholder
+## 17. قائمة الأولويات حسب الخطورة
 
-### 🔴 أماكن وجود بيانات وهمية
+### 🔴 حرج (يجب إصلاحه فوراً)
 
-#### 1. Supabase Client
-```typescript
-// src/lib/supabase.ts:14-16
-'https://placeholder.supabase.co'
-'placeholder-key'
-```
+| # | المشكلة | الملف المتأثر | التأثير |
+|---|---------|--------------|---------|
+| 1 | **DEMO_MODE = true** | `demo-data.ts` | عرض بيانات وهمية للمستخدمين |
+| 2 | **SERVICE_ROLE_KEY في الواجهة** | `db-auth.ts` | ثغرة أمنية |
+| 3 | **profiles ناقصة** | قاعدة البيانات | 54 مستخدم بلا profile |
 
-#### 2. روابط الدفع المغربية
-```typescript
-// src/lib/payments/morocco.ts:259-279
-paymentUrl: `https://payment.cmi.co.ma/fpay/${Date.now()}`  // Placeholder
-paymentUrl: `https://pay.amana.ma/checkout/${Date.now()}`    // Placeholder
-paymentUrl: `https://payment.cashplus.ma/pay/${Date.now()}`  // Placeholder
-```
+### 🟡 مهم (يجب إصلاحه قريباً)
 
-#### 3. Social Login Placeholder
-```tsx
-// src/app/auth/login/page.tsx:182
-{/* Social Login (Placeholder) */}
-```
+| # | المشكلة | الملف المتأثر | التأثير |
+|---|---------|--------------|---------|
+| 4 | **320 console.log** | 65 ملف | تأثير على الأداء |
+| 5 | **جداول فارغة** | favorites, messages, etc. | وظائف لا تعمل |
+| 6 | **RLS غير موثق** | قاعدة البيانات | أمن البيانات |
 
----
+### 🟢 تحسينات (يمكن تأجيلها)
 
-## 10. أزرار بدون وظائف
-
-### 🔴 الأزرار/الروابط التي قد لا تعمل
-
-| العنصر | الموقع | المشكلة |
-|--------|--------|---------|
-| "نشر إعلان" | Hero Section | ✅ يعمل (`/listings/create`) |
-| "تصفح الإعلانات" | Hero Section | ✅ يعمل (`/listings`) |
-| تصنيفات الصفحة الرئيسية | Category Grid | ✅ يعمل (`/listings?category=X`) |
-| تسجيل الدخول | Header/AuthModal | ⚠️ يحتاج Supabase حقيقي |
-| إنشاء حساب | AuthModal | ⚠️ يحتاج Supabase حقيقي |
-| Social Login | Login Page | ❌ Placeholder فقط |
+| # | المشكلة | التأثير |
+|---|---------|---------|
+| 7 | إضافة اختبارات | ضمان الجودة |
+| 8 | تحسين الأداء | تجربة المستخدم |
+| 9 | توثيق أفضل | صيانة أسهل |
 
 ---
 
-## 11. أخطاء Console/Network المتوقعة
+## خلاصة التدقيق
 
-### ⚠️ التحذيرات الحالية
-```
-⚠️ Supabase credentials not found. Some features may not work in development.
-⚠️ Supabase credentials not found. Using placeholder client.
-```
+### ✅ ما يعمل:
+- البنية الأساسية للـ Next.js 16
+- الاتصال بقاعدة البيانات Supabase
+- 14 جدول بيانات مع 469+ سجل
+- 70+ API endpoint
+- نظام ترجمة (3 لغات)
+- لوحة تحكم للمدير
 
-### 🔴 الأخطاء المتوقعة للمستخدم
-1. **فشل fetch APIs** - `NetworkError` عند استدعاء `/api/listings`
-2. **فشل المصادقة** - `AuthApiError` عند تسجيل الدخول
-3. **إحصائيات فارغة** - `/api/admin/stats` يرجع 0
+### ❌ ما يحتاج إصلاح عاجل:
+1. **إزالة أو تعطيل DEMO_MODE**
+2. **إزالة SERVICE_ROLE_KEY من الكود العميل**
+3. **إنشاء profiles للمستخدمين الناقصين**
 
----
-
-## 12. Prisma Schema & Migrations
-
-### ✅ الحالة
-- **Schema:** `prisma/schema.prisma` - 40+ نموذج
-- **Migration:** `prisma/migrations/20260103000000_init/migration.sql`
-- **Seed:** `prisma/seed.ts`
-
-### ⚠️ ملاحظات
-- Migration بتاريخ 2026-01-03 (قديم نسبياً)
-- يجب التحقق من تطابق Schema مع قاعدة البيانات الفعلية
+### 📊 درجة جاهزية الإنتاج: **65%**
 
 ---
 
-## 13. RLS (Row Level Security)
-
-### ⚠️ يجب التحقق
-- **الجداول العامة:** listings, categories, cities - يجب أن تكون قراءة عامة
-- **الجداول الخاصة:** profiles, conversations, favorites - تحتاج مصادقة
-- **جداول الإدارة:** admin_* - تحتاج service_role_key
-
----
-
-## 14. الأمان
-
-### ✅ جيد
-- استخدام Supabase Auth (عند تهيئته)
-- Service Role Key للعمليات الإدارية
-- CSRF protection عبر SameSite cookies
-
-### ⚠️ يحتاج تحسين
-- Rate limiting على APIs
-- Input validation قوي (Zod موجود لكن يجب التحقق)
-- CORS headers
-
----
-
-## 15. SEO والميتاداتا
-
-### ✅ ممتاز
-```typescript
-// layout.tsx
-metadata: {
-  title: { default: "مافورا — سوقك الإلكتروني...", template: "%s | MAVORA" },
-  description: "...",
-  keywords: [...], // 30+ كلمة مفتاحية
-  openGraph: { ... },
-  twitter: { ... },
-  alternates: { languages: { "ar-MA": "/", "fr-MA": "/?lang=fr", ... } },
-  robots: { index: true, follow: true },
-}
-```
-
-### ✅ ملفات SEO إضافية
-- `src/app/sitemap.ts` - خريطة الموقع
-- `public/robots.txt` - تعليمات الزحف
-- `public/_headers` - headers للأمان
-
----
-
-## 16. الأداء
-
-### ✅ مقاييس البناء
-```
-✓ Compiled successfully in 19.9s
-✓ Generating static pages (61/61) in 423.9ms
-✓ Finalizing page optimization...
-```
-
-### ⚠️ تحسينات مقترحة
-- تفعيل `reactStrictMode`
-- إضافة Image Optimization
-- Code splitting للمكونات الثقيلة
-
----
-
-## 17. إحصائيات الكود
-
-### 📊 الأرقام
-| النوع | العدد |
-|------|-------|
-| ملفات TypeScript | 150+ |
-| أسطر الكود (تقريبي) | 25,000+ |
-| مكونات React | 80+ |
-| API Routes | 50+ |
-| مفاتيح الترجمة (AR) | 545 |
-| الـ Dependencies | 85+ |
-| Dev Dependencies | 10+ |
-
----
-
-## 18. الاختبارات
-
-### ⚠️ حالة الاختبارات
-- **ملف اختبار موجود:** `__tests__/app.test.ts`
-- **اختبارات E2E:** غير موجودة
-- **اختبارات API:** غير موجودة
-
-### ✅ مقترح
-- إضافة اختبارات لـ API endpoints
-- إضافة اختبارات للمكونات الرئيسية
-- إضافة اختبارات E2E مع Playwright
-
----
-
-## 19. النشر (Deployment)
-
-### ✅ الإعدادات الحالية
-```javascript
-// next.config.ts
-const nextConfig = {
-  output: "standalone",  // ✅ مناسب لـ Docker/Vercel
-  typescript: { ignoreBuildErrors: true },
-  reactStrictMode: false,
-};
-```
-
-### ✅ Build Commands
-```json
-{
-  "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
-  "start": "NODE_ENV=production bun .next/standalone/server.js"
-}
-```
-
----
-
-## 20. أولويات الإصلاح (مرتبة)
-
-### 🔴 عاجلة (Critical) - يجب إصلاحها فوراً
-
-#### 1. **تهيئة Supabase** [الأولوية القصوى]
-```
-المشكلة: جميع العمليات تعتمد على placeholder client
-الحل: 
-  1. إنشاء مشروع Supabase جديد أو استخدام existing
-  2. تشغيل migration SQL
-  3. إضافة متغيرات البيئة في Vercel
-  4. اختبار الاتصال
-```
-
-#### 2. **إصلاح مفاتيح الترجمة المفقودة**
-```
-المشكلة: بعض المفاتيح تظهر نصياً للمستخدم
-المفاتيح المفقودة:
-  - categories.education
-  - categories.animals
-  - categories.kids
-  - categories.entertainment
-  - create_listing.* (بعض المفاتيح)
-  - bio_placeholder
-  - profile.location_placeholder
-  - auth.display_name_placeholder
-  - auth.email_placeholder
-  - auth.password_placeholder
-  - auth.confirm_password_placeholder
-```
-
-#### 3. **إصلاح مشاكل RTL**
-```
-المشكلة: العربية قد تظهر بشكل مشوه
-الحلول:
-  1. جعل dir ديناميكياً حسب اللغة
-  2. التحقق من محاذاة الأيقونات
-  3. اختبار الشاشات المختلفة
-```
-
-### 🟡 مهمة (High) - خلال 24-48 ساعة
-
-#### 4. **إزالة البيانات الوهمية**
-- إزالة روابط الدفع Placeholder
-- إضافة Social Login حقيقي أو إزالة الزر
-
-#### 5. **تحسين تجربة المستخدم**
-- إضافة حالات الخطأ المناسبة
-- إضافة شاشات loading أفضل
-- تحسين رسائل الأخطاء
-
-### 🟢 تحسينات (Medium) - خلال أسبوع
-
-#### 6. **تحسين الأداء**
-- تفعيل reactStrictMode
-- إضافة اختبارات
-- تحسين SEO
-
-#### 7. **ميزات إضافية**
-- إشعارات حقيقية
-- رسائل فورية (WebSocket)
-- نظام دفع حقيقي
-
----
-
-## 21. الخلاصة والتوصيات
-
-### ✅ ما يعمل بشكل جيد
-1. **البنية التقنية** - Next.js 16 حديث ومنظم
-2. **تصميم المكونات** - shadcn/ui احترافي
-3. **نظام الترجمة** - الأساس صحيح، يحتاج توسيع
-4. **SEO** - ميتاداتا شاملة ومتكاملة
-5. **APIs** - 50+ endpoint جاهزة للاستخدام
-6. **Build** - ينجح بدون أخطاء فادحة
-
-### 🔴 ما يحتاج إصلاح عاجل
-1. **Supabase credentials** - أهم شيء الآن
-2. **مفاتيح الترجمة** - تؤثر مباشرة على المستخدم
-3. **RTL/العربية** - تأثير بصري سيء
-
-### 📈 توصية التنفيذ
-```
-الخطوة 1: تهيئة Supabase (30 دقيقة)
-  ↓
-الخطوة 2: إصلاح الترجمة (15 دقيقة)
-  ↓
-الخطوة 3: اختبار RTL (15 دقيقة)
-  ↓
-الخطوة 4: نشر على Vercel (5 دقائق)
-  ↓
-النتيجة: منصة قابلة للاستخدام! 🎉
-```
-
----
-
-## 📎 المرفقات
-
-### ملفات مرجعية
-- `docs/COMMAND_LOG.md` - سجل أوامر الفحص
-- `docs/VERCEL_CHECKLIST.md` - قائمة تحقق النشر
-- `PROJECT_STATUS.md` - حالة المشروع
-
-### روابط مفيدة
-- **الإنتاج:** https://my-project-nu-nine-64.vercel-app
-- **GitHub:** https://github.com/sultancontact-design/mavora
-- **Vercel Dashboard:** [رابط لوحة التحكم]
-
----
-
-**📝 ملاحظة ختامية:**  
-المشروع لديه أساس تقني قوي جداً. المشكلة الرئيسية هي عدم تهيئة قاعدة البيانات وبعض مفاتيح الترجمة المفقودة. بمجرد حل هاتين المشكلتين، ستكون المنصة قابلة للاستخدام الفعلي.
-
----
-
-*تم إعداد هذا التقرير بواسطة Super Z AI Assistant*  
-*آخر تحديث: 2026-09-03*
+**التوقيع:**  
+نظام التدقيق الآلي - MAVORA Project Audit

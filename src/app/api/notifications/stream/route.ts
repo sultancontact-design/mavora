@@ -7,14 +7,15 @@
 
 import { NextRequest } from 'next/server';
 import { notificationManager } from '@/lib/realtime-notifications';
-import { getServerSession } from '@/lib/auth';
+import { getSupabaseServerClient } from '@/lib/supabase';
 
 export const runtime = 'edge'; // Edge runtime for better SSE support
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   // Get user session
-  const session = await getServerSession();
+  const supabase = getSupabaseServerClient();
+    const { data: { session } } = await supabase.auth.getSession();
   
   if (!session?.user?.id) {
     return new Response(

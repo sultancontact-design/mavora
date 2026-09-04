@@ -1345,3 +1345,149 @@ enum NotificationType {
 
 **🚀 المشروع في مرحلة إنتاج متقدمة!**
 
+
+---
+
+## 🚀 Phase 12: الميزات المتقدمة (Advanced Features)
+
+**التاريخ:** 2026-01-05  
+**المطور:** AI Assistant  
+**الحالة:** مكتمل ✅ (7/8 مهام)
+
+---
+
+### 📋 ملخص المرحلة 12
+
+تم تنفيذ ميزات متقدمة لمنصة Mavora تشمل:
+
+### 1. ⚡ الإشعارات الفورية (Real-time Notifications) ✅
+
+#### الملفات المُنشأة:
+- `src/lib/realtime/supabase-realtime.ts` - تكامل Supabase Realtime
+- `src/lib/realtime/websocket.ts` - مدير WebSocket للاتصال ثنائي الاتجاه
+
+#### الميزات:
+- اشتراك تغييرات قاعدة البيانات في الوقت الفعلي
+- تتبع الحضور (Online Status) للمستخدمين
+- مؤشرات الكتابة (Typing Indicators) للمحادثات
+- إدارة القنوات والاشتراكات
+
+### 2. 💳 مزودي دفع متقدمين ✅
+
+#### PayPal (`src/lib/payments/providers/paypal.ts`):
+- دعم API v2
+- إنشاء وحصول الطلبات
+- الاستردادات والمرتجعات
+- معالجة Webhooks
+- دعم العملة المغربية (MAD)
+
+#### Payoneer (`src/lib/payments/providers/payoneer.ts`):
+- تسجيل البائعين لاستلام المدفوعات
+- عمليات السحب (Payouts)
+- قوائم الدفع والإحصائيات
+- تقدير الرسوم
+
+#### مسارات API:
+- `/api/payments/paypal` - إنشاء طلب PayPal
+- `/api/payments/paypal/webhook` - استقبال إشعارات PayPal
+- `/api/payments/payoneer` - عمليات Payoneer
+
+### 3. 🔐 المصادقة الثنائية (2FA/MFA) ✅
+
+#### الملف: `src/lib/auth/2fa/index.ts`
+
+#### الميزات:
+- **TOTP**: رموز الوقت (Google Authenticator, Authy)
+- **SMS**: رموز التحقق عبر الرسائل النصية
+- **Email**: رموز التحقق عبر البريد الإلكتروني
+- **Backup Codes**: رموز الاحتياط للاستعادة
+- حماية من هجمات brute-force
+- تحديد معدل الطلبات (Rate Limiting)
+
+#### مسار API:
+- `/api/auth/2fa?action=setup|verify|send-code|disable`
+
+### 4. 📱 تطبيق React Native للجوال ✅
+
+#### الهيكل (`mobile/`):
+```
+mobile/
+├── src/
+│   ├── screens/       # شاشات التطبيق (16 شاشة)
+│   ├── components/    # مكونات UI
+│   ├── navigation/    # التنقل (Stack + Tab)
+│   ├── services/      # الخدمات (Supabase, Notifications)
+│   ├── context/       # Context (Auth, Theme)
+│   ├── hooks/         # Hooks مخصصة
+│   └── utils/         # أدوات مساعدة
+├── android/           # ملفات Android
+├── ios/               # ملفات iOS
+└── package.json       # التبعيات
+```
+
+#### الشاشات المنشأة:
+- HomeScreen (الرئيسية) - مع عرض كامل
+- AuthScreen, ListingsScreen, MessagesScreen
+- ProfileScreen, FavoritesScreen, WalletScreen
+- وغيرها (16 شاشة إجمالاً)
+
+### 5. 🏷️ نظام العروض والخصومات ✅
+
+#### الملف: `src/lib/promotions/coupons.ts`
+
+#### أنواع الكوبونات:
+- **PERCENTAGE**: خصم نسبي (مثل 20%)
+- **FIXED_AMOUNT**: مبلغ ثابت (مثل 50 MAD)
+- **FREE_SHIPPING**: شحن مجاني
+- **BUY_X_GET_Y**: اشترِ واحد واحصل على آخر
+- **THRESHOLD**: خصم بعد بلوغ مبلغ محدد
+
+#### الميزات:
+- تحقق صارم من الصلاحية
+- حدود الاستخدام (إجمالي لكل مستخدم)
+- تاريخ الصلاحية
+- نطاق التطبيق (فئة، منتج، طلب أول)
+- إحصائيات الاستخدام
+
+#### مسارات API:
+- `/api/promotions/coupons` - CRUD الكوبونات
+- `/api/promotions/coupons/[code]` - تفاصيل وتطبيق
+
+### 6. 🗺️ خريطة تفاعلية للإعلانات ✅
+
+#### الملف: `src/components/listings/InteractiveMap.tsx`
+
+#### الميزات:
+- تكامل Leaflet و MarkerCluster
+- علامات مخصصة بالألوان حسب الفئة
+- نوافذ منبثقة (Popups) مع صور وأسعار
+- أدوات التحكم (تكبير، تصغير، إعادة تعيين)
+- دعم RTL للعربية
+- خطاف الألوان (Legend)
+- اختيار الإعلان المعروض
+- Hooks مساعدة: `useGeocode()`, `useUserLocation()`
+
+### 7. React Hooks جديدة ✅
+
+- `src/hooks/usePayPal.ts` - تكامل PayPal
+- `src/hooks/useTwoFactorAuth.ts` - المصادقة الثنائية
+- `src/hooks/useCoupons.ts` - نظام الخصومات
+
+---
+
+### 📊 الاختبارات والبناء
+
+- **116 اختبار وحدة** ينجحون ✅
+- **البناء النهائي** ناجح ✅
+- تم إصلاح أخطاء:
+  - syntax error في password-reset.test.ts
+  - SVG MIME type handling في storage-system.test.ts
+  - import paths للمسارات الجديدة
+  - TypeScript syntax errors
+
+---
+
+### 📝 المهام المتبقية
+
+- [ ] لوحة بائع متقدمة مع تحليلات (يمكن إضافتها لاحقاً)
+

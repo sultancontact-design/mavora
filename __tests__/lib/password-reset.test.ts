@@ -219,10 +219,11 @@ describe('Password Reset - Security Considerations', () => {
         { email: '', shouldSucceed: false }, // Validation error
       ];
 
-      responses.forEach(({ email, shouldSucceed }) {
+      for (const response of responses) {
+        const { email, shouldSucceed } = response;
         const result = resetPasswordRequestSchema.safeParse({ email });
         expect(result.success).toBe(shouldSucceed);
-      });
+      }
     });
   });
 

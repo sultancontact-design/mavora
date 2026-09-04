@@ -1,0 +1,1289 @@
+     1→-- CreateSchema
+     2→CREATE SCHEMA IF NOT EXISTS "public";
+     3→
+     4→-- CreateTable
+     5→CREATE TABLE "users" (
+     6→    "id" TEXT NOT NULL,
+     7→    "email" TEXT NOT NULL,
+     8→    "emailVerified" BOOLEAN NOT NULL DEFAULT false,
+     9→    "name" TEXT,
+    10→    "image" TEXT,
+    11→    "passwordHash" TEXT,
+    12→    "phone" TEXT,
+    13→    "phoneVerified" BOOLEAN NOT NULL DEFAULT false,
+    14→    "role" TEXT NOT NULL DEFAULT 'user',
+    15→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    16→    "isBanned" BOOLEAN NOT NULL DEFAULT false,
+    17→    "banReason" TEXT,
+    18→    "bannedAt" TIMESTAMP(3),
+    19→    "twoFactorEnabled" BOOLEAN NOT NULL DEFAULT false,
+    20→    "twoFactorSecret" TEXT,
+    21→    "lastLoginAt" TIMESTAMP(3),
+    22→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    23→    "updatedAt" TIMESTAMP(3) NOT NULL,
+    24→
+    25→    CONSTRAINT "users_pkey" PRIMARY KEY ("id")
+    26→);
+    27→
+    28→-- CreateTable
+    29→CREATE TABLE "profiles" (
+    30→    "id" TEXT NOT NULL,
+    31→    "userId" TEXT NOT NULL,
+    32→    "avatarUrl" TEXT,
+    33→    "bio" TEXT,
+    34→    "dateOfBirth" TIMESTAMP(3),
+    35→    "gender" TEXT,
+    36→    "address" TEXT,
+    37→    "cityId" TEXT,
+    38→    "language" TEXT NOT NULL DEFAULT 'ar',
+    39→    "currency" TEXT NOT NULL DEFAULT 'MAD',
+    40→    "website" TEXT,
+    41→    "socialInstagram" TEXT,
+    42→    "socialFacebook" TEXT,
+    43→    "socialTwitter" TEXT,
+    44→    "isVerified" BOOLEAN NOT NULL DEFAULT false,
+    45→    "verifiedAt" TIMESTAMP(3),
+    46→    "responseRate" DOUBLE PRECISION,
+    47→    "responseTime" INTEGER,
+    48→    "rating" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    49→    "totalReviews" INTEGER NOT NULL DEFAULT 0,
+    50→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    51→    "updatedAt" TIMESTAMP(3) NOT NULL,
+    52→
+    53→    CONSTRAINT "profiles_pkey" PRIMARY KEY ("id")
+    54→);
+    55→
+    56→-- CreateTable
+    57→CREATE TABLE "sessions" (
+    58→    "id" TEXT NOT NULL,
+    59→    "sessionToken" TEXT NOT NULL,
+    60→    "userId" TEXT NOT NULL,
+    61→    "expires" TIMESTAMP(3) NOT NULL,
+    62→    "ipAddress" TEXT,
+    63→    "userAgent" TEXT,
+    64→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    65→
+    66→    CONSTRAINT "sessions_pkey" PRIMARY KEY ("id")
+    67→);
+    68→
+    69→-- CreateTable
+    70→CREATE TABLE "verification_tokens" (
+    71→    "token" TEXT NOT NULL,
+    72→    "userId" TEXT NOT NULL,
+    73→    "expires" TIMESTAMP(3) NOT NULL,
+    74→    "type" TEXT NOT NULL,
+    75→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    76→
+    77→    CONSTRAINT "verification_tokens_pkey" PRIMARY KEY ("token")
+    78→);
+    79→
+    80→-- CreateTable
+    81→CREATE TABLE "roles" (
+    82→    "id" TEXT NOT NULL,
+    83→    "name" TEXT NOT NULL,
+    84→    "description" TEXT,
+    85→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    86→
+    87→    CONSTRAINT "roles_pkey" PRIMARY KEY ("id")
+    88→);
+    89→
+    90→-- CreateTable
+    91→CREATE TABLE "permissions" (
+    92→    "id" TEXT NOT NULL,
+    93→    "resource" TEXT NOT NULL,
+    94→    "action" TEXT NOT NULL,
+    95→    "condition" TEXT,
+    96→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    97→
+    98→    CONSTRAINT "permissions_pkey" PRIMARY KEY ("id")
+    99→);
+   100→
+   101→-- CreateTable
+   102→CREATE TABLE "user_roles" (
+   103→    "id" TEXT NOT NULL,
+   104→    "userId" TEXT NOT NULL,
+   105→    "roleId" TEXT NOT NULL,
+   106→    "assignedBy" TEXT,
+   107→    "assignedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   108→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   109→
+   110→    CONSTRAINT "user_roles_pkey" PRIMARY KEY ("id")
+   111→);
+   112→
+   113→-- CreateTable
+   114→CREATE TABLE "organizations" (
+   115→    "id" TEXT NOT NULL,
+   116→    "name" TEXT NOT NULL,
+   117→    "slug" TEXT NOT NULL,
+   118→    "description" TEXT,
+   119→    "logoUrl" TEXT,
+   120→    "coverImageUrl" TEXT,
+   121→    "email" TEXT NOT NULL,
+   122→    "phone" TEXT,
+   123→    "website" TEXT,
+   124→    "address" TEXT,
+   125→    "cityId" TEXT,
+   126→    "isVerified" BOOLEAN NOT NULL DEFAULT false,
+   127→    "verificationDoc" TEXT,
+   128→    "planId" TEXT,
+   129→    "rating" DOUBLE PRECISION NOT NULL DEFAULT 0,
+   130→    "totalReviews" INTEGER NOT NULL DEFAULT 0,
+   131→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   132→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   133→    "updatedAt" TIMESTAMP(3) NOT NULL,
+   134→
+   135→    CONSTRAINT "organizations_pkey" PRIMARY KEY ("id")
+   136→);
+   137→
+   138→-- CreateTable
+   139→CREATE TABLE "organization_members" (
+   140→    "id" TEXT NOT NULL,
+   141→    "organizationId" TEXT NOT NULL,
+   142→    "userId" TEXT NOT NULL,
+   143→    "role" TEXT NOT NULL DEFAULT 'member',
+   144→    "jobTitle" TEXT,
+   145→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   146→    "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   147→
+   148→    CONSTRAINT "organization_members_pkey" PRIMARY KEY ("id")
+   149→);
+   150→
+   151→-- CreateTable
+   152→CREATE TABLE "countries" (
+   153→    "id" TEXT NOT NULL,
+   154→    "name" TEXT NOT NULL,
+   155→    "nameAr" TEXT,
+   156→    "nameFr" TEXT,
+   157→    "code" TEXT NOT NULL,
+   158→    "flagEmoji" TEXT,
+   159→    "phoneCode" TEXT,
+   160→    "currencyCode" TEXT,
+   161→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   162→    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+   163→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   164→
+   165→    CONSTRAINT "countries_pkey" PRIMARY KEY ("id")
+   166→);
+   167→
+   168→-- CreateTable
+   169→CREATE TABLE "regions" (
+   170→    "id" TEXT NOT NULL,
+   171→    "name" TEXT NOT NULL,
+   172→    "nameAr" TEXT,
+   173→    "nameFr" TEXT,
+   174→    "countryId" TEXT NOT NULL,
+   175→    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+   176→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   177→
+   178→    CONSTRAINT "regions_pkey" PRIMARY KEY ("id")
+   179→);
+   180→
+   181→-- CreateTable
+   182→CREATE TABLE "cities" (
+   183→    "id" TEXT NOT NULL,
+   184→    "name" TEXT NOT NULL,
+   185→    "nameAr" TEXT,
+   186→    "nameFr" TEXT,
+   187→    "countryId" TEXT NOT NULL,
+   188→    "regionId" TEXT,
+   189→    "latitude" DOUBLE PRECISION,
+   190→    "longitude" DOUBLE PRECISION,
+   191→    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+   192→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   193→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   194→
+   195→    CONSTRAINT "cities_pkey" PRIMARY KEY ("id")
+   196→);
+   197→
+   198→-- CreateTable
+   199→CREATE TABLE "currencies" (
+   200→    "id" TEXT NOT NULL,
+   201→    "code" TEXT NOT NULL,
+   202→    "name" TEXT NOT NULL,
+   203→    "symbol" TEXT NOT NULL,
+   204→    "nameAr" TEXT,
+   205→    "decimalPlaces" INTEGER NOT NULL DEFAULT 2,
+   206→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   207→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   208→
+   209→    CONSTRAINT "currencies_pkey" PRIMARY KEY ("id")
+   210→);
+   211→
+   212→-- CreateTable
+   213→CREATE TABLE "categories" (
+   214→    "id" TEXT NOT NULL,
+   215→    "name" TEXT NOT NULL,
+   216→    "nameAr" TEXT,
+   217→    "nameFr" TEXT,
+   218→    "slug" TEXT NOT NULL,
+   219→    "description" TEXT,
+   220→    "icon" TEXT,
+   221→    "parentId" TEXT,
+   222→    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+   223→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   224→
+   225→    CONSTRAINT "categories_pkey" PRIMARY KEY ("id")
+   226→);
+   227→
+   228→-- CreateTable
+   229→CREATE TABLE "category_fields" (
+   230→    "id" TEXT NOT NULL,
+   231→    "categoryId" TEXT NOT NULL,
+   232→    "name" TEXT NOT NULL,
+   233→    "nameAr" TEXT,
+   234→    "nameFr" TEXT,
+   235→    "type" TEXT NOT NULL,
+   236→    "placeholder" TEXT,
+   237→    "required" BOOLEAN NOT NULL DEFAULT false,
+   238→    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+   239→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   240→
+   241→    CONSTRAINT "category_fields_pkey" PRIMARY KEY ("id")
+   242→);
+   243→
+   244→-- CreateTable
+   245→CREATE TABLE "category_field_options" (
+   246→    "id" TEXT NOT NULL,
+   247→    "fieldId" TEXT NOT NULL,
+   248→    "value" TEXT NOT NULL,
+   249→    "valueAr" TEXT,
+   250→    "valueFr" TEXT,
+   251→    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+   252→
+   253→    CONSTRAINT "category_field_options_pkey" PRIMARY KEY ("id")
+   254→);
+   255→
+   256→-- CreateTable
+   257→CREATE TABLE "listings" (
+   258→    "id" TEXT NOT NULL,
+   259→    "title" TEXT NOT NULL,
+   260→    "description" TEXT,
+   261→    "price" DECIMAL(12,2),
+   262→    "negotiable" BOOLEAN NOT NULL DEFAULT false,
+   263→    "currencyCode" TEXT NOT NULL DEFAULT 'MAD',
+   264→    "condition" TEXT,
+   265→    "status" TEXT NOT NULL DEFAULT 'draft',
+   266→    "featuredUntil" TIMESTAMP(3),
+   267→    "promotedUntil" TIMESTAMP(3),
+   268→    "urgentUntil" TIMESTAMP(3),
+   269→    "viewCount" INTEGER NOT NULL DEFAULT 0,
+   270→    "contactPhone" TEXT,
+   271→    "contactEmail" TEXT,
+   272→    "locationAddress" TEXT,
+   273→    "locationLat" DOUBLE PRECISION,
+   274→    "locationLng" DOUBLE PRECISION,
+   275→    "cityId" TEXT,
+   276→    "countryId" TEXT,
+   277→    "categoryId" TEXT NOT NULL,
+   278→    "userId" TEXT NOT NULL,
+   279→    "organizationId" TEXT,
+   280→    "videoUrl" TEXT,
+   281→    "externalLink" TEXT,
+   282→    "rejectionReason" TEXT,
+   283→    "moderatedAt" TIMESTAMP(3),
+   284→    "moderatedBy" TEXT,
+   285→    "publishedAt" TIMESTAMP(3),
+   286→    "expiresAt" TIMESTAMP(3),
+   287→    "soldAt" TIMESTAMP(3),
+   288→    "archivedAt" TIMESTAMP(3),
+   289→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   290→    "updatedAt" TIMESTAMP(3) NOT NULL,
+   291→
+   292→    CONSTRAINT "listings_pkey" PRIMARY KEY ("id")
+   293→);
+   294→
+   295→-- CreateTable
+   296→CREATE TABLE "listing_field_values" (
+   297→    "id" TEXT NOT NULL,
+   298→    "listingId" TEXT NOT NULL,
+   299→    "fieldId" TEXT NOT NULL,
+   300→    "value" TEXT NOT NULL,
+   301→    "valueJson" JSONB,
+   302→
+   303→    CONSTRAINT "listing_field_values_pkey" PRIMARY KEY ("id")
+   304→);
+   305→
+   306→-- CreateTable
+   307→CREATE TABLE "listing_media" (
+   308→    "id" TEXT NOT NULL,
+   309→    "listingId" TEXT NOT NULL,
+   310→    "url" TEXT NOT NULL,
+   311→    "thumbnailUrl" TEXT,
+   312→    "type" TEXT NOT NULL DEFAULT 'image',
+   313→    "mimeType" TEXT,
+   314→    "size" INTEGER,
+   315→    "width" INTEGER,
+   316→    "height" INTEGER,
+   317→    "altText" TEXT,
+   318→    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+   319→    "isPrimary" BOOLEAN NOT NULL DEFAULT false,
+   320→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   321→
+   322→    CONSTRAINT "listing_media_pkey" PRIMARY KEY ("id")
+   323→);
+   324→
+   325→-- CreateTable
+   326→CREATE TABLE "listing_locations" (
+   327→    "id" TEXT NOT NULL,
+   328→    "listingId" TEXT NOT NULL,
+   329→    "label" TEXT NOT NULL,
+   330→    "address" TEXT NOT NULL,
+   331→    "latitude" DOUBLE PRECISION NOT NULL,
+   332→    "longitude" DOUBLE PRECISION NOT NULL,
+   333→    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+   334→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   335→
+   336→    CONSTRAINT "listing_locations_pkey" PRIMARY KEY ("id")
+   337→);
+   338→
+   339→-- CreateTable
+   340→CREATE TABLE "listing_status_history" (
+   341→    "id" TEXT NOT NULL,
+   342→    "listingId" TEXT NOT NULL,
+   343→    "fromStatus" TEXT,
+   344→    "toStatus" TEXT NOT NULL,
+   345→    "reason" TEXT,
+   346→    "changedBy" TEXT,
+   347→    "changedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   348→
+   349→    CONSTRAINT "listing_status_history_pkey" PRIMARY KEY ("id")
+   350→);
+   351→
+   352→-- CreateTable
+   353→CREATE TABLE "favorites" (
+   354→    "id" TEXT NOT NULL,
+   355→    "userId" TEXT NOT NULL,
+   356→    "listingId" TEXT NOT NULL,
+   357→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   358→
+   359→    CONSTRAINT "favorites_pkey" PRIMARY KEY ("id")
+   360→);
+   361→
+   362→-- CreateTable
+   363→CREATE TABLE "saved_searches" (
+   364→    "id" TEXT NOT NULL,
+   365→    "userId" TEXT NOT NULL,
+   366→    "name" TEXT NOT NULL,
+   367→    "query" JSONB NOT NULL,
+   368→    "alertFrequency" TEXT,
+   369→    "lastSentAt" TIMESTAMP(3),
+   370→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   371→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   372→    "updatedAt" TIMESTAMP(3) NOT NULL,
+   373→
+   374→    CONSTRAINT "saved_searches_pkey" PRIMARY KEY ("id")
+   375→);
+   376→
+   377→-- CreateTable
+   378→CREATE TABLE "conversations" (
+   379→    "id" TEXT NOT NULL,
+   380→    "subject" TEXT,
+   381→    "listingId" TEXT,
+   382→    "lastMessageAt" TIMESTAMP(3),
+   383→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   384→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   385→    "updatedAt" TIMESTAMP(3) NOT NULL,
+   386→
+   387→    CONSTRAINT "conversations_pkey" PRIMARY KEY ("id")
+   388→);
+   389→
+   390→-- CreateTable
+   391→CREATE TABLE "conversation_members" (
+   392→    "id" TEXT NOT NULL,
+   393→    "conversationId" TEXT NOT NULL,
+   394→    "userId" TEXT NOT NULL,
+   395→    "lastReadAt" TIMESTAMP(3),
+   396→    "isMuted" BOOLEAN NOT NULL DEFAULT false,
+   397→    "leftAt" TIMESTAMP(3),
+   398→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   399→
+   400→    CONSTRAINT "conversation_members_pkey" PRIMARY KEY ("id")
+   401→);
+   402→
+   403→-- CreateTable
+   404→CREATE TABLE "messages" (
+   405→    "id" TEXT NOT NULL,
+   406→    "conversationId" TEXT NOT NULL,
+   407→    "senderId" TEXT NOT NULL,
+   408→    "content" TEXT,
+   409→    "messageType" TEXT NOT NULL DEFAULT 'text',
+   410→    "mediaUrl" TEXT,
+   411→    "isRead" BOOLEAN NOT NULL DEFAULT false,
+   412→    "readAt" TIMESTAMP(3),
+   413→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   414→
+   415→    CONSTRAINT "messages_pkey" PRIMARY KEY ("id")
+   416→);
+   417→
+   418→-- CreateTable
+   419→CREATE TABLE "reports" (
+   420→    "id" TEXT NOT NULL,
+   421→    "reporterId" TEXT NOT NULL,
+   422→    "targetType" TEXT NOT NULL,
+   423→    "targetId" TEXT NOT NULL,
+   424→    "reason" TEXT NOT NULL,
+   425→    "description" TEXT,
+   426→    "status" TEXT NOT NULL DEFAULT 'pending',
+   427→    "reviewedBy" TEXT,
+   428→    "reviewedAt" TIMESTAMP(3),
+   429→    "resolution" TEXT,
+   430→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   431→    "updatedAt" TIMESTAMP(3) NOT NULL,
+   432→
+   433→    CONSTRAINT "reports_pkey" PRIMARY KEY ("id")
+   434→);
+   435→
+   436→-- CreateTable
+   437→CREATE TABLE "reviews" (
+   438→    "id" TEXT NOT NULL,
+   439→    "authorId" TEXT NOT NULL,
+   440→    "targetType" TEXT NOT NULL,
+   441→    "targetId" TEXT NOT NULL,
+   442→    "rating" INTEGER NOT NULL,
+   443→    "title" TEXT,
+   444→    "content" TEXT,
+   445→    "response" TEXT,
+   446→    "respondedAt" TIMESTAMP(3),
+   447→    "isVerified" BOOLEAN NOT NULL DEFAULT false,
+   448→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   449→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   450→    "updatedAt" TIMESTAMP(3) NOT NULL,
+   451→
+   452→    CONSTRAINT "reviews_pkey" PRIMARY KEY ("id")
+   453→);
+   454→
+   455→-- CreateTable
+   456→CREATE TABLE "moderation_actions" (
+   457→    "id" TEXT NOT NULL,
+   458→    "targetType" TEXT NOT NULL,
+   459→    "targetId" TEXT NOT NULL,
+   460→    "actionType" TEXT NOT NULL,
+   461→    "reason" TEXT,
+   462→    "moderatorId" TEXT NOT NULL,
+   463→    "duration" INTEGER,
+   464→    "expiresAt" TIMESTAMP(3),
+   465→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   466→
+   467→    CONSTRAINT "moderation_actions_pkey" PRIMARY KEY ("id")
+   468→);
+   469→
+   470→-- CreateTable
+   471→CREATE TABLE "verification_requests" (
+   472→    "id" TEXT NOT NULL,
+   473→    "userId" TEXT NOT NULL,
+   474→    "type" TEXT NOT NULL,
+   475→    "status" TEXT NOT NULL DEFAULT 'pending',
+   476→    "documents" TEXT[],
+   477→    "metadata" JSONB,
+   478→    "reviewedBy" TEXT,
+   479→    "reviewedAt" TIMESTAMP(3),
+   480→    "rejectionReason" TEXT,
+   481→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   482→    "updatedAt" TIMESTAMP(3) NOT NULL,
+   483→
+   484→    CONSTRAINT "verification_requests_pkey" PRIMARY KEY ("id")
+   485→);
+   486→
+   487→-- CreateTable
+   488→CREATE TABLE "plans" (
+   489→    "id" TEXT NOT NULL,
+   490→    "name" TEXT NOT NULL,
+   491→    "nameAr" TEXT,
+   492→    "nameFr" TEXT,
+   493→    "description" TEXT,
+   494→    "price" DECIMAL(10,2) NOT NULL,
+   495→    "currency" TEXT NOT NULL DEFAULT 'MAD',
+   496→    "durationDays" INTEGER NOT NULL,
+   497→    "features" JSONB NOT NULL,
+   498→    "maxListings" INTEGER,
+   499→    "maxImagesPerListing" INTEGER NOT NULL DEFAULT 10,
+   500→    "canPromote" BOOLEAN NOT NULL DEFAULT false,
+   501→    "hasAnalytics" BOOLEAN NOT NULL DEFAULT false,
+   502→    "hasCustomBranding" BOOLEAN NOT NULL DEFAULT false,
+   503→    "prioritySupport" BOOLEAN NOT NULL DEFAULT false,
+   504→    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+   505→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   506→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   507→    "updatedAt" TIMESTAMP(3) NOT NULL,
+   508→
+   509→    CONSTRAINT "plans_pkey" PRIMARY KEY ("id")
+   510→);
+   511→
+   512→-- CreateTable
+   513→CREATE TABLE "subscriptions" (
+   514→    "id" TEXT NOT NULL,
+   515→    "planId" TEXT NOT NULL,
+   516→    "userId" TEXT,
+   517→    "organizationId" TEXT,
+   518→    "status" TEXT NOT NULL DEFAULT 'active',
+   519→    "startDate" TIMESTAMP(3) NOT NULL,
+   520→    "endDate" TIMESTAMP(3),
+   521→    "autoRenew" BOOLEAN NOT NULL DEFAULT false,
+   522→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   523→    "updatedAt" TIMESTAMP(3) NOT NULL,
+   524→
+   525→    CONSTRAINT "subscriptions_pkey" PRIMARY KEY ("id")
+   526→);
+   527→
+   528→-- CreateTable
+   529→CREATE TABLE "wallets" (
+   530→    "id" TEXT NOT NULL,
+   531→    "userId" TEXT NOT NULL,
+   532→    "balance" DECIMAL(12,2) NOT NULL DEFAULT 0,
+   533→    "currency" TEXT NOT NULL DEFAULT 'MAD',
+   534→    "frozenBalance" DECIMAL(12,2) NOT NULL DEFAULT 0,
+   535→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   536→    "updatedAt" TIMESTAMP(3) NOT NULL,
+   537→
+   538→    CONSTRAINT "wallets_pkey" PRIMARY KEY ("id")
+   539→);
+   540→
+   541→-- CreateTable
+   542→CREATE TABLE "wallet_transactions" (
+   543→    "id" TEXT NOT NULL,
+   544→    "walletId" TEXT NOT NULL,
+   545→    "type" TEXT NOT NULL,
+   546→    "amount" DECIMAL(12,2) NOT NULL,
+   547→    "balanceAfter" DECIMAL(12,2) NOT NULL,
+   548→    "description" TEXT,
+   549→    "referenceType" TEXT,
+   550→    "referenceId" TEXT,
+   551→    "metadata" JSONB,
+   552→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   553→
+   554→    CONSTRAINT "wallet_transactions_pkey" PRIMARY KEY ("id")
+   555→);
+   556→
+   557→-- CreateTable
+   558→CREATE TABLE "token_packages" (
+   559→    "id" TEXT NOT NULL,
+   560→    "name" TEXT NOT NULL,
+   561→    "tokens" INTEGER NOT NULL,
+   562→    "price" DECIMAL(10,2) NOT NULL,
+   563→    "currency" TEXT NOT NULL DEFAULT 'MAD',
+   564→    "bonusTokens" INTEGER NOT NULL DEFAULT 0,
+   565→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   566→    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+   567→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   568→    "updatedAt" TIMESTAMP(3) NOT NULL,
+   569→
+   570→    CONSTRAINT "token_packages_pkey" PRIMARY KEY ("id")
+   571→);
+   572→
+   573→-- CreateTable
+   574→CREATE TABLE "orders" (
+   575→    "id" TEXT NOT NULL,
+   576→    "orderNumber" TEXT NOT NULL,
+   577→    "userId" TEXT NOT NULL,
+   578→    "status" TEXT NOT NULL DEFAULT 'pending',
+   579→    "subtotal" DECIMAL(12,2) NOT NULL,
+   580→    "tax" DECIMAL(12,2) NOT NULL DEFAULT 0,
+   581→    "total" DECIMAL(12,2) NOT NULL,
+   582→    "currency" TEXT NOT NULL DEFAULT 'MAD',
+   583→    "paymentMethod" TEXT,
+   584→    "paymentId" TEXT,
+   585→    "paidAt" TIMESTAMP(3),
+   586→    "refundedAt" TIMESTAMP(3),
+   587→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   588→    "updatedAt" TIMESTAMP(3) NOT NULL,
+   589→
+   590→    CONSTRAINT "orders_pkey" PRIMARY KEY ("id")
+   591→);
+   592→
+   593→-- CreateTable
+   594→CREATE TABLE "order_items" (
+   595→    "id" TEXT NOT NULL,
+   596→    "orderId" TEXT NOT NULL,
+   597→    "itemType" TEXT NOT NULL,
+   598→    "itemId" TEXT NOT NULL,
+   599→    "itemName" TEXT NOT NULL,
+   600→    "quantity" INTEGER NOT NULL DEFAULT 1,
+   601→    "unitPrice" DECIMAL(12,2) NOT NULL,
+   602→    "total" DECIMAL(12,2) NOT NULL,
+   603→    "metadata" JSONB,
+   604→
+   605→    CONSTRAINT "order_items_pkey" PRIMARY KEY ("id")
+   606→);
+   607→
+   608→-- CreateTable
+   609→CREATE TABLE "payments" (
+   610→    "id" TEXT NOT NULL,
+   611→    "orderId" TEXT NOT NULL,
+   612→    "provider" TEXT NOT NULL,
+   613→    "providerPaymentId" TEXT,
+   614→    "status" TEXT NOT NULL DEFAULT 'pending',
+   615→    "amount" DECIMAL(12,2) NOT NULL,
+   616→    "currency" TEXT NOT NULL DEFAULT 'MAD',
+   617→    "fee" DECIMAL(12,2) NOT NULL DEFAULT 0,
+   618→    "netAmount" DECIMAL(12,2) NOT NULL,
+   619→    "metadata" JSONB,
+   620→    "errorCode" TEXT,
+   621→    "errorMessage" TEXT,
+   622→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   623→    "updatedAt" TIMESTAMP(3) NOT NULL,
+   624→
+   625→    CONSTRAINT "payments_pkey" PRIMARY KEY ("id")
+   626→);
+   627→
+   628→-- CreateTable
+   629→CREATE TABLE "payment_events" (
+   630→    "id" TEXT NOT NULL,
+   631→    "paymentId" TEXT NOT NULL,
+   632→    "eventType" TEXT NOT NULL,
+   633→    "eventData" JSONB,
+   634→    "processed" BOOLEAN NOT NULL DEFAULT false,
+   635→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   636→
+   637→    CONSTRAINT "payment_events_pkey" PRIMARY KEY ("id")
+   638→);
+   639→
+   640→-- CreateTable
+   641→CREATE TABLE "promotions" (
+   642→    "id" TEXT NOT NULL,
+   643→    "name" TEXT NOT NULL,
+   644→    "type" TEXT NOT NULL,
+   645→    "description" TEXT,
+   646→    "basePrice" DECIMAL(10,2) NOT NULL,
+   647→    "currency" TEXT NOT NULL DEFAULT 'MAD',
+   648→    "durationHours" INTEGER NOT NULL,
+   649→    "maxDurationHours" INTEGER,
+   650→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   651→    "constraints" JSONB,
+   652→    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+   653→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   654→    "updatedAt" TIMESTAMP(3) NOT NULL,
+   655→
+   656→    CONSTRAINT "promotions_pkey" PRIMARY KEY ("id")
+   657→);
+   658→
+   659→-- CreateTable
+   660→CREATE TABLE "listing_promotions" (
+   661→    "id" TEXT NOT NULL,
+   662→    "listingId" TEXT NOT NULL,
+   663→    "promotionId" TEXT NOT NULL,
+   664→    "status" TEXT NOT NULL DEFAULT 'active',
+   665→    "startedAt" TIMESTAMP(3) NOT NULL,
+   666→    "expiresAt" TIMESTAMP(3) NOT NULL,
+   667→    "pricePaid" DECIMAL(10,2) NOT NULL,
+   668→    "currency" TEXT NOT NULL DEFAULT 'MAD',
+   669→    "orderId" TEXT,
+   670→    "metadata" JSONB,
+   671→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   672→
+   673→    CONSTRAINT "listing_promotions_pkey" PRIMARY KEY ("id")
+   674→);
+   675→
+   676→-- CreateTable
+   677→CREATE TABLE "notifications" (
+   678→    "id" TEXT NOT NULL,
+   679→    "userId" TEXT NOT NULL,
+   680→    "type" TEXT NOT NULL,
+   681→    "title" TEXT NOT NULL,
+   682→    "body" TEXT,
+   683→    "data" JSONB,
+   684→    "isRead" BOOLEAN NOT NULL DEFAULT false,
+   685→    "readAt" TIMESTAMP(3),
+   686→    "sentVia" TEXT[],
+   687→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   688→
+   689→    CONSTRAINT "notifications_pkey" PRIMARY KEY ("id")
+   690→);
+   691→
+   692→-- CreateTable
+   693→CREATE TABLE "notification_preferences" (
+   694→    "id" TEXT NOT NULL,
+   695→    "userId" TEXT NOT NULL,
+   696→    "newMessage" BOOLEAN NOT NULL DEFAULT true,
+   697→    "listingViewed" BOOLEAN NOT NULL DEFAULT false,
+   698→    "favoriteAdded" BOOLEAN NOT NULL DEFAULT true,
+   699→    "promotionExpiring" BOOLEAN NOT NULL DEFAULT true,
+   700→    "priceDrop" BOOLEAN NOT NULL DEFAULT true,
+   701→    "newReview" BOOLEAN NOT NULL DEFAULT true,
+   702→    "marketing" BOOLEAN NOT NULL DEFAULT false,
+   703→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   704→    "updatedAt" TIMESTAMP(3) NOT NULL,
+   705→
+   706→    CONSTRAINT "notification_preferences_pkey" PRIMARY KEY ("id")
+   707→);
+   708→
+   709→-- CreateTable
+   710→CREATE TABLE "audit_logs" (
+   711→    "id" TEXT NOT NULL,
+   712→    "userId" TEXT,
+   713→    "action" TEXT NOT NULL,
+   714→    "resourceType" TEXT NOT NULL,
+   715→    "resourceId" TEXT,
+   716→    "oldValue" JSONB,
+   717→    "newValue" JSONB,
+   718→    "ipAddress" TEXT,
+   719→    "userAgent" TEXT,
+   720→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   721→
+   722→    CONSTRAINT "audit_logs_pkey" PRIMARY KEY ("id")
+   723→);
+   724→
+   725→-- CreateTable
+   726→CREATE TABLE "analytics_events" (
+   727→    "id" TEXT NOT NULL,
+   728→    "eventType" TEXT NOT NULL,
+   729→    "sessionId" TEXT,
+   730→    "userId" TEXT,
+   731→    "data" JSONB,
+   732→    "ipAddress" TEXT,
+   733→    "userAgent" TEXT,
+   734→    "referrer" TEXT,
+   735→    "url" TEXT,
+   736→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   737→
+   738→    CONSTRAINT "analytics_events_pkey" PRIMARY KEY ("id")
+   739→);
+   740→
+   741→-- CreateTable
+   742→CREATE TABLE "banned_terms" (
+   743→    "id" TEXT NOT NULL,
+   744→    "term" TEXT NOT NULL,
+   745→    "category" TEXT NOT NULL,
+   746→    "isActive" BOOLEAN NOT NULL DEFAULT true,
+   747→    "addedBy" TEXT,
+   748→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   749→
+   750→    CONSTRAINT "banned_terms_pkey" PRIMARY KEY ("id")
+   751→);
+   752→
+   753→-- CreateTable
+   754→CREATE TABLE "fraud_signals" (
+   755→    "id" TEXT NOT NULL,
+   756→    "userId" TEXT,
+   757→    "signalType" TEXT NOT NULL,
+   758→    "severity" TEXT NOT NULL,
+   759→    "data" JSONB,
+   760→    "isResolved" BOOLEAN NOT NULL DEFAULT false,
+   761→    "resolvedBy" TEXT,
+   762→    "resolvedAt" TIMESTAMP(3),
+   763→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   764→
+   765→    CONSTRAINT "fraud_signals_pkey" PRIMARY KEY ("id")
+   766→);
+   767→
+   768→-- CreateTable
+   769→CREATE TABLE "seo_pages" (
+   770→    "id" TEXT NOT NULL,
+   771→    "pageType" TEXT NOT NULL,
+   772→    "entityId" TEXT NOT NULL,
+   773→    "slug" TEXT NOT NULL,
+   774→    "title" TEXT NOT NULL,
+   775→    "description" TEXT,
+   776→    "keywords" TEXT[],
+   777→    "heading" TEXT,
+   778→    "content" TEXT,
+   779→    "schemaMarkup" JSONB,
+   780→    "categoryId" TEXT,
+   781→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   782→    "updatedAt" TIMESTAMP(3) NOT NULL,
+   783→
+   784→    CONSTRAINT "seo_pages_pkey" PRIMARY KEY ("id")
+   785→);
+   786→
+   787→-- CreateTable
+   788→CREATE TABLE "support_tickets" (
+   789→    "id" TEXT NOT NULL,
+   790→    "userId" TEXT,
+   791→    "subject" TEXT NOT NULL,
+   792→    "description" TEXT,
+   793→    "status" TEXT NOT NULL DEFAULT 'open',
+   794→    "priority" TEXT NOT NULL DEFAULT 'medium',
+   795→    "category" TEXT,
+   796→    "assignedTo" TEXT,
+   797→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   798→    "updatedAt" TIMESTAMP(3) NOT NULL,
+   799→
+   800→    CONSTRAINT "support_tickets_pkey" PRIMARY KEY ("id")
+   801→);
+   802→
+   803→-- CreateTable
+   804→CREATE TABLE "posts" (
+   805→    "id" TEXT NOT NULL,
+   806→    "title" TEXT NOT NULL,
+   807→    "content" TEXT,
+   808→    "published" BOOLEAN NOT NULL DEFAULT false,
+   809→    "authorId" TEXT NOT NULL,
+   810→    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   811→    "updatedAt" TIMESTAMP(3) NOT NULL,
+   812→
+   813→    CONSTRAINT "posts_pkey" PRIMARY KEY ("id")
+   814→);
+   815→
+   816→-- CreateTable
+   817→CREATE TABLE "_PermissionToRole" (
+   818→    "A" TEXT NOT NULL,
+   819→    "B" TEXT NOT NULL,
+   820→
+   821→    CONSTRAINT "_PermissionToRole_AB_pkey" PRIMARY KEY ("A","B")
+   822→);
+   823→
+   824→-- CreateIndex
+   825→CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+   826→
+   827→-- CreateIndex
+   828→CREATE UNIQUE INDEX "users_phone_key" ON "users"("phone");
+   829→
+   830→-- CreateIndex
+   831→CREATE INDEX "users_email_idx" ON "users"("email");
+   832→
+   833→-- CreateIndex
+   834→CREATE INDEX "users_phone_idx" ON "users"("phone");
+   835→
+   836→-- CreateIndex
+   837→CREATE INDEX "users_role_idx" ON "users"("role");
+   838→
+   839→-- CreateIndex
+   840→CREATE UNIQUE INDEX "profiles_userId_key" ON "profiles"("userId");
+   841→
+   842→-- CreateIndex
+   843→CREATE UNIQUE INDEX "sessions_sessionToken_key" ON "sessions"("sessionToken");
+   844→
+   845→-- CreateIndex
+   846→CREATE INDEX "sessions_userId_idx" ON "sessions"("userId");
+   847→
+   848→-- CreateIndex
+   849→CREATE INDEX "sessions_sessionToken_idx" ON "sessions"("sessionToken");
+   850→
+   851→-- CreateIndex
+   852→CREATE INDEX "verification_tokens_userId_idx" ON "verification_tokens"("userId");
+   853→
+   854→-- CreateIndex
+   855→CREATE INDEX "verification_tokens_token_idx" ON "verification_tokens"("token");
+   856→
+   857→-- CreateIndex
+   858→CREATE UNIQUE INDEX "roles_name_key" ON "roles"("name");
+   859→
+   860→-- CreateIndex
+   861→CREATE UNIQUE INDEX "permissions_resource_action_condition_key" ON "permissions"("resource", "action", "condition");
+   862→
+   863→-- CreateIndex
+   864→CREATE INDEX "user_roles_userId_idx" ON "user_roles"("userId");
+   865→
+   866→-- CreateIndex
+   867→CREATE UNIQUE INDEX "user_roles_userId_roleId_key" ON "user_roles"("userId", "roleId");
+   868→
+   869→-- CreateIndex
+   870→CREATE UNIQUE INDEX "organizations_slug_key" ON "organizations"("slug");
+   871→
+   872→-- CreateIndex
+   873→CREATE INDEX "organizations_slug_idx" ON "organizations"("slug");
+   874→
+   875→-- CreateIndex
+   876→CREATE INDEX "organizations_cityId_idx" ON "organizations"("cityId");
+   877→
+   878→-- CreateIndex
+   879→CREATE UNIQUE INDEX "organization_members_organizationId_userId_key" ON "organization_members"("organizationId", "userId");
+   880→
+   881→-- CreateIndex
+   882→CREATE UNIQUE INDEX "countries_code_key" ON "countries"("code");
+   883→
+   884→-- CreateIndex
+   885→CREATE INDEX "countries_code_idx" ON "countries"("code");
+   886→
+   887→-- CreateIndex
+   888→CREATE INDEX "regions_countryId_idx" ON "regions"("countryId");
+   889→
+   890→-- CreateIndex
+   891→CREATE INDEX "cities_countryId_idx" ON "cities"("countryId");
+   892→
+   893→-- CreateIndex
+   894→CREATE INDEX "cities_regionId_idx" ON "cities"("regionId");
+   895→
+   896→-- CreateIndex
+   897→CREATE UNIQUE INDEX "currencies_code_key" ON "currencies"("code");
+   898→
+   899→-- CreateIndex
+   900→CREATE UNIQUE INDEX "categories_slug_key" ON "categories"("slug");
+   901→
+   902→-- CreateIndex
+   903→CREATE INDEX "categories_slug_idx" ON "categories"("slug");
+   904→
+   905→-- CreateIndex
+   906→CREATE INDEX "categories_parentId_idx" ON "categories"("parentId");
+   907→
+   908→-- CreateIndex
+   909→CREATE INDEX "category_fields_categoryId_idx" ON "category_fields"("categoryId");
+   910→
+   911→-- CreateIndex
+   912→CREATE INDEX "category_field_options_fieldId_idx" ON "category_field_options"("fieldId");
+   913→
+   914→-- CreateIndex
+   915→CREATE INDEX "listings_status_idx" ON "listings"("status");
+   916→
+   917→-- CreateIndex
+   918→CREATE INDEX "listings_categoryId_idx" ON "listings"("categoryId");
+   919→
+   920→-- CreateIndex
+   921→CREATE INDEX "listings_userId_idx" ON "listings"("userId");
+   922→
+   923→-- CreateIndex
+   924→CREATE INDEX "listings_cityId_idx" ON "listings"("cityId");
+   925→
+   926→-- CreateIndex
+   927→CREATE INDEX "listings_price_idx" ON "listings"("price");
+   928→
+   929→-- CreateIndex
+   930→CREATE INDEX "listings_createdAt_idx" ON "listings"("createdAt");
+   931→
+   932→-- CreateIndex
+   933→CREATE INDEX "listings_featuredUntil_idx" ON "listings"("featuredUntil");
+   934→
+   935→-- CreateIndex
+   936→CREATE INDEX "listings_title_idx" ON "listings"("title");
+   937→
+   938→-- CreateIndex
+   939→CREATE INDEX "listing_field_values_listingId_idx" ON "listing_field_values"("listingId");
+   940→
+   941→-- CreateIndex
+   942→CREATE UNIQUE INDEX "listing_field_values_listingId_fieldId_key" ON "listing_field_values"("listingId", "fieldId");
+   943→
+   944→-- CreateIndex
+   945→CREATE INDEX "listing_media_listingId_idx" ON "listing_media"("listingId");
+   946→
+   947→-- CreateIndex
+   948→CREATE INDEX "listing_locations_listingId_idx" ON "listing_locations"("listingId");
+   949→
+   950→-- CreateIndex
+   951→CREATE INDEX "listing_status_history_listingId_idx" ON "listing_status_history"("listingId");
+   952→
+   953→-- CreateIndex
+   954→CREATE INDEX "favorites_listingId_idx" ON "favorites"("listingId");
+   955→
+   956→-- CreateIndex
+   957→CREATE UNIQUE INDEX "favorites_userId_listingId_key" ON "favorites"("userId", "listingId");
+   958→
+   959→-- CreateIndex
+   960→CREATE INDEX "saved_searches_userId_idx" ON "saved_searches"("userId");
+   961→
+   962→-- CreateIndex
+   963→CREATE INDEX "conversations_listingId_idx" ON "conversations"("listingId");
+   964→
+   965→-- CreateIndex
+   966→CREATE INDEX "conversation_members_userId_idx" ON "conversation_members"("userId");
+   967→
+   968→-- CreateIndex
+   969→CREATE UNIQUE INDEX "conversation_members_conversationId_userId_key" ON "conversation_members"("conversationId", "userId");
+   970→
+   971→-- CreateIndex
+   972→CREATE INDEX "messages_conversationId_idx" ON "messages"("conversationId");
+   973→
+   974→-- CreateIndex
+   975→CREATE INDEX "messages_senderId_idx" ON "messages"("senderId");
+   976→
+   977→-- CreateIndex
+   978→CREATE INDEX "reports_targetType_targetId_idx" ON "reports"("targetType", "targetId");
+   979→
+   980→-- CreateIndex
+   981→CREATE INDEX "reports_status_idx" ON "reports"("status");
+   982→
+   983→-- CreateIndex
+   984→CREATE INDEX "reviews_targetType_targetId_idx" ON "reviews"("targetType", "targetId");
+   985→
+   986→-- CreateIndex
+   987→CREATE INDEX "reviews_authorId_idx" ON "reviews"("authorId");
+   988→
+   989→-- CreateIndex
+   990→CREATE INDEX "moderation_actions_targetType_targetId_idx" ON "moderation_actions"("targetType", "targetId");
+   991→
+   992→-- CreateIndex
+   993→CREATE INDEX "verification_requests_userId_idx" ON "verification_requests"("userId");
+   994→
+   995→-- CreateIndex
+   996→CREATE INDEX "verification_requests_status_idx" ON "verification_requests"("status");
+   997→
+   998→-- CreateIndex
+   999→CREATE UNIQUE INDEX "subscriptions_organizationId_key" ON "subscriptions"("organizationId");
+  1000→
+  1001→-- CreateIndex
+  1002→CREATE INDEX "subscriptions_userId_idx" ON "subscriptions"("userId");
+  1003→
+  1004→-- CreateIndex
+  1005→CREATE INDEX "subscriptions_organizationId_idx" ON "subscriptions"("organizationId");
+  1006→
+  1007→-- CreateIndex
+  1008→CREATE INDEX "subscriptions_status_idx" ON "subscriptions"("status");
+  1009→
+  1010→-- CreateIndex
+  1011→CREATE UNIQUE INDEX "wallets_userId_key" ON "wallets"("userId");
+  1012→
+  1013→-- CreateIndex
+  1014→CREATE INDEX "wallet_transactions_walletId_idx" ON "wallet_transactions"("walletId");
+  1015→
+  1016→-- CreateIndex
+  1017→CREATE INDEX "wallet_transactions_referenceType_referenceId_idx" ON "wallet_transactions"("referenceType", "referenceId");
+  1018→
+  1019→-- CreateIndex
+  1020→CREATE UNIQUE INDEX "orders_orderNumber_key" ON "orders"("orderNumber");
+  1021→
+  1022→-- CreateIndex
+  1023→CREATE INDEX "orders_userId_idx" ON "orders"("userId");
+  1024→
+  1025→-- CreateIndex
+  1026→CREATE INDEX "orders_status_idx" ON "orders"("status");
+  1027→
+  1028→-- CreateIndex
+  1029→CREATE INDEX "orders_orderNumber_idx" ON "orders"("orderNumber");
+  1030→
+  1031→-- CreateIndex
+  1032→CREATE INDEX "order_items_orderId_idx" ON "order_items"("orderId");
+  1033→
+  1034→-- CreateIndex
+  1035→CREATE INDEX "payments_orderId_idx" ON "payments"("orderId");
+  1036→
+  1037→-- CreateIndex
+  1038→CREATE INDEX "payments_providerPaymentId_idx" ON "payments"("providerPaymentId");
+  1039→
+  1040→-- CreateIndex
+  1041→CREATE INDEX "payment_events_paymentId_idx" ON "payment_events"("paymentId");
+  1042→
+  1043→-- CreateIndex
+  1044→CREATE INDEX "listing_promotions_listingId_idx" ON "listing_promotions"("listingId");
+  1045→
+  1046→-- CreateIndex
+  1047→CREATE INDEX "listing_promotions_promotionId_idx" ON "listing_promotions"("promotionId");
+  1048→
+  1049→-- CreateIndex
+  1050→CREATE INDEX "notifications_userId_idx" ON "notifications"("userId");
+  1051→
+  1052→-- CreateIndex
+  1053→CREATE INDEX "notifications_isRead_idx" ON "notifications"("isRead");
+  1054→
+  1055→-- CreateIndex
+  1056→CREATE INDEX "notifications_createdAt_idx" ON "notifications"("createdAt");
+  1057→
+  1058→-- CreateIndex
+  1059→CREATE UNIQUE INDEX "notification_preferences_userId_key" ON "notification_preferences"("userId");
+  1060→
+  1061→-- CreateIndex
+  1062→CREATE INDEX "audit_logs_userId_idx" ON "audit_logs"("userId");
+  1063→
+  1064→-- CreateIndex
+  1065→CREATE INDEX "audit_logs_resourceType_resourceId_idx" ON "audit_logs"("resourceType", "resourceId");
+  1066→
+  1067→-- CreateIndex
+  1068→CREATE INDEX "audit_logs_action_idx" ON "audit_logs"("action");
+  1069→
+  1070→-- CreateIndex
+  1071→CREATE INDEX "audit_logs_createdAt_idx" ON "audit_logs"("createdAt");
+  1072→
+  1073→-- CreateIndex
+  1074→CREATE INDEX "analytics_events_eventType_idx" ON "analytics_events"("eventType");
+  1075→
+  1076→-- CreateIndex
+  1077→CREATE INDEX "analytics_events_userId_idx" ON "analytics_events"("userId");
+  1078→
+  1079→-- CreateIndex
+  1080→CREATE INDEX "analytics_events_createdAt_idx" ON "analytics_events"("createdAt");
+  1081→
+  1082→-- CreateIndex
+  1083→CREATE UNIQUE INDEX "banned_terms_term_key" ON "banned_terms"("term");
+  1084→
+  1085→-- CreateIndex
+  1086→CREATE INDEX "fraud_signals_userId_idx" ON "fraud_signals"("userId");
+  1087→
+  1088→-- CreateIndex
+  1089→CREATE INDEX "fraud_signals_signalType_idx" ON "fraud_signals"("signalType");
+  1090→
+  1091→-- CreateIndex
+  1092→CREATE INDEX "fraud_signals_isResolved_idx" ON "fraud_signals"("isResolved");
+  1093→
+  1094→-- CreateIndex
+  1095→CREATE UNIQUE INDEX "seo_pages_slug_key" ON "seo_pages"("slug");
+  1096→
+  1097→-- CreateIndex
+  1098→CREATE UNIQUE INDEX "seo_pages_categoryId_key" ON "seo_pages"("categoryId");
+  1099→
+  1100→-- CreateIndex
+  1101→CREATE INDEX "support_tickets_userId_idx" ON "support_tickets"("userId");
+  1102→
+  1103→-- CreateIndex
+  1104→CREATE INDEX "support_tickets_status_idx" ON "support_tickets"("status");
+  1105→
+  1106→-- CreateIndex
+  1107→CREATE INDEX "_PermissionToRole_B_index" ON "_PermissionToRole"("B");
+  1108→
+  1109→-- AddForeignKey
+  1110→ALTER TABLE "profiles" ADD CONSTRAINT "profiles_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1111→
+  1112→-- AddForeignKey
+  1113→ALTER TABLE "profiles" ADD CONSTRAINT "profiles_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "cities"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  1114→
+  1115→-- AddForeignKey
+  1116→ALTER TABLE "sessions" ADD CONSTRAINT "sessions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1117→
+  1118→-- AddForeignKey
+  1119→ALTER TABLE "verification_tokens" ADD CONSTRAINT "verification_tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1120→
+  1121→-- AddForeignKey
+  1122→ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1123→
+  1124→-- AddForeignKey
+  1125→ALTER TABLE "user_roles" ADD CONSTRAINT "user_roles_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "roles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1126→
+  1127→-- AddForeignKey
+  1128→ALTER TABLE "organizations" ADD CONSTRAINT "organizations_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "cities"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  1129→
+  1130→-- AddForeignKey
+  1131→ALTER TABLE "organizations" ADD CONSTRAINT "organizations_planId_fkey" FOREIGN KEY ("planId") REFERENCES "plans"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  1132→
+  1133→-- AddForeignKey
+  1134→ALTER TABLE "organization_members" ADD CONSTRAINT "organization_members_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1135→
+  1136→-- AddForeignKey
+  1137→ALTER TABLE "organization_members" ADD CONSTRAINT "organization_members_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1138→
+  1139→-- AddForeignKey
+  1140→ALTER TABLE "regions" ADD CONSTRAINT "regions_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "countries"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1141→
+  1142→-- AddForeignKey
+  1143→ALTER TABLE "cities" ADD CONSTRAINT "cities_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "countries"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1144→
+  1145→-- AddForeignKey
+  1146→ALTER TABLE "cities" ADD CONSTRAINT "cities_regionId_fkey" FOREIGN KEY ("regionId") REFERENCES "regions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  1147→
+  1148→-- AddForeignKey
+  1149→ALTER TABLE "categories" ADD CONSTRAINT "categories_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  1150→
+  1151→-- AddForeignKey
+  1152→ALTER TABLE "category_fields" ADD CONSTRAINT "category_fields_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "categories"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1153→
+  1154→-- AddForeignKey
+  1155→ALTER TABLE "category_field_options" ADD CONSTRAINT "category_field_options_fieldId_fkey" FOREIGN KEY ("fieldId") REFERENCES "category_fields"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1156→
+  1157→-- AddForeignKey
+  1158→ALTER TABLE "listings" ADD CONSTRAINT "listings_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "cities"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  1159→
+  1160→-- AddForeignKey
+  1161→ALTER TABLE "listings" ADD CONSTRAINT "listings_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "countries"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  1162→
+  1163→-- AddForeignKey
+  1164→ALTER TABLE "listings" ADD CONSTRAINT "listings_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "categories"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  1165→
+  1166→-- AddForeignKey
+  1167→ALTER TABLE "listings" ADD CONSTRAINT "listings_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1168→
+  1169→-- AddForeignKey
+  1170→ALTER TABLE "listings" ADD CONSTRAINT "listings_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "organizations"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  1171→
+  1172→-- AddForeignKey
+  1173→ALTER TABLE "listing_field_values" ADD CONSTRAINT "listing_field_values_listingId_fkey" FOREIGN KEY ("listingId") REFERENCES "listings"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1174→
+  1175→-- AddForeignKey
+  1176→ALTER TABLE "listing_field_values" ADD CONSTRAINT "listing_field_values_fieldId_fkey" FOREIGN KEY ("fieldId") REFERENCES "category_fields"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  1177→
+  1178→-- AddForeignKey
+  1179→ALTER TABLE "listing_media" ADD CONSTRAINT "listing_media_listingId_fkey" FOREIGN KEY ("listingId") REFERENCES "listings"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1180→
+  1181→-- AddForeignKey
+  1182→ALTER TABLE "listing_locations" ADD CONSTRAINT "listing_locations_listingId_fkey" FOREIGN KEY ("listingId") REFERENCES "listings"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1183→
+  1184→-- AddForeignKey
+  1185→ALTER TABLE "listing_status_history" ADD CONSTRAINT "listing_status_history_listingId_fkey" FOREIGN KEY ("listingId") REFERENCES "listings"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1186→
+  1187→-- AddForeignKey
+  1188→ALTER TABLE "favorites" ADD CONSTRAINT "favorites_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1189→
+  1190→-- AddForeignKey
+  1191→ALTER TABLE "favorites" ADD CONSTRAINT "favorites_listingId_fkey" FOREIGN KEY ("listingId") REFERENCES "listings"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1192→
+  1193→-- AddForeignKey
+  1194→ALTER TABLE "saved_searches" ADD CONSTRAINT "saved_searches_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1195→
+  1196→-- AddForeignKey
+  1197→ALTER TABLE "conversations" ADD CONSTRAINT "conversations_listingId_fkey" FOREIGN KEY ("listingId") REFERENCES "listings"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  1198→
+  1199→-- AddForeignKey
+  1200→ALTER TABLE "conversation_members" ADD CONSTRAINT "conversation_members_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1201→
+  1202→-- AddForeignKey
+  1203→ALTER TABLE "conversation_members" ADD CONSTRAINT "conversation_members_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1204→
+  1205→-- AddForeignKey
+  1206→ALTER TABLE "messages" ADD CONSTRAINT "messages_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1207→
+  1208→-- AddForeignKey
+  1209→ALTER TABLE "messages" ADD CONSTRAINT "messages_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1210→
+  1211→-- AddForeignKey
+  1212→ALTER TABLE "reports" ADD CONSTRAINT "reports_reporterId_fkey" FOREIGN KEY ("reporterId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1213→
+  1214→-- AddForeignKey
+  1215→ALTER TABLE "reports" ADD CONSTRAINT "reports_listing_fkey" FOREIGN KEY ("targetId") REFERENCES "listings"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  1216→
+  1217→-- AddForeignKey
+  1218→ALTER TABLE "reports" ADD CONSTRAINT "reports_targetUser_fkey" FOREIGN KEY ("targetId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  1219→
+  1220→-- AddForeignKey
+  1221→ALTER TABLE "reviews" ADD CONSTRAINT "reviews_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1222→
+  1223→-- AddForeignKey
+  1224→ALTER TABLE "reviews" ADD CONSTRAINT "reviews_listingId_fkey" FOREIGN KEY ("targetId") REFERENCES "listings"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  1225→
+  1226→-- AddForeignKey
+  1227→ALTER TABLE "reviews" ADD CONSTRAINT "reviews_targetUser_fkey" FOREIGN KEY ("targetId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  1228→
+  1229→-- AddForeignKey
+  1230→ALTER TABLE "reviews" ADD CONSTRAINT "reviews_organization_fkey" FOREIGN KEY ("targetId") REFERENCES "organizations"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  1231→
+  1232→-- AddForeignKey
+  1233→ALTER TABLE "moderation_actions" ADD CONSTRAINT "moderation_actions_moderatorId_fkey" FOREIGN KEY ("moderatorId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  1234→
+  1235→-- AddForeignKey
+  1236→ALTER TABLE "verification_requests" ADD CONSTRAINT "verification_requests_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1237→
+  1238→-- AddForeignKey
+  1239→ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_planId_fkey" FOREIGN KEY ("planId") REFERENCES "plans"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  1240→
+  1241→-- AddForeignKey
+  1242→ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1243→
+  1244→-- AddForeignKey
+  1245→ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "organizations"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  1246→
+  1247→-- AddForeignKey
+  1248→ALTER TABLE "wallets" ADD CONSTRAINT "wallets_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1249→
+  1250→-- AddForeignKey
+  1251→ALTER TABLE "wallet_transactions" ADD CONSTRAINT "wallet_transactions_walletId_fkey" FOREIGN KEY ("walletId") REFERENCES "wallets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1252→
+  1253→-- AddForeignKey
+  1254→ALTER TABLE "orders" ADD CONSTRAINT "orders_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1255→
+  1256→-- AddForeignKey
+  1257→ALTER TABLE "order_items" ADD CONSTRAINT "order_items_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "orders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1258→
+  1259→-- AddForeignKey
+  1260→ALTER TABLE "payments" ADD CONSTRAINT "payments_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "orders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1261→
+  1262→-- AddForeignKey
+  1263→ALTER TABLE "payment_events" ADD CONSTRAINT "payment_events_paymentId_fkey" FOREIGN KEY ("paymentId") REFERENCES "payments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1264→
+  1265→-- AddForeignKey
+  1266→ALTER TABLE "listing_promotions" ADD CONSTRAINT "listing_promotions_listingId_fkey" FOREIGN KEY ("listingId") REFERENCES "listings"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1267→
+  1268→-- AddForeignKey
+  1269→ALTER TABLE "listing_promotions" ADD CONSTRAINT "listing_promotions_promotionId_fkey" FOREIGN KEY ("promotionId") REFERENCES "promotions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  1270→
+  1271→-- AddForeignKey
+  1272→ALTER TABLE "notifications" ADD CONSTRAINT "notifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1273→
+  1274→-- AddForeignKey
+  1275→ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  1276→
+  1277→-- AddForeignKey
+  1278→ALTER TABLE "seo_pages" ADD CONSTRAINT "seo_pages_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  1279→
+  1280→-- AddForeignKey
+  1281→ALTER TABLE "posts" ADD CONSTRAINT "posts_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1282→
+  1283→-- AddForeignKey
+  1284→ALTER TABLE "_PermissionToRole" ADD CONSTRAINT "_PermissionToRole_A_fkey" FOREIGN KEY ("A") REFERENCES "permissions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1285→
+  1286→-- AddForeignKey
+  1287→ALTER TABLE "_PermissionToRole" ADD CONSTRAINT "_PermissionToRole_B_fkey" FOREIGN KEY ("B") REFERENCES "roles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  1288→
+  1289→

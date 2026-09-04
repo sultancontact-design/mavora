@@ -1,0 +1,1017 @@
+     1→// MAVORA Platform - Complete Database Schema
+     2→// Classified Ads Marketplace for Morocco & Global Markets
+     3→
+     4→generator client {
+     5→  provider = "prisma-client-js"
+     6→}
+     7→
+     8→datasource db {
+     9→  provider = "postgresql"
+    10→  url      = env("DATABASE_URL")
+    11→}
+    12→
+    13→// ==================== AUTH & USERS ====================
+    14→
+    15→model User {
+    16→  id                String    @id @default(cuid())
+    17→  email             String    @unique
+    18→  emailVerified     Boolean   @default(false)
+    19→  name              String?
+    20→  image             String?
+    21→  passwordHash      String?
+    22→  phone             String?   @unique
+    23→  phoneVerified     Boolean   @default(false)
+    24→  role              String    @default("user") // user, verified_user, professional_seller, moderator, support_agent, finance_manager, content_manager, analyst, admin, super_admin
+    25→  isActive          Boolean   @default(true)
+    26→  isBanned          Boolean   @default(false)
+    27→  banReason         String?
+    28→  bannedAt          DateTime?
+    29→  twoFactorEnabled  Boolean   @default(false)
+    30→  twoFactorSecret   String?
+    31→  lastLoginAt       DateTime?
+    32→  createdAt         DateTime @default(now())
+    33→  updatedAt         DateTime @updatedAt
+    34→
+    35→  // Relations
+    36→  profile           Profile?
+    37→  posts             Post[]
+    38→  listings          Listing[]
+    39→  favorites         Favorite[]
+    40→  savedSearches     SavedSearch[]
+    41→  conversationMembers ConversationMember[]
+    42→  messages          Message[]
+    43→  reports           Report[]
+    44→  reportsTargeted   Report[] @relation("ReportTarget")
+    45→  reviewsGiven      Review[] @relation("ReviewAuthor")
+    46→  reviewsReceived   Review[] @relation("ReviewTarget")
+    47→  wallet            Wallet?
+    48→  subscriptions     Subscription[]
+    49→  orders            Order[]
+    50→  auditLogs         AuditLog[]
+    51→  notifications     Notification[]
+    52→  verificationRequests VerificationRequest[]
+    53→  verificationTokens VerificationToken[]
+    54→  userRoles         UserRole[]
+    55→  sessions          Session[]
+    56→  organizationMembers OrganizationMember[]
+    57→  moderationActions  ModerationAction[] @relation("Moderator")
+    58→
+    59→  @@index([email])
+    60→  @@index([phone])
+    61→  @@index([role])
+    62→  @@map("users")
+    63→}
+    64→
+    65→model Profile {
+    66→  id                  String   @id @default(cuid())
+    67→  userId              String   @unique
+    68→  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    69→  avatarUrl           String?
+    70→  bio                 String?
+    71→  dateOfBirth         DateTime?
+    72→  gender              String?  // male, female, other
+    73→  address             String?
+    74→  cityId              String?
+    75→  city                City?    @relation(fields: [cityId], references: [id])
+    76→  language            String   @default("ar") // ar, fr, en
+    77→  currency            String   @default("MAD")
+    78→  website             String?
+    79→  socialInstagram     String?
+    80→  socialFacebook      String?
+    81→  socialTwitter       String?
+    82→  isVerified          Boolean  @default(false)
+    83→  verifiedAt          DateTime?
+    84→  responseRate        Float?   // 0-100
+    85→  responseTime        Int?     // in hours
+    86→  rating              Float    @default(0)
+    87→  totalReviews        Int      @default(0)
+    88→  createdAt           DateTime @default(now())
+    89→  updatedAt           DateTime @updatedAt
+    90→
+    91→  @@map("profiles")
+    92→}
+    93→
+    94→model Session {
+    95→  id           String   @id @default(cuid())
+    96→  sessionToken String   @unique
+    97→  userId       String
+    98→  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    99→  expires      DateTime
+   100→  ipAddress    String?
+   101→  userAgent    String?
+   102→  createdAt    DateTime @default(now())
+   103→
+   104→  @@index([userId])
+   105→  @@index([sessionToken])
+   106→  @@map("sessions")
+   107→}
+   108→
+   109→model VerificationToken {
+   110→  token      String   @id
+   111→  userId     String
+   112→  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+   113→  expires    DateTime
+   114→  type       String   // email_verification, password_reset, phone_verification
+   115→  createdAt  DateTime @default(now())
+   116→
+   117→  @@index([userId])
+   118→  @@index([token])
+   119→  @@map("verification_tokens")
+   120→}
+   121→
+   122→// ==================== ROLES & PERMISSIONS ====================
+   123→
+   124→model Role {
+   125→  id          String      @id @default(cuid())
+   126→  name        String      @unique
+   127→  description String?
+   128→  permissions Permission[]
+   129→  userRoles   UserRole[]
+   130→  createdAt   DateTime    @default(now())
+   131→
+   132→  @@map("roles")
+   133→}
+   134→
+   135→model Permission {
+   136→  id        String   @id @default(cuid())
+   137→  resource  String   // listing, user, payment, etc.
+   138→  action    String   // create, read, update, delete, moderate
+   139→  condition String?  // own, any, etc.
+   140→  roles     Role[]   
+   141→  createdAt DateTime @default(now())
+   142→
+   143→  @@unique([resource, action, condition])
+   144→  @@map("permissions")
+   145→}
+   146→
+   147→model UserRole {
+   148→  id        String   @id @default(cuid())
+   149→  userId    String
+   150→  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+   151→  roleId    String
+   152→  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+   153→  assignedBy String?
+   154→  assignedAt DateTime @default(now())
+   155→  createdAt DateTime @default(now())
+   156→
+   157→  @@unique([userId, roleId])
+   158→  @@index([userId])
+   159→  @@map("user_roles")
+   160→}
+   161→
+   162→// ==================== ORGANIZATIONS ====================
+   163→
+   164→model Organization {
+   165→  id                String              @id @default(cuid())
+   166→  name              String
+   167→  slug              String              @unique
+   168→  description       String?
+   169→  logoUrl           String?
+   170→  coverImageUrl     String?
+   171→  email             String
+   172→  phone             String?
+   173→  website           String?
+   174→  address           String?
+   175→  cityId            String?
+   176→  city              City?               @relation(fields: [cityId], references: [id])
+   177→  isVerified        Boolean             @default(false)
+   178→  verificationDoc   String?
+   179→  planId            String?
+   180→  plan              Plan?               @relation(fields: [planId], references: [id])
+   181→  subscription      Subscription?
+   182→  rating            Float               @default(0)
+   183→  totalReviews      Int                 @default(0)
+   184→  isActive          Boolean             @default(true)
+   185→  createdAt         DateTime            @default(now())
+   186→  updatedAt         DateTime            @updatedAt
+   187→
+   188→  members           OrganizationMember[]
+   189→  listings          Listing[]
+   190→  reviewsReceived   Review[]            @relation("OrganizationReviews")
+   191→
+   192→  @@index([slug])
+   193→  @@index([cityId])
+   194→  @@map("organizations")
+   195→}
+   196→
+   197→model OrganizationMember {
+   198→  id              String        @id @default(cuid())
+   199→  organizationId  String
+   200→  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+   201→  userId          String
+   202→  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+   203→  role            String        @default("member") // owner, admin, member
+   204→  jobTitle        String?
+   205→  isActive        Boolean       @default(true)
+   206→  joinedAt        DateTime      @default(now())
+   207→
+   208→  @@unique([organizationId, userId])
+   209→  @@map("organization_members")
+   210→}
+   211→
+   212→// ==================== GEOGRAPHY ====================
+   213→
+   214→model Country {
+   215→  id            String    @id @default(cuid())
+   216→  name          String
+   217→  nameAr        String?
+   218→  nameFr        String?
+   219→  code          String    @unique // ISO 3166-1 alpha-2
+   220→  flagEmoji     String?
+   221→  phoneCode    String?
+   222→  currencyCode String?
+   223→  isActive      Boolean   @default(true)
+   224→  sortOrder     Int       @default(0)
+   225→  createdAt     DateTime  @default(now())
+   226→
+   227→  regions       Region[]
+   228→  cities        City[]
+   229→  listings      Listing[]
+   230→  
+   231→  @@index([code])
+   232→  @@map("countries")
+   233→}
+   234→
+   235→model Region {
+   236→  id        String   @id @default(cuid())
+   237→  name      String
+   238→  nameAr    String?
+   239→  nameFr    String?
+   240→  countryId String
+   241→  country   Country  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+   242→  sortOrder Int      @default(0)
+   243→  cities    City[]
+   244→  createdAt DateTime @default(now())
+   245→
+   246→  @@index([countryId])
+   247→  @@map("regions")
+   248→}
+   249→
+   250→model City {
+   251→  id        String   @id @default(cuid())
+   252→  name      String
+   253→  nameAr    String?
+   254→  nameFr    String?
+   255→  countryId String
+   256→  country   Country  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+   257→  regionId  String?
+   258→  region    Region?  @relation(fields: [regionId], references: [id])
+   259→  latitude  Float?
+   260→  longitude Float?
+   261→  sortOrder Int      @default(0)
+   262→  isActive  Boolean  @default(true)
+   263→  
+   264→  profiles  Profile[]
+   265→  organizations Organization[]
+   266→  listings  Listing[]
+   267→  createdAt DateTime @default(now())
+   268→
+   269→  @@index([countryId])
+   270→  @@index([regionId])
+   271→  @@map("cities")
+   272→}
+   273→
+   274→model Currency {
+   275→  id          String   @id @default(cuid())
+   276→  code        String   @unique // MAD, USD, EUR
+   277→  name        String
+   278→  symbol      String
+   279→  nameAr      String?
+   280→  decimalPlaces Int    @default(2)
+   281→  isActive    Boolean  @default(true)
+   282→  createdAt   DateTime @default(now())
+   283→
+   284→  @@map("currencies")
+   285→}
+   286→
+   287→// ==================== CATEGORIES ====================
+   288→
+   289→model Category {
+   290→  id          String          @id @default(cuid())
+   291→  name        String
+   292→  nameAr      String?
+   293→  nameFr      String?
+   294→  slug        String          @unique
+   295→  description String?
+   296→  icon        String?         // icon name or URL
+   297→  parentId    String?
+   298→  parent      Category?       @relation("CategoryTree", fields: [parentId], references: [id])
+   299→  children    Category[]      @relation("CategoryTree")
+   300→  sortOrder   Int             @default(0)
+   301→  isActive    Boolean         @default(true)
+   302→  
+   303→  fields      CategoryField[]
+   304→  listings    Listing[]
+   305→  seoPage     SeoPage?
+   306→
+   307→  @@index([slug])
+   308→  @@index([parentId])
+   309→  @@map("categories")
+   310→}
+   311→
+   312→model CategoryField {
+   313→  id            String              @id @default(cuid())
+   314→  categoryId    String
+   315→  category      Category            @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+   316→  name          String
+   317→  nameAr        String?
+   318→  nameFr        String?
+   319→  type          String              // text, number, select, multiselect, boolean, date, url
+   320→  placeholder   String?
+   321→  options       CategoryFieldOption[]
+   322→  required      Boolean             @default(false)
+   323→  sortOrder     Int                 @default(0)
+   324→  isActive      Boolean             @default(true)
+   325→
+   326→  values        ListingFieldValue[]
+   327→
+   328→  @@index([categoryId])
+   329→  @@map("category_fields")
+   330→}
+   331→
+   332→model CategoryFieldOption {
+   333→  id             String        @id @default(cuid())
+   334→  fieldId        String
+   335→  field          CategoryField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+   336→  value          String
+   337→  valueAr        String?
+   338→  valueFr        String?
+   339→  sortOrder      Int           @default(0)
+   340→
+   341→  @@index([fieldId])
+   342→  @@map("category_field_options")
+   343→}
+   344→
+   345→// ==================== LISTINGS (CORE) ====================
+   346→
+   347→model Listing {
+   348→  id                String                @id @default(cuid())
+   349→  title             String
+   350→  description       String?                @db.Text
+   351→  price             Decimal?               @db.Decimal(12, 2)
+   352→  negotiable        Boolean               @default(false)
+   353→  currencyCode      String                @default("MAD")
+   354→  condition         String?               // new, used, like_new, refurbished
+   355→  status            String                @default("draft") // draft, pending_review, active, sold, reserved, expired, rejected, archived
+   356→  featuredUntil     DateTime?
+   357→  promotedUntil     DateTime?
+   358→  urgentUntil       DateTime?
+   359→  viewCount         Int                   @default(0)
+   360→  contactPhone      String?
+   361→  contactEmail      String?
+   362→  locationAddress   String?
+   363→  locationLat       Float?
+   364→  locationLng       Float?
+   365→  cityId            String?
+   366→  city              City?                 @relation(fields: [cityId], references: [id])
+   367→  countryId         String?
+   368→  country           Country?              @relation(fields: [countryId], references: [id])
+   369→  categoryId        String
+   370→  category          Category              @relation(fields: [categoryId], references: [id])
+   371→  userId            String
+   372→  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+   373→  organizationId    String?
+   374→  organization      Organization?          @relation(fields: [organizationId], references: [id])
+   375→  videoUrl          String?
+   376→  externalLink      String?
+   377→  rejectionReason   String?
+   378→  moderatedAt       DateTime?
+   379→  moderatedBy       String?
+   380→  publishedAt       DateTime?
+   381→  expiresAt         DateTime?
+   382→  soldAt            DateTime?
+   383→  archivedAt        DateTime?
+   384→  createdAt         DateTime              @default(now())
+   385→  updatedAt         DateTime              @updatedAt
+   386→
+   387→  // Relations
+   388→  fieldValues       ListingFieldValue[]
+   389→  media             ListingMedia[]
+   390→  locations         ListingLocation[]
+   391→  statusHistory     ListingStatusHistory[]
+   392→  favorites         Favorite[]
+   393→  reviews           Review[]              @relation("ListingReviews")
+   394→  promotions        ListingPromotion[]
+   395→  reports           Report[]              @relation("ReportListing")
+   396→  conversations     Conversation[]
+   397→
+   398→  @@index([status])
+   399→  @@index([categoryId])
+   400→  @@index([userId])
+   401→  @@index([cityId])
+   402→  @@index([price])
+   403→  @@index([createdAt])
+   404→  @@index([featuredUntil])
+   405→  @@index([title])
+   406→  @@map("listings")
+   407→}
+   408→
+   409→model ListingFieldValue {
+   410→  id        String        @id @default(cuid())
+   411→  listingId String
+   412→  listing   Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
+   413→  fieldId   String
+   414→  field     CategoryField @relation(fields: [fieldId], references: [id])
+   415→  value     String        @db.Text
+   416→  valueJson Json?
+   417→
+   418→  @@unique([listingId, fieldId])
+   419→  @@index([listingId])
+   420→  @@map("listing_field_values")
+   421→}
+   422→
+   423→model ListingMedia {
+   424→  id          String   @id @default(cuid())
+   425→  listingId   String
+   426→  listing     Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+   427→  url         String
+   428→  thumbnailUrl String?
+   429→  type        String   @default("image") // image, video
+   430→  mimeType    String?
+   431→  size        Int?
+   432→  width       Int?
+   433→  height      Int?
+   434→  altText     String?
+   435→  sortOrder   Int      @default(0)
+   436→  isPrimary   Boolean  @default(false)
+   437→  createdAt   DateTime @default(now())
+   438→
+   439→  @@index([listingId])
+   440→  @@map("listing_media")
+   441→}
+   442→
+   443→model ListingLocation {
+   444→  id        String   @id @default(cuid())
+   445→  listingId String
+   446→  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+   447→  label     String   // e.g., "Meeting point", "Store location"
+   448→  address   String
+   449→  latitude  Float
+   450→  longitude Float
+   451→  sortOrder Int      @default(0)
+   452→  createdAt DateTime @default(now())
+   453→
+   454→  @@index([listingId])
+   455→  @@map("listing_locations")
+   456→}
+   457→
+   458→model ListingStatusHistory {
+   459→  id        String   @id @default(cuid())
+   460→  listingId String
+   461→  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+   462→  fromStatus String?
+   463→  toStatus  String
+   464→  reason    String?
+   465→  changedBy String?
+   466→  changedAt DateTime @default(now())
+   467→
+   468→  @@index([listingId])
+   469→  @@map("listing_status_history")
+   470→}
+   471→
+   472→// ==================== FAVORITES & SAVED SEARCHES ====================
+   473→
+   474→model Favorite {
+   475→  id        String   @id @default(cuid())
+   476→  userId    String
+   477→  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+   478→  listingId String
+   479→  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+   480→  createdAt DateTime @default(now())
+   481→
+   482→  @@unique([userId, listingId])
+   483→  @@index([listingId])
+   484→  @@map("favorites")
+   485→}
+   486→
+   487→model SavedSearch {
+   488→  id        String   @id @default(cuid())
+   489→  userId    String
+   490→  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+   491→  name      String
+   492→  query     Json     // stored search filters
+   493→  alertFrequency String? // instant, daily, weekly
+   494→  lastSentAt DateTime?
+   495→  isActive  Boolean  @default(true)
+   496→  createdAt DateTime @default(now())
+   497→  updatedAt DateTime @updatedAt
+   498→
+   499→  @@index([userId])
+   500→  @@map("saved_searches")
+   501→}
+   502→
+   503→// ==================== MESSAGING ====================
+   504→
+   505→model Conversation {
+   506→  id          String   @id @default(cuid())
+   507→  subject     String?
+   508→  listingId   String?
+   509→  listing     Listing? @relation(fields: [listingId], references: [id])
+   510→  lastMessageAt DateTime?
+   511→  isActive    Boolean  @default(true)
+   512→  createdAt   DateTime @default(now())
+   513→  updatedAt   DateTime @updatedAt
+   514→
+   515→  members     ConversationMember[]
+   516→  messages    Message[]
+   517→
+   518→  @@index([listingId])
+   519→  @@map("conversations")
+   520→}
+   521→
+   522→model ConversationMember {
+   523→  id             String       @id @default(cuid())
+   524→  conversationId String
+   525→  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+   526→  userId         String
+   527→  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+   528→  lastReadAt     DateTime?
+   529→  isMuted        Boolean      @default(false)
+   530→  leftAt         DateTime?
+   531→  createdAt      DateTime      @default(now())
+   532→
+   533→  @@unique([conversationId, userId])
+   534→  @@index([userId])
+   535→  @@map("conversation_members")
+   536→}
+   537→
+   538→model Message {
+   539→  id             String       @id @default(cuid())
+   540→  conversationId String
+   541→  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+   542→  senderId       String
+   543→  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+   544→  content        String?      @db.Text
+   545→  messageType    String       @default("text") // text, image, system
+   546→  mediaUrl       String?
+   547→  isRead         Boolean      @default(false)
+   548→  readAt         DateTime?
+   549→  createdAt      DateTime      @default(now())
+   550→
+   551→  @@index([conversationId])
+   552→  @@index([senderId])
+   553→  @@map("messages")
+   554→}
+   555→
+   556→// ==================== MODERATION & REPORTS ====================
+   557→
+   558→model Report {
+   559→  id          String   @id @default(cuid())
+   560→  reporterId  String
+   561→  reporter    User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+   562→  targetType  String   // listing, user, message, conversation
+   563→  targetId    String
+   564→  reason      String   // spam, inappropriate, scam, duplicate, etc.
+   565→  description String?  @db.Text
+   566→  status      String   @default("pending") // pending, reviewed, resolved, dismissed
+   567→  reviewedBy  String?
+   568→  reviewedAt  DateTime?
+   569→  resolution  String?
+   570→  createdAt   DateTime @default(now())
+   571→  updatedAt   DateTime @updatedAt
+   572→
+   573→  listing     Listing?  @relation("ReportListing", fields: [targetId], references: [id], map: "reports_listing_fkey")
+   574→  targetUser  User?     @relation("ReportTarget", fields: [targetId], references: [id], map: "reports_targetUser_fkey")
+   575→  @@index([targetType, targetId])
+   576→  @@index([status])
+   577→  @@map("reports")
+   578→}
+   579→
+   580→model Review {
+   581→  id          String   @id @default(cuid())
+   582→  authorId    String
+   583→  author      User     @relation("ReviewAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+   584→  targetType  String   // listing, user, organization
+   585→  targetId    String
+   586→  listing     Listing?  @relation("ListingReviews", fields: [targetId], references: [id], map: "reviews_listingId_fkey")
+   587→  targetUser  User?     @relation("ReviewTarget", fields: [targetId], references: [id], map: "reviews_targetUser_fkey")
+   588→  organization Organization? @relation("OrganizationReviews", fields: [targetId], references: [id], map: "reviews_organization_fkey")
+   589→  rating      Int      // 1-5
+   590→  title       String?
+   591→  content     String?  @db.Text
+   592→  response    String?  @db.Text
+   593→  respondedAt DateTime?
+   594→  isVerified  Boolean  @default(false)
+   595→  isActive    Boolean  @default(true)
+   596→  createdAt   DateTime @default(now())
+   597→  updatedAt   DateTime @updatedAt
+   598→
+   599→  @@index([targetType, targetId])
+   600→  @@index([authorId])
+   601→  @@map("reviews")
+   602→}
+   603→
+   604→model ModerationAction {
+   605→  id          String   @id @default(cuid())
+   606→  targetType  String   // listing, user, conversation
+   607→  targetId    String
+   608→  actionType  String   // ban, suspend, hide, warn, delete
+   609→  reason      String?  @db.Text
+   610→  moderatorId String
+   611→  moderator   User     @relation("Moderator", fields: [moderatorId], references: [id])
+   612→  duration    Int?     // in hours, null = permanent
+   613→  expiresAt   DateTime?
+   614→  createdAt   DateTime @default(now())
+   615→
+   616→  @@index([targetType, targetId])
+   617→  @@map("moderation_actions")
+   618→}
+   619→
+   620→model VerificationRequest {
+   621→  id          String   @id @default(cuid())
+   622→  userId      String
+   623→  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+   624→  type        String   // identity, business, phone, email
+   625→  status      String   @default("pending") // pending, approved, rejected
+   626→  documents   String[] // URLs of uploaded documents
+   627→  metadata    Json?
+   628→  reviewedBy  String?
+   629→  reviewedAt  DateTime?
+   630→  rejectionReason String?
+   631→  createdAt   DateTime @default(now())
+   632→  updatedAt   DateTime @updatedAt
+   633→
+   634→  @@index([userId])
+   635→  @@index([status])
+   636→  @@map("verification_requests")
+   637→}
+   638→
+   639→// ==================== SUBSCRIPTIONS & PLANS ====================
+   640→
+   641→model Plan {
+   642→  id          String   @id @default(cuid())
+   643→  name        String
+   644→  nameAr      String?
+   645→  nameFr      String?
+   646→  description String?  @db.Text
+   647→  price       Decimal  @db.Decimal(10, 2)
+   648→  currency    String   @default("MAD")
+   649→  durationDays Int
+   650→  features    Json    // list of features included
+   651→  maxListings Int?     // null = unlimited
+   652→  maxImagesPerListing Int @default(10)
+   653→  canPromote  Boolean  @default(false)
+   654→  hasAnalytics Boolean  @default(false)
+   655→  hasCustomBranding Boolean @default(false)
+   656→  prioritySupport Boolean @default(false)
+   657→  sortOrder   Int      @default(0)
+   658→  isActive    Boolean  @default(true)
+   659→  createdAt   DateTime @default(now())
+   660→  updatedAt   DateTime @updatedAt
+   661→
+   662→  organizations Organization[]
+   663→  subscriptions Subscription[]
+   664→
+   665→  @@map("plans")
+   666→}
+   667→
+   668→model Subscription {
+   669→  id              String       @id @default(cuid())
+   670→  planId          String
+   671→  plan            Plan         @relation(fields: [planId], references: [id])
+   672→  userId          String?
+   673→  user            User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+   674→  organizationId  String? @unique
+   675→  organization    Organization? @relation(fields: [organizationId], references: [id])
+   676→  status          String       @default("active") // active, paused, cancelled, expired
+   677→  startDate       DateTime
+   678→  endDate         DateTime?
+   679→  autoRenew       Boolean      @default(false)
+   680→  createdAt       DateTime      @default(now())
+   681→  updatedAt       DateTime      @updatedAt
+   682→
+   683→  @@index([userId])
+   684→  @@index([organizationId])
+   685→  @@index([status])
+   686→  @@map("subscriptions")
+   687→}
+   688→
+   689→// ==================== PAYMENTS & WALLET ====================
+   690→
+   691→model Wallet {
+   692→  id          String   @id @default(cuid())
+   693→  userId      String   @unique
+   694→  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+   695→  balance     Decimal  @default(0) @db.Decimal(12, 2)
+   696→  currency    String   @default("MAD")
+   697→  frozenBalance Decimal @default(0) @db.Decimal(12, 2)
+   698→  createdAt   DateTime @default(now())
+   699→  updatedAt   DateTime @updatedAt
+   700→
+   701→  transactions WalletTransaction[]
+   702→
+   703→  @@map("wallets")
+   704→}
+   705→
+   706→model WalletTransaction {
+   707→  id          String   @id @default(cuid())
+   708→  walletId    String
+   709→  wallet      Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+   710→  type        String   // credit, debit, freeze, unfund
+   711→  amount      Decimal  @db.Decimal(12, 2)
+   712→  balanceAfter Decimal @db.Decimal(12, 2)
+   713→  description String?
+   714→  referenceType String? // purchase, refund, promotion, bonus, withdrawal
+   715→  referenceId  String?
+   716→  metadata    Json?
+   717→  createdAt   DateTime @default(now())
+   718→
+   719→  @@index([walletId])
+   720→  @@index([referenceType, referenceId])
+   721→  @@map("wallet_transactions")
+   722→}
+   723→
+   724→model TokenPackage {
+   725→  id          String   @id @default(cuid())
+   726→  name        String
+   727→  tokens      Int
+   728→  price       Decimal  @db.Decimal(10, 2)
+   729→  currency    String   @default("MAD")
+   730→  bonusTokens Int      @default(0)
+   731→  isActive    Boolean  @default(true)
+   732→  sortOrder   Int      @default(0)
+   733→  createdAt   DateTime @default(now())
+   734→  updatedAt   DateTime @updatedAt
+   735→
+   736→  @@map("token_packages")
+   737→}
+   738→
+   739→model Order {
+   740→  id              String       @id @default(cuid())
+   741→  orderNumber     String       @unique
+   742→  userId          String
+   743→  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+   744→  status          String       @default("pending") // pending, paid, failed, refunded, cancelled
+   745→  subtotal        Decimal      @db.Decimal(12, 2)
+   746→  tax             Decimal      @default(0) @db.Decimal(12, 2)
+   747→  total           Decimal      @db.Decimal(12, 2)
+   748→  currency        String       @default("MAD")
+   749→  paymentMethod   String?      // stripe, paypal, bank_transfer, morocco_payment
+   750→  paymentId       String?
+   751→  paidAt          DateTime?
+   752→  refundedAt      DateTime?
+   753→  createdAt       DateTime      @default(now())
+   754→  updatedAt       DateTime      @updatedAt
+   755→
+   756→  items           OrderItem[]
+   757→  payments        Payment[]
+   758→
+   759→  @@index([userId])
+   760→  @@index([status])
+   761→  @@index([orderNumber])
+   762→  @@map("orders")
+   763→}
+   764→
+   765→model OrderItem {
+   766→  id          String   @id @default(cuid())
+   767→  orderId     String
+   768→  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+   769→  itemType    String   // token_package, promotion, subscription
+   770→  itemId      String
+   771→  itemName    String
+   772→  quantity    Int      @default(1)
+   773→  unitPrice   Decimal  @db.Decimal(12, 2)
+   774→  total       Decimal  @db.Decimal(12, 2)
+   775→  metadata    Json?
+   776→
+   777→  @@index([orderId])
+   778→  @@map("order_items")
+   779→}
+   780→
+   781→model Payment {
+   782→  id              String   @id @default(cuid())
+   783→  orderId         String
+   784→  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+   785→  provider        String   // stripe, paypal, morocco_payment, bank_transfer
+   786→  providerPaymentId String?
+   787→  status          String   @default("pending") // pending, processing, completed, failed, refunded, disputed
+   788→  amount          Decimal  @db.Decimal(12, 2)
+   789→  currency        String   @default("MAD")
+   790→  fee             Decimal  @default(0) @db.Decimal(12, 2)
+   791→  netAmount       Decimal  @db.Decimal(12, 2)
+   792→  metadata        Json?
+   793→  errorCode       String?
+   794→  errorMessage    String?
+   795→  createdAt       DateTime @default(now())
+   796→  updatedAt       DateTime @updatedAt
+   797→
+   798→  events          PaymentEvent[]
+   799→
+   800→  @@index([orderId])
+   801→  @@index([providerPaymentId])
+   802→  @@map("payments")
+   803→}
+   804→
+   805→model PaymentEvent {
+   806→  id          String   @id @default(cuid())
+   807→  paymentId   String
+   808→  payment     Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+   809→  eventType   String   // created, authorized, captured, refunded, failed, disputed
+   810→  eventData   Json?
+   811→  processed   Boolean  @default(false)
+   812→  createdAt   DateTime @default(now())
+   813→
+   814→  @@index([paymentId])
+   815→  @@map("payment_events")
+   816→}
+   817→
+   818→// ==================== PROMOTIONS ====================
+   819→
+   820→model Promotion {
+   821→  id          String   @id @default(cuid())
+   822→  name        String
+   823→  type        String   // bump, feature, urgent, homepage, highlight
+   824→  description String?
+   825→  basePrice   Decimal  @db.Decimal(10, 2)
+   826→  currency    String   @default("MAD")
+   827→  durationHours Int
+   828→  maxDurationHours Int?
+   829→  isActive    Boolean  @default(true)
+   830→  constraints Json?   // category-specific pricing, etc.
+   831→  sortOrder   Int      @default(0)
+   832→  createdAt   DateTime @default(now())
+   833→  updatedAt   DateTime @updatedAt
+   834→
+   835→  listings    ListingPromotion[]
+   836→
+   837→  @@map("promotions")
+   838→}
+   839→
+   840→model ListingPromotion {
+   841→  id          String   @id @default(cuid())
+   842→  listingId   String
+   843→  listing     Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+   844→  promotionId String
+   845→  promotion   Promotion @relation(fields: [promotionId], references: [id])
+   846→  status      String   @default("active") // active, paused, expired, cancelled
+   847→  startedAt   DateTime
+   848→  expiresAt   DateTime
+   849→  pricePaid   Decimal  @db.Decimal(10, 2)
+   850→  currency    String   @default("MAD")
+   851→  orderId     String?
+   852→  metadata    Json?
+   853→  createdAt   DateTime @default(now())
+   854→
+   855→  @@index([listingId])
+   856→  @@index([promotionId])
+   857→  @@map("listing_promotions")
+   858→}
+   859→
+   860→// ==================== NOTIFICATIONS ====================
+   861→
+   862→model Notification {
+   863→  id          String   @id @default(cuid())
+   864→  userId      String
+   865→  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+   866→  type        String   // new_message, listing_viewed, favorite_added, promotion_expiring, etc.
+   867→  title       String
+   868→  body        String?  @db.Text
+   869→  data        Json?    // related resource IDs
+   870→  isRead      Boolean  @default(false)
+   871→  readAt      DateTime?
+   872→  sentVia     String[] // in_app, email, push
+   873→  createdAt   DateTime @default(now())
+   874→
+   875→  @@index([userId])
+   876→  @@index([isRead])
+   877→  @@index([createdAt])
+   878→  @@map("notifications")
+   879→}
+   880→
+   881→model NotificationPreference {
+   882→  id          String   @id @default(cuid())
+   883→  userId      String   @unique
+   884→  newMessage  Boolean  @default(true)
+   885→  listingViewed Boolean @default(false)
+   886→  favoriteAdded Boolean @default(true)
+   887→  promotionExpiring Boolean @default(true)
+   888→  priceDrop   Boolean  @default(true)
+   889→  newReview   Boolean  @default(true)
+   890→  marketing   Boolean  @default(false)
+   891→  createdAt   DateTime @default(now())
+   892→  updatedAt   DateTime @updatedAt
+   893→
+   894→  @@map("notification_preferences")
+   895→}
+   896→
+   897→// ==================== SYSTEM & AUDIT ====================
+   898→
+   899→model AuditLog {
+   900→  id          String   @id @default(cuid())
+   901→  userId      String?
+   902→  user        User?    @relation(fields: [userId], references: [id])
+   903→  action      String   // create, update, delete, login, logout, etc.
+   904→  resourceType String  // user, listing, order, etc.
+   905→  resourceId  String?
+   906→  oldValue    Json?
+   907→  newValue    Json?
+   908→  ipAddress   String?
+   909→  userAgent   String?
+   910→  createdAt   DateTime @default(now())
+   911→
+   912→  @@index([userId])
+   913→  @@index([resourceType, resourceId])
+   914→  @@index([action])
+   915→  @@index([createdAt])
+   916→  @@map("audit_logs")
+   917→}
+   918→
+   919→model AnalyticsEvent {
+   920→  id          String   @id @default(cuid())
+   921→  eventType   String   // page_view, listing_click, search, etc.
+   922→  sessionId   String?
+   923→  userId      String?
+   924→  data        Json?
+   925→  ipAddress   String?
+   926→  userAgent   String?
+   927→  referrer    String?
+   928→  url         String?
+   929→  createdAt   DateTime @default(now())
+   930→
+   931→  @@index([eventType])
+   932→  @@index([userId])
+   933→  @@index([createdAt])
+   934→  @@map("analytics_events")
+   935→}
+   936→
+   937→model BannedTerm {
+   938→  id          String   @id @default(cuid())
+   939→  term        String   @unique
+   940→  category    String   // spam, inappropriate, scam, etc.
+   941→  isActive    Boolean  @default(true)
+   942→  addedBy     String?
+   943→  createdAt   DateTime @default(now())
+   944→
+   945→  @@map("banned_terms")
+   946→}
+   947→
+   948→model FraudSignal {
+   949→  id          String   @id @default(cuid())
+   950→  userId      String?
+   951→  signalType  String   // rapid_posting, duplicate_content, suspicious_ip, etc.
+   952→  severity    String   // low, medium, high, critical
+   953→  data        Json?
+   954→  isResolved  Boolean  @default(false)
+   955→  resolvedBy  String?
+   956→  resolvedAt  DateTime?
+   957→  createdAt   DateTime @default(now())
+   958→
+   959→  @@index([userId])
+   960→  @@index([signalType])
+   961→  @@index([isResolved])
+   962→  @@map("fraud_signals")
+   963→}
+   964→
+   965→// ==================== SEO & CONTENT ====================
+   966→
+   967→model SeoPage {
+   968→  id          String   @id @default(cuid())
+   969→  pageType    String   // category, city, search
+   970→  entityId    String   // category ID or city ID
+   971→  slug        String   @unique
+   972→  title       String
+   973→  description String?  @db.Text
+   974→  keywords    String[]
+   975→  heading     String?
+   976→  content     String?  @db.Text
+   977→  schemaMarkup Json?
+   978→  categoryId  String? @unique
+   979→  category    Category? @relation(fields: [categoryId], references: [id])
+   980→  createdAt   DateTime @default(now())
+   981→  updatedAt   DateTime @updatedAt
+   982→
+   983→  @@map("seo_pages")
+   984→}
+   985→
+   986→model SupportTicket {
+   987→  id          String   @id @default(cuid())
+   988→  userId      String?
+   989→  subject     String
+   990→  description String?  @db.Text
+   991→  status      String   @default("open") // open, in_progress, waiting, resolved, closed
+   992→  priority    String   @default("medium") // low, medium, high, urgent
+   993→  category    String?  // technical, billing, content, other
+   994→  assignedTo  String?
+   995→  createdAt   DateTime @default(now())
+   996→  updatedAt   DateTime @updatedAt
+   997→
+   998→  @@index([userId])
+   999→  @@index([status])
+  1000→  @@map("support_tickets")
+  1001→}
+  1002→
+  1003→// ==================== LEGACY/TEMPORARY (for migration) ====================
+  1004→
+  1005→model Post {
+  1006→  id        String   @id @default(cuid())
+  1007→  title     String
+  1008→  content   String?
+  1009→  published Boolean  @default(false)
+  1010→  authorId  String
+  1011→  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  1012→  createdAt DateTime @default(now())
+  1013→  updatedAt DateTime @updatedAt
+  1014→
+  1015→  @@map("posts")
+  1016→}
+  1017→

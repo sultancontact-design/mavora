@@ -1,0 +1,1291 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState, useCallback } from 'react';
+     4→import { useTranslation } from '@/hooks/useTranslation';
+     5→import { useAuthStore } from '@/stores/auth';
+     6→import { useNavigationStore } from '@/stores/navigation';
+     7→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+     8→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+     9→import { Badge } from '@/components/ui/badge';
+    10→import { Skeleton } from '@/components/ui/skeleton';
+    11→import { Button } from '@/components/ui/button';
+    12→import { Input } from '@/components/ui/input';
+    13→import { Textarea } from '@/components/ui/textarea';
+    14→import { Switch } from '@/components/ui/switch';
+    15→import {
+    16→  ArrowLeft,
+    17→  Users,
+    18→  FileText,
+    19→  Globe,
+    20→  Grid3X3,
+    21→  ShieldAlert,
+    22→  Loader2,
+    23→  Eye,
+    24→  Search,
+    25→  Check,
+    26→  X,
+    27→  Archive,
+    28→  AlertTriangle,
+    29→  UserCheck,
+    30→  Activity,
+    31→  ClipboardList,
+    32→  Settings as SettingsIcon,
+    33→  HeartPulse,
+    34→  Save,
+    35→  Tag,
+    36→} from 'lucide-react';
+    37→import AdminCategoryFields from './AdminCategoryFields';
+    38→import type { Listing, Locale, AuditLog } from '@/lib/types';
+    39→
+    40→interface AdminStats {
+    41→  total_users: number;
+    42→  total_listings: number;
+    43→  total_countries: number;
+    44→  total_categories: number;
+    45→}
+    46→
+    47→interface AdminUser {
+    48→  id: string;
+    49→  display_name: string;
+    50→  email: string;
+    51→  avatar_url: string | null;
+    52→  is_verified: boolean;
+    53→  is_suspended: boolean;
+    54→  created_at: string;
+    55→  listing_count: number;
+    56→}
+    57→
+    58→interface PlatformSetting {
+    59→  id: string;
+    60→  key: string;
+    61→  value: string;
+    62→  value_type: 'string' | 'number' | 'boolean' | 'json';
+    63→  description: string | null;
+    64→  updated_by: string | null;
+    65→  created_at: string;
+    66→  updated_at: string;
+    67→}
+    68→
+    69→interface HealthCheck {
+    70→  status: 'healthy' | 'degraded' | 'unhealthy';
+    71→  checks: { database: boolean; storage: boolean; auth: boolean };
+    72→  timestamp: string;
+    73→  uptime: number;
+    74→}
+    75→
+    76→interface AdminReport {
+    77→  id: string;
+    78→  reporter_id: string;
+    79→  target_type: string;
+    80→  target_id: string;
+    81→  reason: string;
+    82→  description: string | null;
+    83→  status: string;
+    84→  created_at: string;
+    85→  reporter: { id: string; display_name: string; avatar_url: string | null } | null;
+    86→  listing: { title: string; seller_id: string } | null;
+    87→}
+    88→
+    89→function getLocalizedListingField(
+    90→  listing: { title_ar?: string; title_fr?: string; title_en?: string },
+    91→  locale: Locale
+    92→): string {
+    93→  switch (locale) {
+    94→    case 'ar': return listing.title_ar || listing.title_en || listing.title_fr || '';
+    95→    case 'fr': return listing.title_fr || listing.title_en || listing.title_ar || '';
+    96→    default: return listing.title_en || listing.title_ar || listing.title_fr || '';
+    97→  }
+    98→}
+    99→
+   100→function getReasonDisplay(reason: string, t: (key: string) => string): string {
+   101→  const map: Record<string, string> = {
+   102→    scam: t('report.reason_scam_display'),
+   103→    prohibited: t('report.reason_prohibited_display'),
+   104→    duplicate: t('report.reason_duplicate_display'),
+   105→    wrong_category: t('report.reason_wrong_category_display'),
+   106→    other: t('report.reason_other_display'),
+   107→  };
+   108→  return map[reason] ?? reason;
+   109→}
+   110→
+   111→function statusBadgeVariant(status: string): 'default' | 'secondary' | 'outline' | 'destructive' {
+   112→  switch (status) {
+   113→    case 'active': return 'default';
+   114→    case 'draft': return 'secondary';
+   115→    case 'archived': return 'outline';
+   116→    case 'sold': return 'secondary';
+   117→    case 'reserved': return 'outline';
+   118→    case 'rejected': return 'destructive';
+   119→    case 'pending_review': return 'outline';
+   120→    default: return 'secondary';
+   121→  }
+   122→}
+   123→
+   124→function formatDate(dateStr: string, locale: Locale): string {
+   125→  const date = new Date(dateStr);
+   126→  return date.toLocaleDateString(locale === 'ar' ? 'ar-MA' : locale === 'fr' ? 'fr-MA' : 'en-US', {
+   127→    year: 'numeric',
+   128→    month: 'short',
+   129→    day: 'numeric',
+   130→  });
+   131→}
+   132→
+   133→export default function AdminDashboard() {
+   134→  const { t, locale } = useTranslation();
+   135→  const { user } = useAuthStore();
+   136→  const { navigateHome } = useNavigationStore();
+   137→
+   138→  // Overview data
+   139→  const [stats, setStats] = useState<AdminStats | null>(null);
+   140→  const [recentListings, setRecentListings] = useState<Listing[]>([]);
+   141→
+   142→  // Listings tab data
+   143→  const [allListings, setAllListings] = useState<Listing[]>([]);
+   144→  const [listingsSearch, setListingsSearch] = useState('');
+   145→  const [listingsLoading, setListingsLoading] = useState(false);
+   146→
+   147→  // Users tab data
+   148→  const [users, setUsers] = useState<AdminUser[]>([]);
+   149→  const [usersLoading, setUsersLoading] = useState(false);
+   150→
+   151→  // Reports tab data
+   152→  const [reports, setReports] = useState<AdminReport[]>([]);
+   153→  const [reportsLoading, setReportsLoading] = useState(false);
+   154→
+   155→  // Audit tab data
+   156→  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+   157→  const [auditLoading, setAuditLoading] = useState(false);
+   158→
+   159→  // Settings tab data
+   160→  const [settings, setSettings] = useState<PlatformSetting[]>([]);
+   161→  const [settingsLoading, setSettingsLoading] = useState(false);
+   162→  const [healthData, setHealthData] = useState<HealthCheck | null>(null);
+   163→  const [healthLoading, setHealthLoading] = useState(false);
+   164→  const [editingKey, setEditingKey] = useState<string | null>(null);
+   165→  const [editValue, setEditValue] = useState('');
+   166→  const [savingKey, setSavingKey] = useState<string | null>(null);
+   167→
+   168→  // General
+   169→  const [loading, setLoading] = useState(true);
+   170→  const [error, setError] = useState('');
+   171→  const [activeTab, setActiveTab] = useState('overview');
+   172→
+   173→  const isRtl = locale === 'ar';
+   174→
+   175→  const fetchOverviewData = useCallback(async () => {
+   176→    setLoading(true);
+   177→    setError('');
+   178→    try {
+   179→      const [statsRes, listingsRes] = await Promise.all([
+   180→        fetch('/api/admin/stats'),
+   181→        fetch('/api/listings?per_page=10&sort_by=newest'),
+   182→      ]);
+   183→
+   184→      if (statsRes.ok) {
+   185→        const statsData = await statsRes.json();
+   186→        setStats(statsData);
+   187→      }
+   188→
+   189→      if (listingsRes.ok) {
+   190→        const listingsData = await listingsRes.json();
+   191→        setRecentListings(listingsData.data || []);
+   192→      }
+   193→    } catch {
+   194→      setError('Failed to load admin data');
+   195→    } finally {
+   196→      setLoading(false);
+   197→    }
+   198→  }, []);
+   199→
+   200→  const fetchAllListings = useCallback(async (search?: string) => {
+   201→    setListingsLoading(true);
+   202→    try {
+   203→      const params = new URLSearchParams({
+   204→        per_page: '50',
+   205→        sort_by: 'newest',
+   206→      });
+   207→      if (search) params.set('search', search);
+   208→      // Fetch all statuses - use admin approach
+   209→      const res = await fetch(`/api/admin/listings?${params.toString()}`);
+   210→      if (res.ok) {
+   211→        const data = await res.json();
+   212→        setAllListings(data.data || []);
+   213→      } else {
+   214→        // Fallback: use regular listings endpoint
+   215→        const fallbackRes = await fetch(`/api/listings?${params.toString()}`);
+   216→        if (fallbackRes.ok) {
+   217→          const data = await fallbackRes.json();
+   218→          setAllListings(data.data || []);
+   219→        }
+   220→      }
+   221→    } catch {
+   222→      // silent
+   223→    } finally {
+   224→      setListingsLoading(false);
+   225→    }
+   226→  }, []);
+   227→
+   228→  const fetchUsers = useCallback(async () => {
+   229→    setUsersLoading(true);
+   230→    try {
+   231→      const res = await fetch('/api/admin/users');
+   232→      if (res.ok) {
+   233→        const data = await res.json();
+   234→        setUsers(data.data || []);
+   235→      }
+   236→    } catch {
+   237→      // silent
+   238→    } finally {
+   239→      setUsersLoading(false);
+   240→    }
+   241→  }, []);
+   242→
+   243→  const fetchReports = useCallback(async () => {
+   244→    setReportsLoading(true);
+   245→    try {
+   246→      const res = await fetch('/api/admin/reports');
+   247→      if (res.ok) {
+   248→        const data = await res.json();
+   249→        setReports(data.data || []);
+   250→      }
+   251→    } catch {
+   252→      // silent
+   253→    } finally {
+   254→      setReportsLoading(false);
+   255→    }
+   256→  }, []);
+   257→
+   258→  const fetchAuditLogs = useCallback(async () => {
+   259→    setAuditLoading(true);
+   260→    try {
+   261→      const res = await fetch('/api/admin/audit-logs?per_page=50');
+   262→      if (res.ok) {
+   263→        const data = await res.json();
+   264→        setAuditLogs(data.data || []);
+   265→      }
+   266→    } catch {
+   267→      // silent
+   268→    } finally {
+   269→      setAuditLoading(false);
+   270→    }
+   271→  }, []);
+   272→
+   273→  const fetchSettings = useCallback(async () => {
+   274→    setSettingsLoading(true);
+   275→    try {
+   276→      const res = await fetch('/api/admin/settings');
+   277→      if (res.ok) {
+   278→        const data = await res.json();
+   279→        setSettings(data.data || []);
+   280→      }
+   281→    } catch {
+   282→      // silent
+   283→    } finally {
+   284→      setSettingsLoading(false);
+   285→    }
+   286→  }, []);
+   287→
+   288→  const fetchHealth = useCallback(async () => {
+   289→    setHealthLoading(true);
+   290→    try {
+   291→      const res = await fetch('/api/health');
+   292→      if (res.ok) {
+   293→        const data = await res.json();
+   294→        setHealthData(data);
+   295→      }
+   296→    } catch {
+   297→      // silent
+   298→    } finally {
+   299→      setHealthLoading(false);
+   300→    }
+   301→  }, []);
+   302→
+   303→  const handleSaveSetting = async (key: string, value: string) => {
+   304→    setSavingKey(key);
+   305→    try {
+   306→      const res = await fetch(`/api/admin/settings/${encodeURIComponent(key)}`, {
+   307→        method: 'PATCH',
+   308→        headers: { 'Content-Type': 'application/json' },
+   309→        body: JSON.stringify({ value }),
+   310→      });
+   311→      if (res.ok) {
+   312→        setSettings((prev) =>
+   313→          prev.map((s) => (s.key === key ? { ...s, value } : s))
+   314→        );
+   315→        setEditingKey(null);
+   316→      }
+   317→    } catch {
+   318→      // silent
+   319→    } finally {
+   320→      setSavingKey(null);
+   321→    }
+   322→  };
+   323→
+   324→  useEffect(() => {
+   325→    fetchOverviewData();
+   326→  }, [fetchOverviewData]);
+   327→
+   328→  useEffect(() => {
+   329→    if (activeTab === 'listings') fetchAllListings(listingsSearch || undefined);
+   330→  }, [activeTab, fetchAllListings, listingsSearch]);
+   331→
+   332→  useEffect(() => {
+   333→    if (activeTab === 'users') fetchUsers();
+   334→  }, [activeTab, fetchUsers]);
+   335→
+   336→  useEffect(() => {
+   337→    if (activeTab === 'reports') fetchReports();
+   338→  }, [activeTab, fetchReports]);
+   339→
+   340→  useEffect(() => {
+   341→    if (activeTab === 'audit') fetchAuditLogs();
+   342→  }, [activeTab, fetchAuditLogs]);
+   343→
+   344→  useEffect(() => {
+   345→    if (activeTab === 'settings') {
+   346→      fetchSettings();
+   347→      fetchHealth();
+   348→    }
+   349→  }, [activeTab, fetchSettings, fetchHealth]);
+   350→
+   351→  const handleModerate = async (listingId: string, action: 'approve' | 'reject' | 'archive') => {
+   352→    try {
+   353→      const res = await fetch('/api/admin/moderate', {
+   354→        method: 'PATCH',
+   355→        headers: { 'Content-Type': 'application/json' },
+   356→        body: JSON.stringify({ listing_id: listingId, action }),
+   357→      });
+   358→      if (res.ok) {
+   359→        setAllListings((prev) =>
+   360→          prev.map((l) =>
+   361→            l.id === listingId
+   362→              ? { ...l, status: action === 'approve' ? 'active' : action === 'reject' ? 'rejected' : 'archived' }
+   363→              : l
+   364→          )
+   365→        );
+   366→        setRecentListings((prev) =>
+   367→          prev.map((l) =>
+   368→            l.id === listingId
+   369→              ? { ...l, status: action === 'approve' ? 'active' : action === 'reject' ? 'rejected' : 'archived' }
+   370→              : l
+   371→          )
+   372→        );
+   373→      }
+   374→    } catch {
+   375→      // silent
+   376→    }
+   377→  };
+   378→
+   379→  const handleReportAction = async (reportId: string, action: 'resolve' | 'dismiss') => {
+   380→    try {
+   381→      const res = await fetch('/api/admin/reports', {
+   382→        method: 'PATCH',
+   383→        headers: { 'Content-Type': 'application/json' },
+   384→        body: JSON.stringify({ report_id: reportId, action }),
+   385→      });
+   386→      if (res.ok) {
+   387→        setReports((prev) => prev.filter((r) => r.id !== reportId));
+   388→      }
+   389→    } catch {
+   390→      // silent
+   391→    }
+   392→  };
+   393→
+   394→  // Auth guard
+   395→  if (!user) {
+   396→    return (
+   397→      <div className="mx-auto flex min-h-[60vh] max-w-7xl flex-col items-center justify-center gap-4 px-4">
+   398→        <ShieldAlert className="size-16 text-destructive" />
+   399→        <p className="text-lg font-semibold text-foreground">{t('admin.access_denied')}</p>
+   400→        <Button variant="outline" onClick={navigateHome}>
+   401→          <ArrowLeft className={isRtl ? 'ms-2 rotate-180' : 'me-2'} />
+   402→          {t('common.back')}
+   403→        </Button>
+   404→      </div>
+   405→    );
+   406→  }
+   407→
+   408→  const statCards = [
+   409→    {
+   410→      label: t('admin.total_users'),
+   411→      value: stats?.total_users ?? 0,
+   412→      icon: Users,
+   413→      color: 'text-emerald-600',
+   414→      bg: 'bg-emerald-500/10',
+   415→    },
+   416→    {
+   417→      label: t('admin.total_listings'),
+   418→      value: stats?.total_listings ?? 0,
+   419→      icon: FileText,
+   420→      color: 'text-emerald-600',
+   421→      bg: 'bg-emerald-500/10',
+   422→    },
+   423→    {
+   424→      label: t('admin.total_countries'),
+   425→      value: stats?.total_countries ?? 0,
+   426→      icon: Globe,
+   427→      color: 'text-amber-600',
+   428→      bg: 'bg-amber-500/10',
+   429→    },
+   430→    {
+   431→      label: t('admin.total_categories'),
+   432→      value: stats?.total_categories ?? 0,
+   433→      icon: Grid3X3,
+   434→      color: 'text-violet-600',
+   435→      bg: 'bg-violet-500/10',
+   436→    },
+   437→  ];
+   438→
+   439→  return (
+   440→    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+   441→      {/* Header */}
+   442→      <div className="mb-6 flex items-center justify-between">
+   443→        <div className="flex items-center gap-3">
+   444→          <Button variant="ghost" size="icon" onClick={navigateHome}>
+   445→            <ArrowLeft className={isRtl ? 'size-5 rotate-180' : 'size-5'} />
+   446→          </Button>
+   447→          <div>
+   448→            <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
+   449→              {t('admin.title')}
+   450→            </h1>
+   451→          </div>
+   452→        </div>
+   453→        {loading && <Loader2 className="size-5 animate-spin text-muted-foreground" />}
+   454→      </div>
+   455→
+   456→      {error && (
+   457→        <div className="mb-6 rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+   458→          <p className="text-sm text-destructive">{error}</p>
+   459→        </div>
+   460→      )}
+   461→
+   462→      {/* Tabs */}
+   463→      <Tabs value={activeTab} onValueChange={setActiveTab}>
+   464→        <TabsList className="mb-6 flex w-full sm:w-fit">
+   465→          <TabsTrigger value="overview" className="gap-1.5">
+   466→            <Activity className="size-4" />
+   467→            <span className="hidden sm:inline">{t('admin.overview')}</span>
+   468→          </TabsTrigger>
+   469→          <TabsTrigger value="listings" className="gap-1.5">
+   470→            <FileText className="size-4" />
+   471→            <span className="hidden sm:inline">{t('admin.listings_tab')}</span>
+   472→          </TabsTrigger>
+   473→          <TabsTrigger value="users" className="gap-1.5">
+   474→            <Users className="size-4" />
+   475→            <span className="hidden sm:inline">{t('admin.users_tab')}</span>
+   476→          </TabsTrigger>
+   477→          <TabsTrigger value="reports" className="gap-1.5">
+   478→            <AlertTriangle className="size-4" />
+   479→            <span className="hidden sm:inline">{t('admin.reports_tab')}</span>
+   480→          </TabsTrigger>
+   481→          <TabsTrigger value="audit" className="gap-1.5">
+   482→            <ClipboardList className="size-4" />
+   483→            <span className="hidden sm:inline">{t('audit.title')}</span>
+   484→          </TabsTrigger>
+   485→          <TabsTrigger value="settings" className="gap-1.5">
+   486→            <SettingsIcon className="size-4" />
+   487→            <span className="hidden sm:inline">{t('admin.settings_tab')}</span>
+   488→          </TabsTrigger>
+   489→          <TabsTrigger value="category-fields" className="gap-1.5">
+   490→            <Tag className="size-4" />
+   491→            <span className="hidden sm:inline">{t('admin.category_fields_tab')}</span>
+   492→          </TabsTrigger>
+   493→        </TabsList>
+   494→
+   495→        {/* ======================== OVERVIEW TAB ======================== */}
+   496→        <TabsContent value="overview">
+   497→          {/* Stat Cards */}
+   498→          <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+   499→            {statCards.map((stat) => {
+   500→              const Icon = stat.icon;
+   501→              return (
+   502→                <Card key={stat.label} className="overflow-hidden">
+   503→                  <CardContent className="p-4 sm:p-6">
+   504→                    <div className="flex items-center gap-3">
+   505→                      <div className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${stat.bg}`}>
+   506→                        <Icon className={`size-5 ${stat.color}`} />
+   507→                      </div>
+   508→                      <div className="min-w-0">
+   509→                        {loading ? (
+   510→                          <Skeleton className="mb-1 h-4 w-16" />
+   511→                        ) : (
+   512→                          <p className="text-2xl font-bold text-foreground">{stat.value.toLocaleString()}</p>
+   513→                        )}
+   514→                        <p className="truncate text-xs text-muted-foreground sm:text-sm">{stat.label}</p>
+   515→                      </div>
+   516→                    </div>
+   517→                  </CardContent>
+   518→                </Card>
+   519→              );
+   520→            })}
+   521→          </div>
+   522→
+   523→          {/* Recent Activity */}
+   524→          <Card>
+   525→            <CardHeader className="bg-[#0f2b46] px-4 py-3 sm:px-6 sm:py-4">
+   526→              <CardTitle className="text-base font-semibold text-white sm:text-lg">
+   527→                {t('admin.recent_activity')}
+   528→              </CardTitle>
+   529→            </CardHeader>
+   530→            <CardContent className="p-0">
+   531→              {loading ? (
+   532→                <div className="divide-y">
+   533→                  {Array.from({ length: 5 }).map((_, i) => (
+   534→                    <div key={i} className="flex items-center gap-4 px-4 py-3 sm:px-6">
+   535→                      <Skeleton className="h-4 w-48" />
+   536→                      <Skeleton className="ms-auto h-4 w-20" />
+   537→                      <Skeleton className="h-5 w-16 rounded-full" />
+   538→                    </div>
+   539→                  ))}
+   540→                </div>
+   541→              ) : recentListings.length === 0 ? (
+   542→                <div className="px-4 py-12 text-center sm:px-6">
+   543→                  <FileText className="mx-auto mb-3 size-10 text-muted-foreground/40" />
+   544→                  <p className="text-sm text-muted-foreground">{t('listings.no_listings')}</p>
+   545→                </div>
+   546→              ) : (
+   547→                <div className="max-h-96 overflow-y-auto">
+   548→                  <div className="hidden divide-y sm:block">
+   549→                    <div className="grid grid-cols-[1fr_120px_100px_80px] gap-4 border-b bg-muted/30 px-6 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+   550→                      <span>{t('admin.listing_title')}</span>
+   551→                      <span>{t('common.price')}</span>
+   552→                      <span>{t('admin.status')}</span>
+   553→                      <span>{t('admin.views')}</span>
+   554→                    </div>
+   555→                    {recentListings.map((listing) => (
+   556→                      <div
+   557→                        key={listing.id}
+   558→                        className="grid grid-cols-[1fr_120px_100px_80px] items-center gap-4 px-6 py-3 transition-colors hover:bg-muted/20"
+   559→                      >
+   560→                        <span className="truncate text-sm font-medium text-foreground">
+   561→                          {getLocalizedListingField(listing, locale)}
+   562→                        </span>
+   563→                        <span className="text-sm text-muted-foreground">
+   564→                          {listing.price
+   565→                            ? `${listing.price.toLocaleString()} ${(listing.currency_code || 'MAD')}`
+   566→                            : t('common.negotiable')}
+   567→                        </span>
+   568→                        <Badge variant={statusBadgeVariant(listing.status)} className="w-fit justify-center text-xs">
+   569→                          {t(`listing.status_${listing.status}` as keyof typeof import('@/i18n/en.json'))}
+   570→                        </Badge>
+   571→                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+   572→                          <Eye className="size-3" />
+   573→                          {listing.view_count ?? 0}
+   574→                        </span>
+   575→                      </div>
+   576→                    ))}
+   577→                  </div>
+   578→                  <div className="divide-y sm:hidden">
+   579→                    {recentListings.map((listing) => (
+   580→                      <div key={listing.id} className="space-y-2 px-4 py-3">
+   581→                        <p className="truncate text-sm font-medium text-foreground">
+   582→                          {getLocalizedListingField(listing, locale)}
+   583→                        </p>
+   584→                        <div className="flex items-center gap-3">
+   585→                          <span className="text-sm font-semibold text-emerald-600">
+   586→                            {listing.price
+   587→                              ? `${listing.price.toLocaleString()} ${(listing.currency_code || 'MAD')}`
+   588→                              : t('common.negotiable')}
+   589→                          </span>
+   590→                          <Badge variant={statusBadgeVariant(listing.status)} className="text-xs">
+   591→                            {t(`listing.status_${listing.status}` as keyof typeof import('@/i18n/en.json'))}
+   592→                          </Badge>
+   593→                          <span className={isRtl ? 'ms-auto' : 'ms-auto flex items-center gap-1 text-xs text-muted-foreground'}>
+   594→                            <Eye className="size-3" />
+   595→                            {listing.view_count ?? 0}
+   596→                          </span>
+   597→                        </div>
+   598→                      </div>
+   599→                    ))}
+   600→                  </div>
+   601→                </div>
+   602→              )}
+   603→            </CardContent>
+   604→          </Card>
+   605→        </TabsContent>
+   606→
+   607→        {/* ======================== LISTINGS TAB ======================== */}
+   608→        <TabsContent value="listings">
+   609→          <Card>
+   610→            <CardHeader className="bg-[#0f2b46] px-4 py-3 sm:px-6 sm:py-4">
+   611→              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   612→                <CardTitle className="text-base font-semibold text-white sm:text-lg">
+   613→                  {t('admin.listings_tab')}
+   614→                </CardTitle>
+   615→                <div className="relative w-full sm:w-64">
+   616→                  <Search className={`absolute top-1/2 size-4 -translate-y-1/2 text-muted-foreground ${isRtl ? 'right-3' : 'left-3'}`} />
+   617→                  <Input
+   618→                    placeholder={t('admin.search')}
+   619→                    value={listingsSearch}
+   620→                    onChange={(e) => setListingsSearch(e.target.value)}
+   621→                    className={`${isRtl ? 'pr-9' : 'pl-9'} h-9 bg-white/90 text-foreground placeholder:text-white/50`}
+   622→                  />
+   623→                </div>
+   624→              </div>
+   625→            </CardHeader>
+   626→            <CardContent className="p-0">
+   627→              {listingsLoading ? (
+   628→                <div className="divide-y">
+   629→                  {Array.from({ length: 8 }).map((_, i) => (
+   630→                    <div key={i} className="flex items-center gap-4 px-4 py-3 sm:px-6">
+   631→                      <Skeleton className="h-4 flex-1" />
+   632→                      <Skeleton className="h-4 w-20" />
+   633→                      <Skeleton className="h-5 w-16 rounded-full" />
+   634→                      <Skeleton className="h-8 w-24" />
+   635→                    </div>
+   636→                  ))}
+   637→                </div>
+   638→              ) : allListings.length === 0 ? (
+   639→                <div className="px-4 py-12 text-center sm:px-6">
+   640→                  <FileText className="mx-auto mb-3 size-10 text-muted-foreground/40" />
+   641→                  <p className="text-sm text-muted-foreground">{t('admin.no_listings_all')}</p>
+   642→                </div>
+   643→              ) : (
+   644→                <div className="max-h-[500px] overflow-y-auto">
+   645→                  {/* Desktop Table */}
+   646→                  <div className="hidden divide-y sm:block">
+   647→                    <div className="grid grid-cols-[1fr_100px_90px_70px_200px] gap-3 border-b bg-muted/30 px-6 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+   648→                      <span>{t('admin.listing_title')}</span>
+   649→                      <span>{t('admin.seller')}</span>
+   650→                      <span>{t('admin.status')}</span>
+   651→                      <span>{t('admin.views')}</span>
+   652→                      <span className={isRtl ? 'text-left' : 'text-right'}>{t('admin.actions')}</span>
+   653→                    </div>
+   654→                    {allListings.map((listing) => (
+   655→                      <div
+   656→                        key={listing.id}
+   657→                        className="grid grid-cols-[1fr_100px_90px_70px_200px] items-center gap-3 px-6 py-3 transition-colors hover:bg-muted/20"
+   658→                      >
+   659→                        <span className="truncate text-sm font-medium text-foreground">
+   660→                          {getLocalizedListingField(listing, locale)}
+   661→                        </span>
+   662→                        <span className="truncate text-xs text-muted-foreground">
+   663→                          {(listing.seller as Record<string, string>)?.display_name ?? '—'}
+   664→                        </span>
+   665→                        <Badge variant={statusBadgeVariant(listing.status)} className="w-fit justify-center text-xs">
+   666→                          {t(`listing.status_${listing.status}` as keyof typeof import('@/i18n/en.json'))}
+   667→                        </Badge>
+   668→                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+   669→                          <Eye className="size-3" />
+   670→                          {listing.view_count ?? 0}
+   671→                        </span>
+   672→                        <div className={`flex items-center gap-1 ${isRtl ? 'justify-start' : 'justify-end'}`}>
+   673→                          <Button
+   674→                            variant="ghost"
+   675→                            size="sm"
+   676→                            className="h-7 gap-1 text-xs text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+   677→                            onClick={() => handleModerate(listing.id, 'approve')}
+   678→                          >
+   679→                            <Check className="size-3" />
+   680→                            {t('admin.approve')}
+   681→                          </Button>
+   682→                          <Button
+   683→                            variant="ghost"
+   684→                            size="sm"
+   685→                            className="h-7 gap-1 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+   686→                            onClick={() => handleModerate(listing.id, 'reject')}
+   687→                          >
+   688→                            <X className="size-3" />
+   689→                            {t('admin.reject')}
+   690→                          </Button>
+   691→                          <Button
+   692→                            variant="ghost"
+   693→                            size="sm"
+   694→                            className="h-7 gap-1 text-xs text-muted-foreground hover:bg-muted"
+   695→                            onClick={() => handleModerate(listing.id, 'archive')}
+   696→                          >
+   697→                            <Archive className="size-3" />
+   698→                            {t('admin.archive')}
+   699→                          </Button>
+   700→                        </div>
+   701→                      </div>
+   702→                    ))}
+   703→                  </div>
+   704→                  {/* Mobile List */}
+   705→                  <div className="divide-y sm:hidden">
+   706→                    {allListings.map((listing) => (
+   707→                      <div key={listing.id} className="space-y-2 px-4 py-3">
+   708→                        <p className="truncate text-sm font-medium text-foreground">
+   709→                          {getLocalizedListingField(listing, locale)}
+   710→                        </p>
+   711→                        <div className="flex flex-wrap items-center gap-2">
+   712→                          <Badge variant={statusBadgeVariant(listing.status)} className="text-xs">
+   713→                            {t(`listing.status_${listing.status}` as keyof typeof import('@/i18n/en.json'))}
+   714→                          </Badge>
+   715→                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+   716→                            <Eye className="size-3" />{listing.view_count ?? 0}
+   717→                          </span>
+   718→                          <span className="text-xs text-muted-foreground">
+   719→                            {(listing.seller as Record<string, string>)?.display_name ?? '—'}
+   720→                          </span>
+   721→                        </div>
+   722→                        <div className="flex items-center gap-1 pt-1">
+   723→                          <Button
+   724→                            variant="outline"
+   725→                            size="sm"
+   726→                            className="h-7 gap-1 text-xs text-emerald-600"
+   727→                            onClick={() => handleModerate(listing.id, 'approve')}
+   728→                          >
+   729→                            <Check className="size-3" />{t('admin.approve')}
+   730→                          </Button>
+   731→                          <Button
+   732→                            variant="outline"
+   733→                            size="sm"
+   734→                            className="h-7 gap-1 text-xs text-red-600"
+   735→                            onClick={() => handleModerate(listing.id, 'reject')}
+   736→                          >
+   737→                            <X className="size-3" />{t('admin.reject')}
+   738→                          </Button>
+   739→                          <Button
+   740→                            variant="outline"
+   741→                            size="sm"
+   742→                            className="h-7 gap-1 text-xs"
+   743→                            onClick={() => handleModerate(listing.id, 'archive')}
+   744→                          >
+   745→                            <Archive className="size-3" />{t('admin.archive')}
+   746→                          </Button>
+   747→                        </div>
+   748→                      </div>
+   749→                    ))}
+   750→                  </div>
+   751→                </div>
+   752→              )}
+   753→            </CardContent>
+   754→          </Card>
+   755→        </TabsContent>
+   756→
+   757→        {/* ======================== USERS TAB ======================== */}
+   758→        <TabsContent value="users">
+   759→          <Card>
+   760→            <CardHeader className="bg-[#0f2b46] px-4 py-3 sm:px-6 sm:py-4">
+   761→              <CardTitle className="text-base font-semibold text-white sm:text-lg">
+   762→                {t('admin.users_tab')}
+   763→              </CardTitle>
+   764→            </CardHeader>
+   765→            <CardContent className="p-0">
+   766→              {usersLoading ? (
+   767→                <div className="divide-y">
+   768→                  {Array.from({ length: 6 }).map((_, i) => (
+   769→                    <div key={i} className="flex items-center gap-4 px-4 py-3 sm:px-6">
+   770→                      <Skeleton className="size-8 rounded-full" />
+   771→                      <Skeleton className="h-4 w-32" />
+   772→                      <Skeleton className="ms-auto h-4 w-16" />
+   773→                      <Skeleton className="h-4 w-24" />
+   774→                    </div>
+   775→                  ))}
+   776→                </div>
+   777→              ) : users.length === 0 ? (
+   778→                <div className="px-4 py-12 text-center sm:px-6">
+   779→                  <Users className="mx-auto mb-3 size-10 text-muted-foreground/40" />
+   780→                  <p className="text-sm text-muted-foreground">{t('admin.no_users')}</p>
+   781→                </div>
+   782→              ) : (
+   783→                <div className="max-h-[500px] overflow-y-auto">
+   784→                  <div className="hidden divide-y sm:block">
+   785→                    <div className="grid grid-cols-[1fr_80px_100px_120px] gap-4 border-b bg-muted/30 px-6 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+   786→                      <span>{t('auth.display_name')}</span>
+   787→                      <span>{t('admin.listing_count')}</span>
+   788→                      <span>{t('admin.status')}</span>
+   789→                      <span>{t('admin.registered')}</span>
+   790→                    </div>
+   791→                    {users.map((u) => (
+   792→                      <div
+   793→                        key={u.id}
+   794→                        className="grid grid-cols-[1fr_80px_100px_120px] items-center gap-4 px-6 py-3 transition-colors hover:bg-muted/20"
+   795→                      >
+   796→                        <div className="flex items-center gap-2">
+   797→                          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-700">
+   798→                            {u.display_name?.charAt(0)?.toUpperCase() ?? '?'}
+   799→                          </div>
+   800→                          <span className="truncate text-sm font-medium text-foreground">{u.display_name}</span>
+   801→                        </div>
+   802→                        <span className="text-sm text-muted-foreground">{u.listing_count}</span>
+   803→                        <div className="flex items-center gap-1.5">
+   804→                          {u.is_verified && <Badge variant="default" className="bg-emerald-600 text-xs">✓</Badge>}
+   805→                          {u.is_suspended && <Badge variant="destructive" className="text-xs">✗</Badge>}
+   806→                          {!u.is_verified && !u.is_suspended && <Badge variant="secondary" className="text-xs">—</Badge>}
+   807→                        </div>
+   808→                        <span className="text-xs text-muted-foreground">{formatDate(u.created_at, locale)}</span>
+   809→                      </div>
+   810→                    ))}
+   811→                  </div>
+   812→                  <div className="divide-y sm:hidden">
+   813→                    {users.map((u) => (
+   814→                      <div key={u.id} className="space-y-2 px-4 py-3">
+   815→                        <div className="flex items-center gap-2">
+   816→                          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-700">
+   817→                            {u.display_name?.charAt(0)?.toUpperCase() ?? '?'}
+   818→                          </div>
+   819→                          <div className="min-w-0">
+   820→                            <p className="truncate text-sm font-medium text-foreground">{u.display_name}</p>
+   821→                            <p className="text-xs text-muted-foreground">{formatDate(u.created_at, locale)}</p>
+   822→                          </div>
+   823→                          <div className="ms-auto flex items-center gap-1">
+   824→                            {u.is_verified && <Badge variant="default" className="bg-emerald-600 text-xs">✓</Badge>}
+   825→                            {u.is_suspended && <Badge variant="destructive" className="text-xs">✗</Badge>}
+   826→                          </div>
+   827→                        </div>
+   828→                        <span className="text-xs text-muted-foreground">{u.listing_count} {t('admin.listing_count')}</span>
+   829→                      </div>
+   830→                    ))}
+   831→                  </div>
+   832→                </div>
+   833→              )}
+   834→            </CardContent>
+   835→          </Card>
+   836→        </TabsContent>
+   837→
+   838→        {/* ======================== REPORTS TAB ======================== */}
+   839→        <TabsContent value="reports">
+   840→          <Card>
+   841→            <CardHeader className="bg-[#0f2b46] px-4 py-3 sm:px-6 sm:py-4">
+   842→              <CardTitle className="text-base font-semibold text-white sm:text-lg">
+   843→                {t('admin.reports_tab')}
+   844→              </CardTitle>
+   845→            </CardHeader>
+   846→            <CardContent className="p-0">
+   847→              {reportsLoading ? (
+   848→                <div className="divide-y">
+   849→                  {Array.from({ length: 5 }).map((_, i) => (
+   850→                    <div key={i} className="flex items-center gap-4 px-4 py-3 sm:px-6">
+   851→                      <Skeleton className="h-4 w-32" />
+   852→                      <Skeleton className="h-4 w-24" />
+   853→                      <Skeleton className="ms-auto h-8 w-40" />
+   854→                    </div>
+   855→                  ))}
+   856→                </div>
+   857→              ) : reports.length === 0 ? (
+   858→                <div className="px-4 py-12 text-center sm:px-6">
+   859→                  <AlertTriangle className="mx-auto mb-3 size-10 text-muted-foreground/40" />
+   860→                  <p className="text-sm text-muted-foreground">{t('admin.no_reports')}</p>
+   861→                </div>
+   862→              ) : (
+   863→                <div className="max-h-[500px] overflow-y-auto">
+   864→                  <div className="hidden divide-y sm:block">
+   865→                    <div className="grid grid-cols-[1fr_120px_120px_140px] gap-3 border-b bg-muted/30 px-6 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+   866→                      <span>{t('admin.target')}</span>
+   867→                      <span>{t('admin.reason')}</span>
+   868→                      <span>{t('admin.reporter')}</span>
+   869→                      <span className={isRtl ? 'text-left' : 'text-right'}>{t('admin.actions')}</span>
+   870→                    </div>
+   871→                    {reports.map((report) => (
+   872→                      <div
+   873→                        key={report.id}
+   874→                        className="grid grid-cols-[1fr_120px_120px_140px] items-center gap-3 px-6 py-3 transition-colors hover:bg-muted/20"
+   875→                      >
+   876→                        <div className="min-w-0">
+   877→                          <p className="truncate text-sm font-medium text-foreground">
+   878→                            {report.listing?.title ?? report.target_id}
+   879→                          </p>
+   880→                          <p className="text-xs text-muted-foreground">{report.target_type}</p>
+   881→                        </div>
+   882→                        <Badge variant="outline" className="w-fit text-xs">
+   883→                          {getReasonDisplay(report.reason, t)}
+   884→                        </Badge>
+   885→                        <span className="truncate text-xs text-muted-foreground">
+   886→                          {report.reporter?.display_name ?? '—'}
+   887→                        </span>
+   888→                        <div className={`flex items-center gap-1 ${isRtl ? 'justify-start' : 'justify-end'}`}>
+   889→                          <Button
+   890→                            variant="ghost"
+   891→                            size="sm"
+   892→                            className="h-7 gap-1 text-xs text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+   893→                            onClick={() => handleReportAction(report.id, 'resolve')}
+   894→                          >
+   895→                            <UserCheck className="size-3" />
+   896→                            {t('admin.resolve')}
+   897→                          </Button>
+   898→                          <Button
+   899→                            variant="ghost"
+   900→                            size="sm"
+   901→                            className="h-7 gap-1 text-xs text-muted-foreground hover:bg-muted"
+   902→                            onClick={() => handleReportAction(report.id, 'dismiss')}
+   903→                          >
+   904→                            <X className="size-3" />
+   905→                            {t('admin.dismiss')}
+   906→                          </Button>
+   907→                        </div>
+   908→                      </div>
+   909→                    ))}
+   910→                  </div>
+   911→                  <div className="divide-y sm:hidden">
+   912→                    {reports.map((report) => (
+   913→                      <div key={report.id} className="space-y-2 px-4 py-3">
+   914→                        <div className="flex items-start justify-between gap-2">
+   915→                          <p className="truncate text-sm font-medium text-foreground">
+   916→                            {report.listing?.title ?? report.target_id}
+   917→                          </p>
+   918→                          <Badge variant="outline" className="shrink-0 text-xs">
+   919→                            {getReasonDisplay(report.reason, t)}
+   920→                          </Badge>
+   921→                        </div>
+   922→                        <p className="text-xs text-muted-foreground">
+   923→                          {t('admin.reporter')}: {report.reporter?.display_name ?? '—'}
+   924→                        </p>
+   925→                        {report.description && (
+   926→                          <p className="text-xs text-muted-foreground/80 italic">{report.description}</p>
+   927→                        )}
+   928→                        <div className="flex items-center gap-1 pt-1">
+   929→                          <Button
+   930→                            variant="outline"
+   931→                            size="sm"
+   932→                            className="h-7 gap-1 text-xs text-emerald-600"
+   933→                            onClick={() => handleReportAction(report.id, 'resolve')}
+   934→                          >
+   935→                            <UserCheck className="size-3" />{t('admin.resolve')}
+   936→                          </Button>
+   937→                          <Button
+   938→                            variant="outline"
+   939→                            size="sm"
+   940→                            className="h-7 gap-1 text-xs"
+   941→                            onClick={() => handleReportAction(report.id, 'dismiss')}
+   942→                          >
+   943→                            <X className="size-3" />{t('admin.dismiss')}
+   944→                          </Button>
+   945→                        </div>
+   946→                      </div>
+   947→                    ))}
+   948→                  </div>
+   949→                </div>
+   950→              )}
+   951→            </CardContent>
+   952→          </Card>
+   953→        </TabsContent>
+   954→
+   955→        {/* ======================== AUDIT TAB ======================== */}
+   956→        <TabsContent value="audit">
+   957→          <Card>
+   958→            <CardHeader className="bg-[#0f2b46] px-4 py-3 sm:px-6 sm:py-4">
+   959→              <CardTitle className="text-base font-semibold text-white sm:text-lg">
+   960→                {t('audit.title')}
+   961→              </CardTitle>
+   962→            </CardHeader>
+   963→            <CardContent className="p-0">
+   964→              {auditLoading ? (
+   965→                <div className="divide-y">
+   966→                  {Array.from({ length: 5 }).map((_, i) => (
+   967→                    <div key={i} className="flex items-center gap-4 px-4 py-3 sm:px-6">
+   968→                      <Skeleton className="h-4 w-32" />
+   969→                      <Skeleton className="h-4 w-24" />
+   970→                      <Skeleton className="ms-auto h-4 w-28" />
+   971→                      <Skeleton className="h-4 w-20" />
+   972→                    </div>
+   973→                  ))}
+   974→                </div>
+   975→              ) : auditLogs.length === 0 ? (
+   976→                <div className="px-4 py-12 text-center sm:px-6">
+   977→                  <ClipboardList className="mx-auto mb-3 size-10 text-muted-foreground/40" />
+   978→                  <p className="text-sm text-muted-foreground">{t('admin.no_audit_logs')}</p>
+   979→                </div>
+   980→              ) : (
+   981→                <div className="max-h-[32rem] overflow-y-auto">
+   982→                  {/* Desktop table */}
+   983→                  <div className="hidden divide-y sm:block">
+   984→                    <div className="grid grid-cols-[1fr_140px_120px_140px_100px] gap-4 border-b bg-muted/30 px-6 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+   985→                      <span>{t('audit.actor')}</span>
+   986→                      <span>{t('audit.action')}</span>
+   987→                      <span>{t('audit.resource')}</span>
+   988→                      <span>{t('audit.ip')}</span>
+   989→                      <span>{t('admin.created_at')}</span>
+   990→                    </div>
+   991→                    {auditLogs.map((log) => (
+   992→                      <div
+   993→                        key={log.id}
+   994→                        className="grid grid-cols-[1fr_140px_120px_140px_100px] items-center gap-4 px-6 py-3 transition-colors hover:bg-muted/20"
+   995→                      >
+   996→                        <span className="truncate text-sm font-medium text-foreground">
+   997→                          {log.actor?.display_name || '—'}
+   998→                        </span>
+   999→                        <span className="text-sm text-muted-foreground">{log.action}</span>
+  1000→                        <span className="truncate text-sm text-muted-foreground">
+  1001→                          {log.resource_type}{log.resource_id ? ` / ${log.resource_id.slice(0, 8)}…` : ''}
+  1002→                        </span>
+  1003→                        <span className="text-xs font-mono text-muted-foreground">
+  1004→                          {log.ip_address || '—'}
+  1005→                        </span>
+  1006→                        <span className="text-sm text-muted-foreground">
+  1007→                          {formatDate(log.created_at, locale)}
+  1008→                        </span>
+  1009→                      </div>
+  1010→                    ))}
+  1011→                  </div>
+  1012→                  {/* Mobile cards */}
+  1013→                  <div className="divide-y sm:hidden">
+  1014→                    {auditLogs.map((log) => (
+  1015→                      <div key={log.id} className="space-y-1 px-4 py-3">
+  1016→                        <div className="flex items-center justify-between">
+  1017→                          <span className="truncate text-sm font-medium text-foreground">
+  1018→                            {log.actor?.display_name || '—'}
+  1019→                          </span>
+  1020→                          <span className="shrink-0 text-xs text-muted-foreground">
+  1021→                            {formatDate(log.created_at, locale)}
+  1022→                          </span>
+  1023→                        </div>
+  1024→                        <p className="text-xs text-muted-foreground">
+  1025→                          {t('audit.action')}: {log.action}
+  1026→                        </p>
+  1027→                        <p className="text-xs text-muted-foreground">
+  1028→                          {t('audit.resource')}: {log.resource_type}
+  1029→                        </p>
+  1030→                        {log.ip_address && (
+  1031→                          <p className="text-xs font-mono text-muted-foreground/70">
+  1032→                            {t('audit.ip')}: {log.ip_address}
+  1033→                          </p>
+  1034→                        )}
+  1035→                      </div>
+  1036→                    ))}
+  1037→                  </div>
+  1038→                </div>
+  1039→              )}
+  1040→            </CardContent>
+  1041→          </Card>
+  1042→        </TabsContent>
+  1043→
+  1044→        {/* ======================== SETTINGS TAB ======================== */}
+  1045→        <TabsContent value="settings">
+  1046→          {/* Health Status Card */}
+  1047→          <Card className="mb-6">
+  1048→            <CardHeader className="bg-[#0f2b46] px-4 py-3 sm:px-6 sm:py-4">
+  1049→              <div className="flex items-center gap-2">
+  1050→                <HeartPulse className="size-5 text-white" />
+  1051→                <CardTitle className="text-base font-semibold text-white sm:text-lg">
+  1052→                  {t('admin.health_status')}
+  1053→                </CardTitle>
+  1054→              </div>
+  1055→            </CardHeader>
+  1056→            <CardContent className="p-4 sm:p-6">
+  1057→              {healthLoading ? (
+  1058→                <div className="flex gap-6">
+  1059→                  {Array.from({ length: 4 }).map((_, i) => (
+  1060→                    <Skeleton key={i} className="h-20 flex-1 rounded-lg" />
+  1061→                  ))}
+  1062→                </div>
+  1063→              ) : healthData ? (
+  1064→                <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+  1065→                  {/* Status */}
+  1066→                  <div className="flex flex-col items-center justify-center rounded-lg border p-3">
+  1067→                    <span
+  1068→                      className={`mb-1 text-sm font-bold ${healthData.status === 'healthy' ? 'text-emerald-600' : healthData.status === 'degraded' ? 'text-amber-600' : 'text-red-600'}`}
+  1069→                    >
+  1070→                      {t(`admin.health_${healthData.status}`)}
+  1071→                    </span>
+  1072→                    <span className="text-xs text-muted-foreground">Status</span>
+  1073→                  </div>
+  1074→                  {/* Database */}
+  1075→                  <div className="flex flex-col items-center justify-center rounded-lg border p-3">
+  1076→                    <Check className={`mb-1 size-5 ${healthData.checks.database ? 'text-emerald-600' : 'text-red-600'}`} />
+  1077→                    <span className="text-xs text-muted-foreground">{t('admin.health_database')}</span>
+  1078→                  </div>
+  1079→                  {/* Storage */}
+  1080→                  <div className="flex flex-col items-center justify-center rounded-lg border p-3">
+  1081→                    <Check className={`mb-1 size-5 ${healthData.checks.storage ? 'text-emerald-600' : 'text-red-600'}`} />
+  1082→                    <span className="text-xs text-muted-foreground">{t('admin.health_storage')}</span>
+  1083→                  </div>
+  1084→                  {/* Auth */}
+  1085→                  <div className="flex flex-col items-center justify-center rounded-lg border p-3">
+  1086→                    <Check className={`mb-1 size-5 ${healthData.checks.auth ? 'text-emerald-600' : 'text-red-600'}`} />
+  1087→                    <span className="text-xs text-muted-foreground">{t('admin.health_auth')}</span>
+  1088→                  </div>
+  1089→                  {/* Uptime */}
+  1090→                  <div className="col-span-2 flex flex-col items-center justify-center rounded-lg border p-3 lg:col-span-1">
+  1091→                    <span className="mb-1 text-sm font-semibold text-foreground">
+  1092→                      {Math.floor(healthData.uptime / 3600)}h {Math.floor((healthData.uptime % 3600) / 60)}m
+  1093→                    </span>
+  1094→                    <span className="text-xs text-muted-foreground">{t('admin.health_uptime')}</span>
+  1095→                  </div>
+  1096→                </div>
+  1097→              ) : null}
+  1098→            </CardContent>
+  1099→          </Card>
+  1100→
+  1101→          {/* Settings Table */}
+  1102→          <Card>
+  1103→            <CardHeader className="bg-[#0f2b46] px-4 py-3 sm:px-6 sm:py-4">
+  1104→              <CardTitle className="text-base font-semibold text-white sm:text-lg">
+  1105→                {t('admin.settings_tab')}
+  1106→              </CardTitle>
+  1107→            </CardHeader>
+  1108→            <CardContent className="p-0">
+  1109→              {settingsLoading ? (
+  1110→                <div className="divide-y">
+  1111→                  {Array.from({ length: 6 }).map((_, i) => (
+  1112→                    <div key={i} className="flex items-center gap-4 px-4 py-3 sm:px-6">
+  1113→                      <Skeleton className="h-4 w-36" />
+  1114→                      <Skeleton className="h-4 w-24" />
+  1115→                      <Skeleton className="ms-auto h-8 w-20" />
+  1116→                    </div>
+  1117→                  ))}
+  1118→                </div>
+  1119→              ) : settings.length === 0 ? (
+  1120→                <div className="px-4 py-12 text-center sm:px-6">
+  1121→                  <SettingsIcon className="mx-auto mb-3 size-10 text-muted-foreground/40" />
+  1122→                  <p className="text-sm text-muted-foreground">{t('admin.no_settings')}</p>
+  1123→                </div>
+  1124→              ) : (
+  1125→                <div className="max-h-[500px] overflow-y-auto">
+  1126→                  {/* Desktop table */}
+  1127→                  <div className="hidden divide-y sm:block">
+  1128→                    <div className="grid grid-cols-[160px_1fr_100px_1fr_100px] gap-3 border-b bg-muted/30 px-6 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+  1129→                      <span>{t('admin.setting_key')}</span>
+  1130→                      <span>{t('admin.setting_value')}</span>
+  1131→                      <span>{t('admin.setting_type')}</span>
+  1132→                      <span>{t('admin.setting_description')}</span>
+  1133→                      <span className={isRtl ? 'text-left' : 'text-right'}>{t('admin.actions')}</span>
+  1134→                    </div>
+  1135→                    {settings.map((setting) => (
+  1136→                      <div
+  1137→                        key={setting.id}
+  1138→                        className="grid grid-cols-[160px_1fr_100px_1fr_100px] items-center gap-3 px-6 py-3 transition-colors hover:bg-muted/20"
+  1139→                      >
+  1140→                        <span className="truncate text-sm font-mono font-medium text-foreground">{setting.key}</span>
+  1141→                        {editingKey === setting.key ? (
+  1142→                          <div className="flex items-center gap-2">
+  1143→                            {setting.value_type === 'boolean' ? (
+  1144→                              <Switch
+  1145→                                checked={editValue === 'true'}
+  1146→                                onCheckedChange={(checked) => setEditValue(String(checked))}
+  1147→                              />
+  1148→                            ) : setting.value_type === 'json' ? (
+  1149→                              <Textarea
+  1150→                                className="min-h-[60px] text-sm"
+  1151→                                value={editValue}
+  1152→                                onChange={(e) => setEditValue(e.target.value)}
+  1153→                              />
+  1154→                            ) : (
+  1155→                              <Input
+  1156→                                type={setting.value_type === 'number' ? 'number' : 'text'}
+  1157→                                className="h-8 text-sm"
+  1158→                                value={editValue}
+  1159→                                onChange={(e) => setEditValue(e.target.value)}
+  1160→                                onKeyDown={(e) => {
+  1161→                                  if (e.key === 'Enter') handleSaveSetting(setting.key, editValue);
+  1162→                                }}
+  1163→                              />
+  1164→                            )}
+  1165→                          </div>
+  1166→                        ) : (
+  1167→                          <span className="truncate text-sm text-muted-foreground">{setting.value}</span>
+  1168→                        )}
+  1169→                        <Badge variant="outline" className="w-fit text-xs">{setting.value_type}</Badge>
+  1170→                        <span className="truncate text-xs text-muted-foreground">{setting.description ?? '—'}</span>
+  1171→                        <div className={`flex items-center gap-1 ${isRtl ? 'justify-start' : 'justify-end'}`}>
+  1172→                          {editingKey === setting.key ? (
+  1173→                            <>
+  1174→                              <Button
+  1175→                                variant="ghost"
+  1176→                                size="sm"
+  1177→                                className="h-7 gap-1 text-xs text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+  1178→                                disabled={savingKey === setting.key}
+  1179→                                onClick={() => handleSaveSetting(setting.key, editValue)}
+  1180→                              >
+  1181→                                {savingKey === setting.key ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
+  1182→                                {t('common.save')}
+  1183→                              </Button>
+  1184→                              <Button
+  1185→                                variant="ghost"
+  1186→                                size="sm"
+  1187→                                className="h-7 gap-1 text-xs text-muted-foreground hover:bg-muted"
+  1188→                                onClick={() => setEditingKey(null)}
+  1189→                              >
+  1190→                                <X className="size-3" />
+  1191→                              </Button>
+  1192→                            </>
+  1193→                          ) : (
+  1194→                            <Button
+  1195→                              variant="ghost"
+  1196→                              size="sm"
+  1197→                              className="h-7 gap-1 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+  1198→                              onClick={() => { setEditingKey(setting.key); setEditValue(setting.value); }}
+  1199→                            >
+  1200→                              {t('admin.edit')}
+  1201→                            </Button>
+  1202→                          )}
+  1203→                        </div>
+  1204→                      </div>
+  1205→                    ))}
+  1206→                  </div>
+  1207→                  {/* Mobile cards */}
+  1208→                  <div className="divide-y sm:hidden">
+  1209→                    {settings.map((setting) => (
+  1210→                      <div key={setting.id} className="space-y-2 px-4 py-3">
+  1211→                        <div className="flex items-center justify-between gap-2">
+  1212→                          <span className="truncate text-sm font-mono font-medium text-foreground">{setting.key}</span>
+  1213→                          <Badge variant="outline" className="shrink-0 text-xs">{setting.value_type}</Badge>
+  1214→                        </div>
+  1215→                        <p className="text-xs text-muted-foreground">{setting.description ?? ''}</p>
+  1216→                        {editingKey === setting.key ? (
+  1217→                          <div className="space-y-2">
+  1218→                            {setting.value_type === 'boolean' ? (
+  1219→                              <div className="flex items-center gap-2">
+  1220→                                <Switch
+  1221→                                  checked={editValue === 'true'}
+  1222→                                  onCheckedChange={(checked) => setEditValue(String(checked))}
+  1223→                                />
+  1224→                                <span className="text-sm text-muted-foreground">{editValue}</span>
+  1225→                              </div>
+  1226→                            ) : setting.value_type === 'json' ? (
+  1227→                              <Textarea
+  1228→                                className="min-h-[60px] text-sm"
+  1229→                                value={editValue}
+  1230→                                onChange={(e) => setEditValue(e.target.value)}
+  1231→                              />
+  1232→                            ) : (
+  1233→                              <Input
+  1234→                                type={setting.value_type === 'number' ? 'number' : 'text'}
+  1235→                                className="h-8 text-sm"
+  1236→                                value={editValue}
+  1237→                                onChange={(e) => setEditValue(e.target.value)}
+  1238→                              />
+  1239→                            )}
+  1240→                            <div className="flex items-center gap-1 pt-1">
+  1241→                              <Button
+  1242→                                variant="outline"
+  1243→                                size="sm"
+  1244→                                className="h-7 gap-1 text-xs text-emerald-600"
+  1245→                                disabled={savingKey === setting.key}
+  1246→                                onClick={() => handleSaveSetting(setting.key, editValue)}
+  1247→                              >
+  1248→                                {savingKey === setting.key ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
+  1249→                                {t('common.save')}
+  1250→                              </Button>
+  1251→                              <Button
+  1252→                                variant="outline"
+  1253→                                size="sm"
+  1254→                                className="h-7 gap-1 text-xs"
+  1255→                                onClick={() => setEditingKey(null)}
+  1256→                              >
+  1257→                                <X className="size-3" />
+  1258→                              </Button>
+  1259→                            </div>
+  1260→                          </div>
+  1261→                        ) : (
+  1262→                          <div className="flex items-center justify-between">
+  1263→                            <span className="truncate text-sm text-foreground">{setting.value}</span>
+  1264→                            <Button
+  1265→                              variant="outline"
+  1266→                              size="sm"
+  1267→                              className="h-7 gap-1 text-xs text-blue-600"
+  1268→                              onClick={() => { setEditingKey(setting.key); setEditValue(setting.value); }}
+  1269→                            >
+  1270→                              {t('admin.edit')}
+  1271→                            </Button>
+  1272→                          </div>
+  1273→                        )}
+  1274→                      </div>
+  1275→                    ))}
+  1276→                  </div>
+  1277→                </div>
+  1278→              )}
+  1279→            </CardContent>
+  1280→          </Card>
+  1281→        </TabsContent>
+  1282→
+  1283→        {/* ======================== CATEGORY FIELDS TAB ======================== */}
+  1284→        <TabsContent value="category-fields">
+  1285→          <AdminCategoryFields />
+  1286→        </TabsContent>
+  1287→      </Tabs>
+  1288→    </div>
+  1289→  );
+  1290→}
+  1291→

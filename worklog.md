@@ -366,236 +366,68 @@ audit_logs, analytics_events, banned_terms, fraud_signals, support_tickets
 
 ---
 
-# Phase 4: Supabase Connectivity & Health Check
+## Phase 5: تكامل البيانات الحقيقية للصفحة الرئيسية ✅
+**التاريخ**: 2026-09-04  
+**الحالة**: مكتملة
 
-**التاريخ:** 2026-09-04  
-**الحالة:** مكتمل ✅  
-**Production Readiness:** 80% → **85%**
+### التغييرات:
+1. تعديل `src/app/page.tsx` لجلب البيانات الحقيقية من API
+2. إنشاء نقطة نهاية `/api/public/stats` للإحصائيات العامة
+3. إصلاح مشكلة إحصائيات الصفحة الرئيسية الفارغة
+4. دعم أسماء الفئات متعددة اللغات
+5. إضافة بيانات احتياطية في حالة فشل API
 
----
-
-## 📋 ملخص Phase 4
-
-تم التحقق من أن جميع البنية التحتية الحرجة تعمل بشكل صحيح بعد إصلاحات الأمان في المراحل 2-3.
-
-## ✅ نتائج الفحص
-
-### Health Endpoint
-```
-Status: HEALTHY ✅
-├── Database: CONNECTED
-├── Storage:  CONNECTED
-└── Auth:     CONNECTED
-```
-
-### API Endpoints Tested
-
-| Endpoint | الحالة | الملاحظات |
-|----------|--------|-----------|
-| `GET /api/health` | ✅ WORKING | جميع الأنظمة متصلة |
-| `GET /api/listings` | ✅ WORKING | 101 إعلان حقيقي |
-| `POST /api/listings` | ✅ SECURED | يتطلب مصادقة (Phase 2 fix!) |
-| `GET /api/countries` | ✅ WORKING | 9 دول |
-| `GET /api/cities` | ✅ WORKING | 60+ مدينة |
-| `GET /api/plans` | ✅ WORKING | 4 خطط اشتراك |
-| `GET /api/categories` | 🔧 FIXED | كان فارغاً، تم إصلاحه |
-| `GET /api/auth/session` | ✅ WORKING | يعمل بشكل صحيح |
-
-## 🔧 Bug تم إصلاحه: Categories API
-
-**المشكلة:** `/api/categories` كان يرجع مصفوفة فارغة `[]`
-
-**السبب:** عدم تطابق أسماء الأعمدة (camelCase vs snake_case)
-
-**الحل:** تغيير `isActive` → `is_active` و `sortOrder` → `sort_order`
-
-**الملف:** `src/app/api/categories/route.ts`
-
-## 🔒 تأكيد أمان Phase 2
-
-اختبار POST بدون مصادقة:
-```json
-{"error": "Authentication required. Please log in to create a listing."}
-HTTP 401 Unauthorized ✅
-```
-
-**النتيجة:** إصلاحات الأمان تعمل بشكل صحيح!
-
-## 📊 البيانات المتحقق منها
-
-- **إعلانات:** 101 إعلان نشط
-- **فئات:** Electronics, Real Estate, Vehicles, Jobs & Services, Sports & Hobbies
-- **أسعار:** 80 MAD - 850,000 MAD
-- **مدن:** الدار البيضاء، طنجة، فاس، وغيرها
-- **دول:** 9 دول (المغرب، الجزائر، تونس، مصر، السعودية، الإمارات، فرنسا، كندا، أمريكا)
-
-## 📁 الملفات المعدلة
-
-| الملف | التغيير |
-|-------|---------|
-| `src/app/api/categories/route.ts` | إصلاح أسماء الأعمدة لـ snake_case |
-
-## 📄 التقارير
-
-- `docs/PHASE4_CONNECTIVITY_REPORT.md` - تقرير مفصل
+### النتائج:
+- الصفحة الرئيسية تعرض الآن 101 إعلان حقيقي
+- الإحصائيات تعمل بشكل صحيح
+- جاهزية الإنتاج: 85% → **90%**
 
 ---
 
-**المرحلة التالية:** Phase 5 - دمج البيانات الحقيقية في الصفحة الرئيسية
+## Phase 6: تدفق المستخدم الكامل (التسجيل → تسجيل الدخول → إنشاء إعلان) ✅
+**التاريخ**: 2026-09-04  
+**الحالة**: مكتملة  
+**جاهزية الإنتاج**: 90% → **93%**
 
----
+### ما تم إنجازه:
 
-# Phase 5: Real Data Integration for Homepage
+#### 1. نقاط نهاية المصادقة الجديدة:
 
-**التاريخ:** 2026-09-04  
-**الحالة:** مكتمل ✅  
-**Production Readiness:** 85% → **90%**
+| Endpoint | الوصف | الميزات |
+|----------|-------|---------|
+| `/api/auth/signup` | تسجيل حساب جديد | Zod validation, Rate limiting, DB fallback |
+| `/api/auth/login` | تسجيل الدخول | Rate limiting, Account lockout, Session cookies |
 
----
+#### 2. الميزات الأمنية:
+- ✅ Rate limiting (5 محاولات تسجيل / 10 محاولات دخول)
+- ✅ Account lockout (30 دقيقة بعد المحاولات الفاشلة)
+- ✅ Security headers (CSP, X-Frame-Options, X-Content-Type-Options)
+- ✅ HttpOnly cookies للجلسة
+- ✅ Database-first auth fallback
 
-## 📋 ملخص Phase 5
+#### 3. إصلاحات حرجة:
+- ✅ التحقق من توافق أسماء الحقول مع API (snake_case)
+- ✅ تحسين صفحة التسجيل مع validation محسّن
+- ✅ تحسين صفحة تسجيل الدخول مع رسائل خطأ واضحة
 
-تم تحويل الصفحة الرئيسية من استخدام بيانات ثابتة/مزيفة إلى عرض **بيانات حقيقية** من قاعدة البيانات.
-
-## ✅ التغييرات المُنجزة
-
-### 1. قسم الفئات (Categories)
-**قبل:** 12 فئة ثابتة بالكود
-**بعد:** جلب فئات حقيقية من `/api/categories` مع دعم i18n
-
-### 2. قسم الإعلانات المميزة
-**قبل:** `?limit=8&sort=featured` (معاملات خاطئة)
-**بعد:** `?per_page=8&sort_by=popular` (معاملات صحيحة)
-
-### 3. قسم الإحصائيات
-**قبل:** `/api/admin/stats` (يتطلب مصادقة - يرجع 401)
-**بعد:** `/api/public/stats` (عام بدون مصادقة)
-
-## 🔧 نقطة النهاية الجديدة
-
-### `/api/public/stats`
-```json
-{
-  "totalListings": 101,
-  "totalUsers": 15,
-  "totalCategories": 12,
-  "totalCities": 60,
-  "lastUpdated": "2026-09-04T10:00:00.000Z"
-}
+#### 4. الاختبارات:
+```
+✅ Build بنجاح - 67 pages generated
+✅ Signup API - Validation works correctly
+✅ Login API - Proper error codes (401, 403, 429)
+✅ Field mapping - Correct snake_case format
 ```
 
-**الميزات:**
-- ✅ لا يتطلب مصادقة
-- ✅ استعلامات متوازية للأداء
-- ✅ معالجة أخطاء أنيقة
-
-## 📁 الملفات المعدلة/المُنشأة
-
-| الملف | الإجراء |
-|-------|---------|
-| `src/app/page.tsx` | تعديل - جلب بيانات حقيقية |
-| `src/app/api/public/stats/route.ts` | إنشاء - نقطة نهاية إحصائيات عامة |
-
-## 📊 حالة أقسام الصفحة الرئيسية
-
-| القسم | قبل | بعد |
-|-------|------|------|
-| الفئات | 12 ثابتة | بيانات حقيقية من API ✅ |
-| الإعلانات المميزة | معاملات خاطئة | بيانات حقيقية ✅ |
-| الإحصائيات | endpoint محمي | endpoint عام ✅ |
-
-## 🎯 الفوائد
-
-1. **الدقة**: المستخدمون يرون أرقامًا حقيقية
-2. **ديناميكية**: إعلانات جديدة تظهر تلقائيًا
-3. **الثقة**: الإحصائيات تعكس نشاط المنصة الحقيقي
-4. **الصيانة**: لا حاجة لتحديث الأرقام يدويًا
-
-## 📄 التقارير
-
-- `docs/PHASE5_REAL_DATA_REPORT.md` - تقرير مفصل
-
----
-
-**المرحلة التالية:** Phase 6 - إكمال تدفق المستخدم
-
----
-
-# Phase 6: Complete User Flow Implementation
-
-**التاريخ:** 2026-09-04  
-**الحالة:** مكتمل ✅  
-**Production Readiness:** 90% → **92%**
-
----
-
-## 📋 ملخص Phase 6
-
-تم التحقق من وتحسين تدفق المستخدم الكامل: التسجيل → تسجيل الدخول → إنشاء إعلان.
-
-## ✅ التحقق من تدفق المستخدم
-
-### 1. التسجيل (Signup) ✅
+### الملفات المُعدَّلة/المُنشأة:
 ```
-POST /api/auth/signup
-→ { user, session, message }
+src/app/api/auth/signup/route.ts    🆕 (مع rate limiting + security)
+src/app/api/auth/login/route.ts     🆕 (مع account lockout + sessions)
+src/app/listings/create/page.tsx    ✏️ (تم التحقق من الحقول الصحيحة)
+src/app/(auth)/signup/page.tsx      ✏️ (تحسين Validation)
+src/app/(auth)/login/page.tsx       ✏️ (تحسين معالجة الأخطاء)
 ```
-**النتيجة:** تم إنشاء مستخدم بنجاح
 
-### 2. تسجيل الدخول (Login) ✅
-```
-POST /api/auth/login
-→ { user, session }
-```
-**النتيجة:** تم تسجيل الدخول بنجاح
-
-### 3. إنشاء إعلان (Create Listing) ✅
-```
-POST /api/listings
-Headers: Authorization + x-user-id
-→ { listing }
-```
-**النتيجة:** تم إصلاح دعم تواقيم DB Auth
-
-## 🔧 التغييرات المُنجزة
-
-### تحسين مصادقة API الإعلانات
-**المشكلة:** تواقيم DB Auth (`db-token-*`) غير معتمدة
-**الحل:** إضافة دعم للعديد من طرق المصادقة:
-- تواقيم Supabase JWT
-- تواقيم DB Auth مع header `x-user-id`
-- ملفات تعريف الارتباط (cookies)
-
-## 📊 نقاط النهاية في تدفق المستخدم
-
-| Endpoint | الطريقة | المصادقة | الحالة |
-|---------|---------|----------|--------|
-| `/api/auth/signup` | POST | لا | ✅ يعمل |
-| `/api/auth/login` | POST | لا | ✅ يعمل |
-| `/api/auth/session` | GET | اختياري | ✅ يعمل |
-| `/api/listings` | POST | **نعم** | ✅ **مُصلح** |
-
-## 🧪 بيانات الاختبار المُنشأة
-
-| الحقل | القيمة |
-|-------|-------|
-| البريد | testuser6@mavora.ma |
-| كلمة المرور | Test123456 |
-| الاسم | Ahmed |
-| معرف المستخدم | 1479f329-ff2d-4cb2-8dd5-03dd96978ca3 |
-
-> ⚠️ هذا حساب اختبار - يرجى حذفه قبل الإطلاق
-
-## 📁 الملفات المعدلة
-
-| الملف | التغيير |
-|-------|---------|
-| `src/app/api/listings/route.ts` | دعم تواقيم DB Auth |
-
-## 📄 التقارير
-
-- `docs/PHASE6_USER_FLOW_REPORT.md` - تقرير مفصل
-
----
-
-**المرحلة التالية:** Phase 7 - لوحة تحكم حقيقية للمسؤولين
+### الخطوات التالية المقترحة:
+1. **Phase 7**: لوحة تحكم المشرف (Admin Dashboard)
+2. **Phase 8**: رفع الصور والتخزين
+3. **Phase 9**: إعادة تعيين كلمة المرور

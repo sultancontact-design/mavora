@@ -1,0 +1,31 @@
+# ===========================================
+# Mavora - Docker Compose Override (Development)
+# Run with: docker-compose up
+# This file automatically overrides docker-compose.yml
+# ===========================================
+
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: mavora-app-dev
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - REDIS_URL=redis://redis:6379
+    command: npm run dev
+    ports:
+      - "3000:3000"
+    stdin_open: true
+    tty: true
+
+  redis:
+    ports:
+      - "6379:6379"

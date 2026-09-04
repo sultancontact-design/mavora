@@ -1,0 +1,63 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js
+.next/
+out/
+
+# Build files
+dist/
+build/
+
+# Environment (use env_file instead)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Git
+.git
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+.nyc_output/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.docker/
+
+# Documentation
+*.md
+docs/
+
+# Scripts (not needed in container)
+scripts/
+.secrets/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+.cache/
+
+# PWA icons generation
+public/icons/generated/

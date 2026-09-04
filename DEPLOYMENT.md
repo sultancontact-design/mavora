@@ -1,189 +1,139 @@
-# 🚀 Mavora - دليل النشر الكامل | Deployment Guide
+# 🚀 Mavora - دليل النشر الإنتاجي
+# Production Deployment Guide
 
-## 📋 جدول المحتويات
+## 📋 جدول المحتويات | Table of Contents
 
-1. [المتطلبات الأساسية](#المتطلبات-الأساسية)
-2. [إعداد البيئة](#إعداد-البيئة)
-3. [النشر على Vercel](#النشر-على-vercel)
-4. [النشر على خادم مخصص](#النشر-على-خادم-مخصص)
-5. [إعداد قاعدة البيانات](#إعداد-قاعدة-البيانات)
-6. [إعداد Payment Providers](#إعداد-payment-providers)
-7. [إعداد Push Notifications](#إعداد-push-notifications)
-8. [التحقق من النشر](#التحقق-من-النشر)
-9. [الصيانة والمراقبة](#الصيانة-والمراقبة)
-10. [استكشاف الأخطاء وإصلاحها](#استكشاف-الأخطاء-وإصلاحها)
-
----
-
-## المتطلبات الأساسية
-
-### للتشغيل المحلي (Development):
-```bash
-# Required:
-- Node.js 18+ 
-- npm أو pnpm أو yarn
-- حساب Supabase مجاني
-
-# Optional:
-- Git
-- Docker (للتشغيل المعزول)
-```
-
-### للإنتاج (Production):
-```bash
-# Required:
-- Node.js 18+ runtime
-- PostgreSQL database (Supabase أو مستقل)
-- Redis (اختياري لكن موصى به)
-- SSL Certificate (HTTPS)
-- Domain name
-
-# Recommended:
-- CDN (Cloudflare, CloudFront)
-- Object Storage (S3, Supabase Storage)
-- Monitoring service (Sentry, DataDog)
-```
+1. [المتطلبات المسبقة](#-المتطلبات-المسبقة)
+2. [الإعداد على Vercel (موصى به)](#-الإعداد-على-vercel-موصى-به)
+3. [الإعداد على خادم خاص (Docker)](#-الإعداد-على-خادم-خاص-docker)
+4. [إعداد Supabase](#-إعداد-supabase)
+5. [إعداد PayPal](#-إعداد-paypal)
+6. [إعداد Payoneer](#-إعداد-payoneer)
+7. [إعداد المصادقة الثنائية (2FA)](#-إعداد-المصادقة-الثنائية-2fa)
+8. [التحقق من النشر](#-التحقق-من-النشر)
+9. [استكشاف الأخطاء](#-استكشاف-الأخطاء)
 
 ---
 
-## إعداد البيئة
+## ✅ المتطلبات المسبقة
 
-### 1. استنساخ المشروع:
-```bash
-git clone https://github.com/your-org/mavora.git
-cd mavora
-```
-
-### 2. تثبيت الاعتماديات:
-```bash
-npm install
-# أو
-pnpm install
-# أو
-yarn install
-```
-
-### 3. إعداد متغيرات البيئة:
-```bash
-# نسخ القالب
-cp .env.example .env
-
-# تعديل الملف
-nano .env  # أو استخدام محرر آخر
-```
-
-### 4. إعداد قاعدة البيانات:
-```bash
-# تشغيل الترحيلات
-npm run db:push
-
-# أو باستخدام Prisma
-npx prisma migrate deploy
-
-# بذر البيانات الأولية
-npm run db:seed
-```
+### قبل البدء، تأكد من توفر:
+- [ ] حساب على [Vercel](https://vercel.com) أو خادم مع Docker
+- [ ] مشروع على [Supabase](https://supabase.com) (الخطة المجانية كافية للبداية)
+- [ ] حساب مطور PayPal (للدفع)
+- [ ] حساب Payoneer (للتحويلات المالية في المغرب)
+- [ ] نطاق خاص (مثلاً: `mavora.ma`)
+- [ ] حساب Cloudflare (اختياري - للـ CDN و DNS)
 
 ---
 
-## النشر على Vercel (الأسهل)
+## 🌐 الإعداد على Vercel (موصى به)
 
-### الخطوة 1: ربط المستودع:
+Vercel هو الخيار الأفضل لتطبيقات Next.js لأنه:
+- بناء تلقائي عند كل push إلى GitHub
+- SSL مجاني
+- CDN عالمي
+- Edge Functions سريعة
 
-1. اذهب إلى [vercel.com](https://vercel.com)
-2. سجل دخولك (أو أنشئ حساب)
-3. اضغط **"Add New"** → **"Project"**
-4. اختر مستودع GitHub الخاص بك
-4. اختر مشروع `mavora`
+### الخطوة 1: ربط المستودع
 
-### الخطوة 2: إعدادات البناء:
-
-```yaml
-# vercel.json (موجود بالفعل في المشروع)
-{
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "framework": "nextjs",
-  "installCommand": "npm install"
-}
+```bash
+# 1. ادفع الكود إلى GitHub
+git init
+git add .
+git commit -m "Initial commit: Mavora Marketplace"
+git remote add origin https://github.com/YOUR_USERNAME/mavora.git
+git push -u origin main
 ```
 
-### الخطوة 3: إضافة Environment Variables:
+### الخطوة 2: إعداد المشروع على Vercel
+
+1. اذهب إلى [vercel.com/new](https://vercel.com/new)
+2. استورد مستودع GitHub الخاص بك
+3. اعدادات البناء:
+   - **Framework Preset**: Next.js
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `.next`
+   - **Install Command**: `npm install`
+
+### الخطوة 3: إضافة متغيرات البيئة
 
 في Vercel Dashboard → Settings → Environment Variables:
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase Project URL | `https://xxx.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Anon Key | `eyJ...` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service Role Key (Secret) | `eyJ...` |
-| `PAYPAL_CLIENT_ID` | PayPal Client ID | `AXxxxxxx` |
-| `PAYPAL_CLIENT_SECRET` | PayPal Client Secret (Secret) | `ELxxxxxx` |
-| `NODE_ENV` | Environment | `production` |
-
-### الخطوة 4: النشر:
-
-```bash
-# نشر يدوي من CLI
-npm i -g vercel
-vercel --prod
-
-# أو تلقائي عند كل push إلى main
 ```
+NEXT_PUBLIC_APP_URL=https://mavora.ma
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+PAYPAL_MODE=sandbox
+PAYPAL_CLIENT_ID=your-paypal-client-id
+PAYPAL_CLIENT_SECRET=your-paypal-client-secret
+JWT_SECRET=generate-with-openssl-rand-base64-32
+```
+
+### الخطوة 4: إعداد النطاق
+
+1. في Project Settings → Domains
+2. أضف `mavora.ma`
+3. في مزود النطاق (مثل GoDaddy, Namecheap):
+   - أضف CNAME: `mavora.ma` → `cname.vercel-dns.com`
+   - أو A Record: `@` → `76.76.21.21`
 
 ---
 
-## النشر على خادم مخصص (VPS/Dedicated)
+## 🐳 الإعداد على خادم خاص (Docker)
 
-### الخيار A: استخدام Docker (موصى به)
+### Dockerfile
 
-#### 1. إنشاء Dockerfile:
 ```dockerfile
-# موجود بالفعل في المشروع
-FROM node:18-alpine AS base
+# Build stage
+FROM node:20-alpine AS builder
 
-# Dependencies stage
-FROM base AS deps
 WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm ci
 
-# Builder stage
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Copy package files
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy source code
 COPY . .
+
+# Build the application
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
+
 WORKDIR /app
 
 ENV NODE_ENV=production
 
+# Create non-root user
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# Copy built assets
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/.standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 
 EXPOSE 3000
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "server.js"]
 ```
 
-#### 2. إنشاء docker-compose.yml:
+### docker-compose.yml
+
 ```yaml
 version: '3.8'
 
 services:
-  mavora:
-    build: .
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     env_file:
@@ -195,7 +145,6 @@ services:
       timeout: 10s
       retries: 3
   
-  # Optional: Redis for caching
   redis:
     image: redis:7-alpine
     ports:
@@ -203,294 +152,346 @@ services:
     volumes:
       - redis_data:/data
     restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-mavora2024}
 
 volumes:
   redis_data:
 ```
 
-#### 3. التشغيل:
+### تشغيل على الخادم
+
 ```bash
-# بناء وتشغيل
+# 1. انسخ ملف البيئة
+cp .env.example .env
+# عدل .env بقيمك الحقيقية
+
+# 2. ابنِ وشغّل الحاويات
 docker-compose up -d --build
 
-# عرض السجلات
-docker-compose logs -f mavora
+# 3. تحقق من التشغيل
+docker-compose logs -f app
 
-# إيقاف
-docker-compose down
+# 4. إعداد Nginx (عكس الوكيل)
+sudo nano /etc/nginx/sites-available/mavora
 ```
 
-### الخيار B: تشغيل مباشر مع PM2:
+### إعداد Nginx
 
-#### 1. تثبيت PM2:
+```nginx
+server {
+    listen 80;
+    server_name mavora.ma www.mavora.ma;
+
+    # إعادة التوجيه إلى HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name mavora.ma www.mavora.ma;
+
+    # شهادة SSL (استخدم Let's Encrypt)
+    ssl_certificate /etc/letsencrypt/live/mavora.ma/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/mavora.ma/privkey.pem;
+
+    # إعدادات أمان
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        
+        # دعم RTL واللغة العربية
+        proxy_set_header Accept-Language ar;
+    }
+
+    # تخزين مؤقت للملفات الثابتة
+    location /_next/static {
+        proxy_pass http://localhost:3000;
+        expires 365d;
+        access_log off;
+    }
+}
+```
+
 ```bash
-npm install -g pm2
+# تفعيل الموقع وإعادة تشغيل Nginx
+sudo ln -s /etc/nginx/sites-available/mavora /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+
+# الحصول على شهادة SSL مجانية
+sudo certbot --nginx -d mavora.ma -d www.mavora.ma
 ```
 
-#### 2. إنشاء ملف ecosystem.config.js:
-```javascript
-module.exports = {
-  apps: [{
-    name: 'mavora',
-    script: 'node',
-    args: 'server.js',
-    cwd: './',
-    instances: 'max', // أو عدد محدد
-    exec_mode: 'cluster',
-    env: {
-      NODE_ENV: 'production',
-      PORT: 3000,
-    },
-    error_log: './logs/error.log',
-    out_log: './logs/out.log',
-    log_date_format: 'YYYY-MM-DD HH:mm:ss',
-    restart_delay: 4000,
-    max_restarts: 10,
-  }]
-};
-```
+---
 
-#### 3. التشغيل:
+## 🗄️ إعداد Supabase
+
+### 1. إنشاء مشروع جديد
+
+1. اذهب到 [supabase.com](https://supabase.com)
+2. أنشئ مشروعاً جديداً
+3 اختر المنطقة: `EU West Ireland` (الأقرب للمغرب)
+
+### 2. تشغيل ترحيل قاعدة البيانات
+
 ```bash
-# بناء المشروع
+# ثبّت CLI
+npm install -g supabase
+
+# سجّل الدخول
+supabase login
+
+# ربط بالمشروع
+supabase link --project-ref your-project-id
+
+# شغّل الترحيلات
+supabase db push
+```
+
+### 3. إعدادات Row Level Security (RLS)
+
+تأكد من تفعيل RLS على جميع الجداول الحساسة:
+
+```sql
+-- تفعيل RLS
+ALTER TABLE listings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+-- سياسات أساسية
+CREATE POLICY "Users can view all listings"
+  ON listings FOR SELECT
+  USING (true);
+
+CREATE POLICY "Users can update own listings"
+  ON listings FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own orders"
+  ON orders FOR INSERT
+  WITH CHECK (auth.uid() = buyer_id);
+```
+
+### 4. إعداد التخزين (Storage)
+
+في لوحة تحكم Supabase:
+1. أنشئ bucket جديد: `listings-images`
+2. اضبط Policies:
+   - PUBLIC: SELECT (الجميع يمكنه رؤية الصور)
+   - AUTHENTICATED: INSERT (المسجلون فقط يرفعون)
+
+---
+
+## 💳 إعداد PayPal
+
+### 1. إنشاء تطبيق PayPal
+
+1. اذهب إلى [developer.paypal.com](https://developer.paypal.com)
+2. سجّل الدخول / أنشئ حساباً
+3. اذهب إلى Applications → Create App
+4. اختر:
+   - **App Type**: Merchant
+   - **Sandbox/Live**: ابدأ بـ Sandbox
+
+### 2. الحصول على API Keys
+
+```
+Client ID: AXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Client Secret: ELxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+### 3. إعداد Webhook
+
+1. في PayPal Dashboard → Webhooks
+2. أضف Webhook URL: `https://mavora.ma/api/payments/webhook/paypal`
+3 فعّل الأحداث:
+   - `PAYMENT.CAPTURE.COMPLETED`
+   - `PAYMENT.CAPTURE.DENIED`
+   - `PAYMENT.CAPTURE.REFUNDED`
+
+### 4. اختبار في Sandbox
+
+1. أنشئ حسابات اختبار في PayPal Sandbox
+2. استخدم بطاقات اختبار:
+   - **Visa**: `4032031033976830`
+   - **Mastercard**: `5555555555554444`
+   - **تاريخ الانتهاء**: أي تاريخ مستقبلي
+   - **CVV**: `123`
+
+---
+
+## 💰 إعداد Payoneer
+
+### 1. تسجيل كشريك
+
+1. اذهب إلى [developer.payoneer.com](https://developer.payoneer.com)
+2. قدّم طلب الشراكة
+3. احصل على بيانات API:
+
+```
+Client ID: your-client-id
+Client Secret: your-client-secret
+Partner ID: your-partner-id
+```
+
+### 2. إعداد بيئة الاختبار
+
+```bash
+# للاختبار، استخدم:
+PAYONEER_ENVIRONMENT=sandbox
+PAYONEER_SANDBOX_URL=https://api.sandbox.payoneer.com
+```
+
+### 3. إعداد عمليات السحب للمغرب
+
+Payoneer يدعم:
+- ✅ التحويل البنكي للمغرب
+- ✅ بطاقات Payoneer Mastercard
+- ✅ السحب المحلي بالدرهم المغربي (MAD)
+
+---
+
+## 🔐 إعداد المصادقة الثنائية (2FA)
+
+### خيار 1: Twilio (موصى به)
+
+1. سجّل في [twilio.com](https://twilio.com)
+2. اشترِ رقم هاتف (+212 للمغرب)
+3. احصل على:
+   - Account SID
+   - Auth Token
+
+### خيار 2: Infobip (أفضل للمغرب)
+
+1. سجّل في [infobip.com](https://infobip.com)
+2. Infobip لديه تغطية ممتازة للمغرب
+3. أسعار أرخص للرسائل المحلية
+
+### خيار 3: بريد إلكتروني (مجاني)
+
+استخدم SMTP عادي (Gmail مثلاً):
+- فعّل 2-Step Verification
+- أنشئ App Password
+
+---
+
+## ✅ التحقق من النشر
+
+### قائمة التحقق قبل الإطلاق
+
+```bash
+# 1. تشغيل الاختبارات
+npm run test
+
+# 2. فحص نوع البناء
 npm run build
+# تأكد من عدم وجود أخطاء
 
-# تشغيل مع PM2
-pm2 start ecosystem.config.js
+# 3. فحص Lighthouse Score
+npx lighthouse https://mavora.ma --view --output html
+# الهدف:
+# - Performance > 90
+# - Accessibility > 95
+# - Best Practices > 90
+# - SEO > 95
 
-# حفظ الإعدادات
-pm2 save
-
-# إعداد بدء تلقائي
-pm2 startup
+# 4. فحص PWA
+npx pwa-builder https://mavora.ma
 ```
+
+### نقاط النهاية للتحقق
+
+```
+GET /api/health          → حالة الخدمة
+GET /api/ready           → جاهزية قاعدة البيانات
+GET /api/version         → نسخة التطبيق
+```
+
+### فحوصات ما بعد النشر
+
+- [ ] الصفحة الرئيسية تعمل
+- [ ] تسجيل الدخول يعمل
+- [ ] رفع الصور يعمل
+- [ ] البحث بالعربية يعمل
+- [ ] RTL يعمل بشكل صحيح
+- [ ] PWA قابل للتثبيت
+- [ ] Push Notifications تعمل
+- [ ] صفحة Offline تظهر
+- [ ] SSL نشط
+- [ ] التحميل سريع (< 3 ثوانٍ)
 
 ---
 
-## إعداد قاعدة البيانات
+## 🐛 استكشاف الأخطاء
 
-### باستخدام Supabase (موصى به):
+### مشاكل شائعة
 
-1. **إنشاء مشروع جديد**:
-   - اذهب إلى [supabase.com](https://supabase.com)
-   - أنشئ مشروع جديد
-   - اختر منطقة قريبة من المغرب (eu-west-1 أو eu-south-1)
+| المشكلة | الحل |
+|---------|------|
+| `EADDRINUSE: address already in use` | `lsof -i :3000 && kill -9 <PID>` |
+| `Database connection failed` | تحقق من SUPABASE_URL و keys |
+| `PayPal auth failed` | تأكد من Client ID/Secret و Mode |
+| `RTL not working` | تأكد من `<html dir="rtl" lang="ar">` |
+| `Images not loading` | تحقق من STORAGE_PROVIDER و S3/Supabase config |
+| `Build fails on Vercel` | تحقق من Node.js version في package.json |
 
-2. **إعداد Row Level Security (RLS)**:
-   ```sql
-   -- تفعيل RLS
-   ALTER TABLE listings ENABLE ROW LEVEL SECURITY;
-   ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-   -- ... لكل الجداول
-   
-   -- سياسات أساسية
-   CREATE POLICY "Users can view all listings"
-     ON listings FOR SELECT
-     USING (true);
-   
-   CREATE POLICY "Users can update own listings"
-     ON listings FOR UPDATE
-     USING (auth.uid() = seller_id);
-   ```
-
-3. **تهيئة Storage**:
-   - أنشئ bucket باسم `listings`
-   - أضف سياسات الوصول المناسبة
-
-### باستخدام PostgreSQL مباشرة:
+### سجلات التصحيح
 
 ```bash
-# تثبيت PostgreSQL
-sudo apt-get install postgresql postgresl-contrib
+# عرض السجلات مباشرة
+vercel logs mavora
 
-# إنشاء مستخدم وقاعدة بيانات
-sudo -u postgres createuser mavora
-sudo -u postgres createdb mavora -O mavora
+# على Docker
+docker-compose logs -f app
 
-# تعيين كلمة المرور
-sudo -u postgres psql -c "ALTER USER mavora PASSWORD 'your-password';"
-
-# تشغيل الترحيلات
-DATABASE_URL="postgresql://mavora:password@localhost:5432/mavora" npx prisma migrate deploy
+# فحص موارد النظام
+docker stats
 ```
 
----
-
-## إعداد Payment Providers
-
-### PayPal Setup:
-
-1. **إنشاء حساب**:
-   - اذهب إلى [developer.paypal.com](https://developer.paypal.com)
-   - سجل وأنشئ تطبيقًا جديدً
-
-2. **الحصول على API Credentials**:
-   ```bash
-   # Sandbox (للاختبار)
-   PAYPAL_ENVIRONMENT=sandbox
-   PAYPAL_CLIENT_ID=ASandbox_xxxx
-   PAYPAL_CLIENT_SECRET=ESandbox_xxxx
-   
-   # Production (للإنتاج)
-   PAYPAL_ENVIRONMENT=live
-   PAYPAL_CLIENT_ID=ALive_xxxx
-   PAYPAL_CLIENT_SECRET=ELive_xxxx
-   ```
-
-3. **إعداد Webhook**:
-   - أضف webhook URL: `https://mavora.ma/api/payments/paypal/webhook`
-   - فعّل الأحداث: `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED`
-
-### Payoneer Setup:
-
-1. **تواصل مع Payoneer** للحصول على بيانات API
-2. **إعدادات البيئة**:
-   ```bash
-   PAYONEER_API_KEY=your-key
-   PAYONEER_API_SECRET=your-secret
-   PAYONEER_PROGRAM_ID=program-id
-   ```
-
----
-
-## إعداد Push Notifications
-
-### Web Push (Browser Notifications):
-
-1. **توليد VAPID Keys**:
-   ```bash
-   npx web-push generate-vapid-keys
-   ```
-
-2. **إضافة المتغيرات**:
-   ```bash
-   VAPID_PUBLIC_KEY=BPxxxxx
-   VAPID_PRIVATE_KEY=xxxxx
-   VAPID_EMAIL=admin@mavora.ma
-   ```
-
-3. **Service Worker**:
-   - ملف `/public/sw.js` جاهز بالفعل
-   - يدعم Push Notifications
-
----
-
-## التحقق من النشر
-
-### Health Check:
-```bash
-curl https://mavora.ma/api/health
-# Expected response: {"status":"ok","timestamp":"..."}
-
-# أو محلياً
-curl http://localhost:3000/api/health
-```
-
-### قائمة التحقق قبل الإطلاق:
-
-- [ ] جميع متغيرات البيئة مضبوطة
-- [ ] قاعدة البيانات متصلة وRLS مفعل
-- [ ] SSL/HTTPS يعمل
-- [ ] Payment providers في وضع sandbox ويعملان
-- [ ] Email/SMS يعملان
-- [ ] PWA مثبت ويحفظ offline
-- [ ] Analytics متصل (اختياري)
-- [ ] Error tracking متصل (اختياري)
-- [ ] Backups مجدولة
-- [ ] CORS مضبوط بشكل صحيح
-
----
-
-## الصيانة والمراقبة
-
-### Monitoring Stack (موصى به):
-
-| Service | Use Case | Cost |
-|---------|----------|------|
-| **Sentry** | Error Tracking | Free tier available |
-| **Vercel Analytics** | Performance | Included with Vercel |
-| **UpTimeRobot** | Uptime Monitoring | Free |
-| **Logtail** | Log Management | Free tier |
-
-### أوامر الصيانة الشائعة:
+### أدوات مفيدة
 
 ```bash
-# عرض سجلات PM2
-pm2 logs mavora
+# فحص أداء API
+curl -w "\nTime: %{time_total}s\n" https://mavora.ma/api/health
 
-# إعادة تشغيل الخدمة
-pm2 restart mavora
+# فحص Headers
+curl -I https://mavora.ma
 
-# تحديث المشروع
-git pull origin main
-npm install
-npm run build
-pm2 restart mavora
-
-# نسخ احتياطي لقاعدة البيانات
-pg_dump mavora > backup_$(date +%Y%m%d).sql
-```
-
----
-
-## استكشاف الأخطاء وإصلاحها
-
-### مشاكل شائعة وحلولها:
-
-#### 1. خطأ "Database Connection Failed":
-```bash
-# تحقق من:
-# 1. صحة URL في NEXT_PUBLIC_SUPABASE_URL
-# 2. أن Service Role Key صحيح
-# 3. أن RLS لا يمنع الوصول
-```
-
-#### 2. خطأ "Payment Provider Error":
-```bash
-# تحقق من:
-# 1. أن API Keys صحيحة
-# 2. أن Environment (sandbox/live) مضبوط
-# 3. أن Webhook URL قابل للوصول من الخارج
-```
-
-#### 3. PWA لا يعمل:
-```bash
-# تحقق من:
-# 1. أن الموقع يخدم عبر HTTPS
-# 2. أن manifest.json و sw.js متاحان
-# 3. أن الأيقونات موجودة
-```
-
-#### 4. Slow Performance:
-```bash
-# حلول:
-# 1. فعّل Edge Caching
-# 2. استخدم CDN للصور
-# 3. فعّل Next.js Image Optimization
-# 4. أضف Redis للتخزين المؤقت
+# فحص SSL
+openssl s_client -connect mavora.ma:443 -servername mavora.ma
 ```
 
 ---
 
 ## 📞 الدعم والمساعدة
 
-### روابط مفيدة:
-- **Documentation**: [docs.mavora.ma](https://docs.mavora.ma)
-- **API Reference**: [api.mavora.ma/docs](https://api.mavora.ma/docs)
-- **Status Page**: [status.mavora.ma](https://status.mavora.ma)
-- **Email**: support@mavora.ma
+### روابط مفيدة
 
-### Community:
-- **Discord**: [discord.gg/mavora](https://discord.gg/mavora)
-- **Twitter**: [@MavoraMA](https://twitter.com/MavoraMA)
+- **وثائق Next.js**: [nextjs.org/docs](https://nextjs.org/docs)
+- **وثائق Supabase**: [supabase.com/docs](https://supabase.com/docs)
+- **PayPal Developer**: [developer.paypal.com](https://developer.paypal.com)
+- **دعم Vercel**: [vercel.com/support](https://vercel.com/support)
 
----
+### المجتمع
 
-## 📄 License
-
-هذا المشروع مرخص تحت [MIT License](./LICENSE).
+- **Discord**: [Mavora Community](#)
+- **البريد**: support@mavora.ma
+- **GitHub Issues**: [github.com/username/mavora/issues](#)
 
 ---
 
-**آخر تحديث**: 2026-01-09  
-**الإصدار**: 1.0.0
+## 📄 ترخيص
+
+© 2024 Mavora. جميع الحقوق محفوظة.
+
+**Made with ❤️ for Morocco 🇲🇦**

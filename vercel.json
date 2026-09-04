@@ -1,7 +1,1 @@
-{
-  "framework": "nextjs",
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "installCommand": "npm ci",
-  "devCommand": "npm run dev"
-}
+{"$schema": "https://openapi.vercel.sh/vercel.json", "version": 2, "name": "mavora", "buildCommand": "npm run build", "outputDirectory": ".next", "framework": "nextjs", "regions": ["fra1"], "env": {"NEXT_PUBLIC_APP_NAME": "Mavora", "NEXT_PUBLIC_APP_LOCALE": "ar-MA", "NEXT_PUBLIC_APP_CURRENCY": "MAD"}, "build": {"env": {"NEXT_TELEMETRY_DISABLED": "1"}}, "headers": [{"source": "/(.*)", "headers": [{"key": "X-Content-Type-Options", "value": "nosniff"}, {"key": "X-Frame-Options", "value": "SAMEORIGIN"}, {"key": "X-XSS-Protection", "value": "1; mode=block"}, {"key": "Referrer-Policy", "value": "strict-origin-when-cross-origin"}, {"key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(self)"}]}, {"source": "/api/(.*)", "headers": [{"key": "Cache-Control", "value": "no-store, must-revalidate"}]}, {"source": "/_next/static/(.*)", "headers": [{"key": "Cache-Control", "value": "public, max-age=31536000, immutable"}]}, {"source": "/sw.js", "headers": [{"key": "Cache-Control", "value": "public, max-age=0, must-revalidate"}]}, {"source": "/manifest.json", "headers": [{"key": "Cache-Control", "value": "public, max-age=3600"}]}, {"source": "/(.*)\\.(ico|png|jpg|jpeg|gif|svg|webp|avif)", "headers": [{"key": "Cache-Control", "value": "public, max-age=86400"}]}], "rewrites": [{"source": "/api/health", "destination": "/api/health"}, {"source": "/api/ready", "destination": "/api/ready"}], "functions": {"src/app/api/**/*.ts": {"maxDuration": 30}}, "trailingSlash": false, "cleanUrls": true}

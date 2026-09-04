@@ -1,3 +1,12 @@
+/**
+ * Advanced Upload API
+ * Handles image upload with full optimization pipeline
+ * 
+ * @route POST /api/upload - Upload image
+ * @route GET /api/upload - Get upload configuration
+ * @route DELETE /api/upload - Delete uploaded image
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient, getSupabaseAdminClient } from '@/lib/supabase';
 import {
@@ -8,12 +17,11 @@ import {
   getImageDimensions,
   validateDimensions,
 } from '@/lib/image-validation';
+import { getStorageManager, UploadContext } from '@/lib/storage/manager';
 
 // Configuration
-const BUCKET_NAME = 'listing-images';
 const MAX_IMAGES_PER_REQUEST = 10;
 const MAX_DIMENSIONS = { width: 4096, height: 4096 };
-const COMPRESSION_QUALITY = 80;
 
 // Rate limiting (in-memory for demo)
 const uploadAttempts = new Map<string, { count: number; lastAttempt: number }>();
@@ -38,8 +46,10 @@ function isRateLimited(ip: string): boolean {
   return false;
 }
 
-// POST /api/upload - Upload image to Supabase Storage
+// POST /api/upload - Upload image with advanced processing
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  
   try {
     // Get client IP for rate limiting
     const ip = request.headers.get('x-forwarded-for') ?? 
@@ -140,119 +150,78 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate unique filename
-    const sanitizedName = validation.sanitizedFilename || file.name;
-    const filename = generateUniqueFilename(sanitizedName);
+    // Get storage manager and upload
+    const storageManager = await getStorageManager();
     
-    // Create storage path: /user-id/year/month/filename
-    const now = new Date();
-    const path = `${session.user.id}/${now.getFullYear()}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${filename}`;
+    // Build upload context
+    const context: UploadContext = {
+      userId: session.user.id,
+      entityType: 'listing',
+    };
 
-    // Try to compress/optimize image if sharp is available
-    let finalBuffer = buffer;
-    let optimized = false;
-
-    try {
-      const sharp = await import('sharp').catch(() => null);
-      
-      if (sharp && (file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp')) {
-        let transformer = sharp.default(buffer);
-        
-        // Resize if too large (keep aspect ratio)
-        if (dimensions && (dimensions.width > 1920 || dimensions.height > 1920)) {
-          transformer = transformer.resize(1920, 1920, {
-            fit: 'inside',
-            withoutEnlargement: true,
-          });
-        }
-        
-        // Convert to appropriate format and compress
-        if (file.type === 'image/png') {
-          // Convert large PNGs to JPEG for better compression (unless transparent)
-          if (file.size > 1024 * 1024) { // > 1MB
-            transformer = transformer.jpeg({ quality: COMPRESSION_QUALITY });
-          } else {
-            transformer = transformer.png({ compressionLevel: 9 });
-          }
-        } else if (file.type === 'image/jpeg') {
-          transformer = transformer.jpeg({ quality: COMPRESSION_QUALITY, mozjpeg: true });
-        } else if (file.type === 'image/webp') {
-          transformer = transformer.webp({ quality: COMPRESSION_QUALITY });
-        }
-        
-        const compressedBuffer = await transformer.toBuffer();
-        
-        // Convert to regular Buffer for comparison
-        const compressed = Buffer.from(compressedBuffer);
-        
-        // Only use compressed version if it's smaller
-        if (compressed.length < buffer.length * 0.95) { // At least 5% savings
-          finalBuffer = compressed;
-          optimized = true;
-        }
-      }
-    } catch (error) {
-      console.warn('[Upload] Image optimization failed, using original:', error);
-      // Continue with original buffer
+    // Optional: Get entity ID from form data
+    const listingId = formData.get('listingId') as string | null;
+    if (listingId) {
+      context.entityId = listingId;
     }
 
-    // Upload to Supabase Storage
-    const adminClient = getSupabaseAdminClient();
-    
-    const { data: uploadData, error: uploadError } = await adminClient.storage
-      .from(BUCKET_NAME)
-      .upload(path, finalBuffer, {
-        contentType: file.type,
-        cacheControl: '31536000', // 1 year cache
-        upsert: false,
-      });
+    // Perform the upload with full processing pipeline
+    const result = await storageManager.uploadImage(buffer, {
+      originalName: file.name,
+      mimeType: file.type,
+      generateThumbnails: true,
+      watermark: false, // Can be enabled based on user plan/settings
+    }, context);
 
-    if (uploadError) {
-      console.error('[Upload] Supabase storage error:', uploadError);
-      
-      // Handle specific errors
-      if (uploadError.message.includes('Bucket not found')) {
-        return NextResponse.json(
-          { error: 'Storage bucket not found. Please contact administrator.' },
-          { status: 500 }
-        );
-      }
-      
-      if (uploadError.message.includes('quota')) {
-        return NextResponse.json(
-          { error: 'Storage quota exceeded. Please contact administrator.' },
-          { status: 507 }
-        );
-      }
-      
-      return NextResponse.json(
-        { error: 'Failed to upload file. Please try again.' },
-        { status: 500 }
-      );
-    }
-
-    // Get public URL
-    const { data: urlData } = adminClient.storage
-      .from(BUCKET_NAME)
-      .getPublicUrl(path);
+    // Log performance
+    console.log(`[Upload] Completed in ${Date.now() - startTime}ms`, {
+      provider: result.provider,
+      originalSize: formatBytes(result.originalSize),
+      finalSize: formatBytes(result.size),
+      compression: `${result.compressionRatio}%`,
+      optimized: result.optimized,
+      hasThumbnails: !!result.thumbnailUrl,
+    });
 
     // Return success response
     return NextResponse.json({
       success: true,
-      url: urlData.publicUrl,
-      path: uploadData?.path,
-      filename,
-      size: finalBuffer.length,
-      originalSize: file.size,
-      optimized,
-      dimensions,
-      message: 'Image uploaded successfully',
+      url: result.url,
+      path: result.path,
+      filename: result.path.split('/').pop(),
+      size: result.size,
+      originalSize: result.originalSize,
+      optimized: result.optimized,
+      compressionRatio: result.compressionRatio,
+      dimensions: result.dimensions,
+      thumbnailUrl: result.thumbnailUrl,
+      variants: result.variants,
+      provider: result.provider,
+      message: 'Image uploaded and processed successfully',
     });
 
   } catch (error) {
     console.error('[Upload] Unexpected error:', error);
+    
+    // Handle specific errors
+    const errorMessage = (error as Error).message || 'Internal server error during upload';
+    
+    if (errorMessage.includes('quota') || errorMessage.includes('507')) {
+      return NextResponse.json(
+        { error: 'Storage quota exceeded. Please contact administrator.' },
+        { status: 507 }
+      );
+    }
+    
+    if (errorMessage.includes('Bucket')) {
+      return NextResponse.json(
+        { error: 'Storage configuration error. Please contact administrator.' },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Internal server error during upload' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
@@ -266,16 +235,34 @@ export async function GET(request: NextRequest) {
       data: { session },
     } = await supabase.auth.getSession();
 
+    // Get storage manager for health check
+    let storageHealth = null;
+    let provider = 'supabase';
+    
+    try {
+      const storageManager = await getStorageManager();
+      storageHealth = await storageManager.healthCheck();
+      provider = storageManager.getProviderName();
+    } catch (error) {
+      console.warn('[Upload Config] Storage health check failed:', error);
+    }
+
     // Return upload configuration
     return NextResponse.json({
       config: {
         maxFileSize: MAX_IMAGE_SIZE,
         maxFileSizeMB: MAX_IMAGE_SIZE / (1024 * 1024),
-        allowedTypes: ALLOWED_IMAGE_TYPES,
+        allowedTypes: [...ALLOWED_IMAGE_TYPES],
         maxImagesPerRequest: MAX_IMAGES_PER_REQUEST,
         maxDimensions: MAX_DIMENSIONS,
         supportedFormats: ['JPEG', 'PNG', 'WebP', 'GIF', 'SVG'],
         compressionEnabled: true,
+        thumbnailGeneration: true,
+        supportedVariants: ['small', 'medium', 'large'],
+      },
+      storage: {
+        provider,
+        health: storageHealth,
       },
       user: session?.user ? {
         id: session.user.id,
@@ -300,11 +287,10 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// DELETE /api/upload - Delete uploaded image
+// DELETE /api/upload - Delete uploaded image and variants
 export async function DELETE(request: NextRequest) {
   try {
     const supabase = getSupabaseServerClient();
-    const adminClient = getSupabaseAdminClient();
 
     // Check authentication
     const {
@@ -346,29 +332,29 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Delete from storage
-    const { error } = await adminClient.storage
-      .from(BUCKET_NAME)
-      .remove([path]);
-
-    if (error) {
-      console.error('[Upload Delete] Error:', error);
-      return NextResponse.json(
-        { error: 'Failed to delete file' },
-        { status: 500 }
-      );
-    }
+    // Delete using storage manager (handles variants too)
+    const storageManager = await getStorageManager();
+    await storageManager.deleteWithVariants(path);
 
     return NextResponse.json({
       success: true,
-      message: 'File deleted successfully',
+      message: 'File and variants deleted successfully',
     });
 
   } catch (error) {
     console.error('[Upload Delete] Unexpected error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to delete file' },
       { status: 500 }
     );
   }
+}
+
+/**
+ * Format bytes to human-readable string
+ */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

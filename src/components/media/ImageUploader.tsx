@@ -13,6 +13,9 @@ import {
   ZoomIn,
   Image as ImageIcon,
   AlertCircle,
+  Shield,
+  Layers,
+  CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -22,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuthStore } from '@/stores/auth';
 
@@ -35,6 +39,12 @@ interface ImageItem {
   _error?: string;
   _optimized?: boolean;
   _size?: number;
+  _originalSize?: number;
+  _compressionRatio?: number;
+  _thumbnailUrl?: string;
+  _variants?: Record<string, string>;
+  _dimensions?: { width: number; height: number };
+  _provider?: string;
 }
 
 interface ImageUploaderProps {
@@ -60,6 +70,7 @@ export default function ImageUploader({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [previewImage, setPreviewImage] = useState<ImageItem | null>(null);
+  const [showDetails, setShowDetails] = useState<string | null>(null);
 
   // Validate file client-side
   const validateFile = useCallback(
@@ -78,7 +89,7 @@ export default function ImageUploader({
     [t]
   );
 
-  // Simulate progress for better UX (actual upload doesn't support progress in fetch)
+  // Simulate progress for better UX
   const simulateProgress = useCallback((
     onUpdate: (progress: number) => void,
     onComplete: () => void,
@@ -86,13 +97,11 @@ export default function ImageUploader({
   ) => {
     let progress = 0;
     const interval = setInterval(() => {
-      // Random progress jumps for realistic feel
       progress += Math.random() * 15 + 5;
       
       if (progress >= 95) {
         clearInterval(interval);
         onUpdate(95);
-        // Wait a bit then complete
         setTimeout(() => {
           onUpdate(100);
           onComplete();
@@ -102,11 +111,10 @@ export default function ImageUploader({
       }
     }, 100);
 
-    // Return cleanup function
     return () => clearInterval(interval);
   }, []);
 
-  // Upload a single file
+  // Upload a single file with advanced features
   const uploadFile = useCallback(
     async (file: File) => {
       const error = validateFile(file);
@@ -129,6 +137,7 @@ export default function ImageUploader({
         _uploading: true,
         _progress: 0,
         _size: file.size,
+        _originalSize: file.size,
       };
 
       const updatedImages = [...images, placeholder];
@@ -137,6 +146,9 @@ export default function ImageUploader({
       try {
         const formData = new FormData();
         formData.append('file', file);
+        if (listingId) {
+          formData.append('listingId', listingId);
+        }
 
         // Start progress simulation
         const cleanupProgress = simulateProgress(
@@ -148,9 +160,7 @@ export default function ImageUploader({
               onImagesChange(currentImages);
             }
           },
-          () => {
-            // Progress complete - wait for actual upload
-          },
+          () => {},
           (errorMsg) => {
             const filtered = updatedImages.filter((img) => img.url !== placeholder.url);
             onImagesChange(filtered);
@@ -158,7 +168,7 @@ export default function ImageUploader({
           }
         );
 
-        // Actual upload
+        // Actual upload to new API
         const res = await fetch('/api/upload', {
           method: 'POST',
           body: formData,
@@ -173,18 +183,24 @@ export default function ImageUploader({
 
         const data = await res.json();
 
-        // Replace placeholder with real URL
+        // Replace placeholder with real data
         const finalImages = updatedImages.map((img) => {
           if (img.url === placeholder.url) {
             return {
               ...img,
               id: data.path,
-              url: data.url,
+              url: data.thumbnailUrl || data.url, // Use thumbnail for grid view
               path: data.path,
               _uploading: false,
               _progress: 100,
               _optimized: data.optimized,
               _size: data.size,
+              _originalSize: data.originalSize,
+              _compressionRatio: data.compressionRatio,
+              _thumbnailUrl: data.thumbnailUrl,
+              _variants: data.variants,
+              _dimensions: data.dimensions,
+              _provider: data.provider,
             };
           }
           return img;
@@ -192,15 +208,15 @@ export default function ImageUploader({
 
         onImagesChange(finalImages);
         
-        const msg = data.optimized 
-          ? (t('media.upload_optimized') || 'Image uploaded and optimized!')
-          : (t('media.upload_success') || 'Image uploaded successfully!');
-        
-        toast.success(msg, {
-          description: data.optimized 
-            ? `${((1 - data.size / data.originalSize) * 100).toFixed(0)}% smaller`
-            : undefined,
-        });
+        // Show success message with details
+        if (data.optimized && data.compressionRatio > 0) {
+          toast.success(t('media.upload_optimized') || 'Image uploaded and optimized!', {
+            description: `${data.compressionRatio}% smaller • ${data.provider}`,
+            duration: 4000,
+          });
+        } else {
+          toast.success(t('media.upload_success') || 'Image uploaded successfully!');
+        }
       } catch (err) {
         // Remove the failed upload
         const filtered = updatedImages.filter((img) => img.url !== placeholder.url);
@@ -209,7 +225,7 @@ export default function ImageUploader({
         console.error('Upload error:', err);
       }
     },
-    [images, maxImages, onImagesChange, t, validateFile, simulateProgress]
+    [images, maxImages, onImagesChange, t, validateFile, simulateProgress, listingId]
   );
 
   // Handle file selection
@@ -220,7 +236,6 @@ export default function ImageUploader({
         return;
       }
       
-      // Limit number of files
       const filesToProcess = Array.from(files).slice(0, maxImages - images.length);
       
       if (filesToProcess.length < files.length) {
@@ -353,6 +368,18 @@ export default function ImageUploader({
             JPEG, PNG, WebP • Max {(MAX_SIZE / (1024 * 1024)).toFixed(0)}MB each
           </p>
         </div>
+        
+        {/* Feature badges */}
+        <div className="flex flex-wrap items-center justify-center gap-1.5 pt-2">
+          <Badge variant="secondary" className="text-[10px] gap-1">
+            <Shield className="size-3" />
+            Secured
+          </Badge>
+          <Badge variant="secondary" className="text-[10px] gap-1">
+            <Layers className="size-3" />
+            Auto-Optimized
+          </Badge>
+        </div>
       </div>
 
       <input
@@ -419,8 +446,41 @@ export default function ImageUploader({
 
                 {/* Optimized badge */}
                 {img._optimized && !img._uploading && (
-                  <div className="absolute end-1.5 top-1.5 rounded-md bg-blue-500 px-1.5 py-0.5">
-                    <span className="text-[10px] font-semibold text-white">Optimized</span>
+                  <div 
+                    className="absolute end-1.5 top-1.5 cursor-pointer rounded-md bg-blue-500 px-1.5 py-0.5"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDetails(showDetails === img.id ? null : img.id);
+                    }}
+                  >
+                    <span className="text-[10px] font-semibold text-white">
+                      {img._compressionRatio ? `-${img._compressionRatio}%` : 'Optimized'}
+                    </span>
+                  </div>
+                )}
+
+                {/* Provider badge */}
+                {img._provider && !img._uploading && (
+                  <div className="absolute end-1.5 bottom-12 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Badge variant="outline" className="text-[8px] px-1 py-0 bg-background/80">
+                      {img._provider}
+                    </Badge>
+                  </div>
+                )}
+
+                {/* Details popup */}
+                {showDetails === img.id && (
+                  <div className="absolute inset-x-1.5 top-10 z-10 rounded-lg bg-background/95 p-2 shadow-lg backdrop-blur-sm text-[10px] space-y-1">
+                    <p>Size: {formatSize(img._size)}</p>
+                    {img._originalSize && img._size && (
+                      <p>Saved: {formatSize(img._originalSize - img._size)}</p>
+                    )}
+                    {img._dimensions && (
+                      <p>{img._dimensions.width}×{img._dimensions.height}</p>
+                    )}
+                    {img._variants && Object.keys(img._variants).length > 0 && (
+                      <p>Variants: {Object.keys(img._variants).join(', ')}</p>
+                    )}
                   </div>
                 )}
 
@@ -507,12 +567,20 @@ export default function ImageUploader({
             <span>
               {images.length} / {maxImages} {t('media.images') || 'images'}
             </span>
-            {images.some(img => img._size) && (
-              <span className="flex items-center gap-1">
-                <ImageIcon className="size-3" />
-                {formatSize(images.reduce((sum, img) => sum + (img._size || 0), 0))}
-              </span>
-            )}
+            <div className="flex items-center gap-3">
+              {images.some(img => img._size) && (
+                <span className="flex items-center gap-1">
+                  <ImageIcon className="size-3" />
+                  {formatSize(images.reduce((sum, img) => sum + (img._size || 0), 0))}
+                </span>
+              )}
+              {images.some(img => img._optimized) && (
+                <span className="flex items-center gap-1 text-blue-500">
+                  <CheckCircle2 className="size-3" />
+                  Optimized
+                </span>
+              )}
+            </div>
           </div>
         </>
       )}
@@ -532,22 +600,49 @@ export default function ImageUploader({
                   className="max-h-[70vh] w-auto object-contain"
                 />
               </div>
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>
-                  {previewImage.is_primary && (
-                    <span className="inline-flex items-center gap-1 mr-3 text-[#0E9F6E]">
-                      <Star className="size-4 fill-current" />
-                      {t('media.primary_image') || 'Primary Image'}
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-3">
+                  <span>
+                    {previewImage.is_primary && (
+                      <span className="inline-flex items-center gap-1 mr-3 text-[#0E9F6E]">
+                        <Star className="size-4 fill-current" />
+                        {t('media.primary_image') || 'Primary Image'}
+                      </span>
+                    )}
+                    {formatSize(previewImage._size)}
+                  </span>
+                  {previewImage._dimensions && (
+                    <span>{previewImage._dimensions.width}×{previewImage._dimensions.height}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  {previewImage._optimized && (
+                    <span className="text-blue-500">
+                      ✓ {t('media.optimized') || 'Optimized'} 
+                      {previewImage._compressionRatio && ` (-${previewImage._compressionRatio}%)`}
                     </span>
                   )}
-                  {formatSize(previewImage._size)}
-                </span>
-                {previewImage._optimized && (
-                  <span className="text-blue-500">
-                    ✓ {t('media.optimized') || 'Optimized'}
-                  </span>
-                )}
+                  {previewImage._provider && (
+                    <Badge variant="outline" className="text-xs">
+                      {previewImage._provider}
+                    </Badge>
+                  )}
+                </div>
               </div>
+              
+              {/* Variants preview */}
+              {previewImage._variants && Object.keys(previewImage._variants).length > 0 && (
+                <div className="pt-2 border-t">
+                  <p className="text-xs font-medium mb-2">Available Variants:</p>
+                  <div className="flex gap-2">
+                    {Object.entries(previewImage._variants).map(([size, path]) => (
+                      <div key={size} className="text-xs bg-muted px-2 py-1 rounded">
+                        <span className="capitalize">{size}</span>: <code className="text-[10px]">{path.split('/').pop()}</code>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

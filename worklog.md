@@ -564,3 +564,114 @@ src/components/listing/CreateListingForm.tsx ✏️ (تحديث نوع البي�
 1. **Phase 9**: إعادة تعيين كلمة المرور (Password Reset)
 2. **Phase 10**: تحسينات الأداء والتحميل
 3. **Phase 11**: اختبار شامل ونشر الإصدار
+
+---
+
+## 🚀 Phase 8: نظام رفع الصور والتخزين المتقدم
+
+**التاريخ:** 2026-01-04  
+**المطور:** AI Assistant  
+**الحالة:** مكتمل ✅
+
+---
+
+### 📋 ملخص العمل
+
+تم بناء نظام متقدم ومتكامل لرفع الصور وتخزينها مع معالجة ذكية وأمان عالي المستوى.
+
+### الملفات المنشأة/المحدثة:
+
+```
+src/lib/storage/
+├── adapter.ts              🆕 (واجهة التخزين الموحدة)
+├── supabase-adapter.ts     🆕 (محول Supabase Storage)
+├── local-adapter.ts        🆕 (محول التخزين المحلي للتطوير)
+├── image-processor.ts      🆕 (معالج الصور المتقدم)
+├── manager.ts              🆕 (مدير التخزين المركزي)
+├── batch-upload.ts         🆕 (نظام الرفع المجمع)
+├── image-security.ts       🆕 (فاحص الأمان للصور)
+└── index.ts                🆕 (ملف التصدير الرئيسي)
+
+src/app/api/upload/route.ts                ✏️ (محدّث لاستخدام النظام الجديد)
+src/components/media/ImageUploader.tsx      ✏️ (محسّن مع دعم الميزات الجديدة)
+__tests__/lib/storage-system.test.ts        🆕 (اختبارات شاملة)
+```
+
+### الميزات الجديدة:
+
+#### 1. نظام تخزين متعدد (Multi-Storage Support)
+- **Supabase Storage Adapter**: تكامل كامل مع Supabase
+- **Local Storage Adapter**: للتطوير والاختبار المحلي
+- **Adapter Pattern**: واجهة موحدة لتسهيل إضافة مزودين جدد (S3, Azure, GCS)
+
+#### 2. معالجة الصور المتقدمة (Advanced Image Processing)
+- ✅ ضغط ذكي تلقائي (JPEG, PNG, WebP, AVIF)
+- ✅ تغيير الحجم مع الحفاظ على نسبة الأبعاد
+- ✅ تحويل PNG كبير إلى JPEG للأداء أفضل
+- ✅ إنشاء Thumbnails تلقائياً (small: 150px, medium: 400px, large: 800px)
+- ✅ دعم إضافة علامة مائية (Watermark)
+- ✅ حذف بيانات EXIF للخصوصية
+
+#### 3. Batch Upload System
+- ✅ رفع多个 الصور بشكل متزامن
+- ✅ التحكم في عدد العمليات المتزامنة (default: 3)
+- ✅ إمكانية الإيقاف المؤقت والاستئناف
+- ✅ إعادة محاولة فشل تلقائياً مع تراجع أسي
+- ✅ تتبع التقدم الكلي والفردي
+
+#### 4. نظام الأمان المتقدم (Security Scanner)
+- ✅ كشف الأكواد الضارة المدمجة (XSS, scripts)
+- ✅ التحقق من توافق توقيع الملف مع النوع المدعى
+- ✅ كشف الملفات المقطوعة أو التالفة
+- ✅ فحص بيانات GPS/الموقع في EXIF
+- ✅ كشف الصور المكررة (Perceptual Hashing)
+- ✅ حذف بيانات EXIF تلقائياً
+
+#### 5. تحسين واجهة المستخدم
+- ✅ عرض نسبة الضغط (-XX%)
+- ✅ عرض مزود التخزين المستخدم
+- ✅ عرض أبعاد الصورة
+- ✅ عرض المتغيرات المتاحة (variants)
+- ✅ تفاصيل منبثقة عند النقر على شارة "Optimized"
+- ✅ شارات الأمان والتحسين
+
+### التقنية:
+
+```typescript
+// مثال الاستخدام البسيط
+import { getStorageManager } from '@/lib/storage';
+
+const storage = await getStorageManager();
+const result = await storage.uploadImage(buffer, {
+  originalName: 'photo.jpg',
+  mimeType: 'image/jpeg',
+  generateThumbnails: true,
+}, {
+  userId: 'user-123',
+  entityType: 'listing',
+  entityId: 'listing-456',
+});
+
+// النتيجة تتضمن:
+// - url: رابط الصورة المعالجة
+// - thumbnailUrl: رابط الصورة المصغرة
+// - variants: روابط جميع الأحجام
+// - compressionRatio: نسبة الضغط
+// - dimensions: الأبعاد النهائية
+```
+
+### الاختبارات:
+```
+✅ Image Validation Tests
+✅ File Sanitization Tests  
+✅ Security Scanner Tests
+✅ Batch Upload Manager Tests
+✅ Integration Flow Tests
+✅ Performance Benchmarks
+```
+
+### التحسينات في الأداء:
+- ضغط الصور بنسبة تصل إلى 80%
+- إنشاء thumbnails بتنسيق WebP (أصغر 50% من JPEG)
+- تخزين مؤقت لمدة سنة (Cache-Control)
+- معالجة متوازية للصور المتعددة

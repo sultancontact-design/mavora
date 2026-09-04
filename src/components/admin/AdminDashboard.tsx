@@ -39,6 +39,7 @@ import PaymentManagement from './PaymentManagement';
 import AuditLogViewer from './AuditLogViewer';
 import SettingsPanel from './SettingsPanel';
 import AdminCategoryFields from './AdminCategoryFields';
+import QuickActions from './QuickActions';
 
 // Types
 interface AdminStats {
@@ -47,6 +48,7 @@ interface AdminStats {
     total_listings: number;
     total_revenue: number;
     pending_reports: number;
+    health_score?: number;
   };
   users: {
     total: number;
@@ -60,11 +62,32 @@ interface AdminStats {
     this_month: number;
     active: number;
     pending: number;
+    status_breakdown?: Record<string, number>;
+  };
+  revenue?: {
+    total: number;
+    today: number;
+    this_week: number;
+    this_month: number;
   };
   charts: {
     listings: { date: string; count: number }[];
     users: { date: string; count: number }[];
   };
+  categories?: {
+    top_categories: Array<{
+      id: string;
+      name_en: string;
+      name_ar: string;
+      listing_count: number;
+    }>;
+  };
+  recent_activity?: Array<{
+    action: string;
+    entity_type: string;
+    created_at: string;
+    user_name: string;
+  }>;
 }
 
 interface RecentListing {
@@ -335,6 +358,52 @@ export default function AdminDashboard() {
                     trend={{ value: stats.overview.pending_reports, positive: false }}
                     color="red"
                   />
+                </div>
+
+                {/* Quick Actions & Health Score Row */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Quick Actions - Takes 2 columns */}
+                  <div className="lg:col-span-2">
+                    <QuickActions onActionComplete={fetchStats} />
+                  </div>
+                  
+                  {/* Platform Health & Revenue Summary */}
+                  <div className="space-y-6">
+                    {/* Health Score Card */}
+                    <Card className={`border-2 ${
+                      (stats.overview.health_score ?? 90) >= 80 ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20' :
+                      (stats.overview.health_score ?? 90) >= 60 ? 'border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/20' :
+                      'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20'
+                    }`}>
+                      <CardContent className="pt-6">
+                        <div className="text-center space-y-2">
+                          <p className="text-sm font-medium text-muted-foreground">Platform Health</p>
+                          <p className="text-4xl font-bold">{stats.overview.health_score ?? 100}%</p>
+                          <p className="text-xs text-muted-foreground">
+                            {(stats.overview.health_score ?? 100) >= 80 ? '✅ Excellent' :
+                             (stats.overview.health_score ?? 100) >= 60 ? '⚠️ Needs Attention' : '❌ Critical'}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Revenue Summary (if available) */}
+                    {stats.revenue && (
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm font-medium">Revenue Today</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-2xl font-bold text-green-600">
+                            ${stats.revenue.today.toFixed(2)}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            This week: ${stats.revenue.this_week.toFixed(2)}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
                 </div>
 
                 {/* Quick Stats Row */}

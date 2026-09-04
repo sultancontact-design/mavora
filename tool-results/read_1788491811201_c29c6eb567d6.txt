@@ -1,0 +1,713 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect, useCallback } from 'react';
+     4→import { useParams, useRouter } from 'next/navigation';
+     5→import Image from 'next/image';
+     6→import { motion, AnimatePresence } from 'framer-motion';
+     7→import {
+     8→  Heart,
+     9→  Share2,
+    10→  MapPin,
+    11→  Eye,
+    12→  Calendar,
+    13→  Tag,
+    14→  Phone,
+    15→  MessageCircle,
+    16→  Flag,
+    17→  ChevronLeft,
+    18→  ChevronRight,
+    19→  X,
+    20→  ZoomIn,
+    21→  BadgeCheck,
+    22→  Star,
+    23→  ExternalLink,
+    24→  Loader2,
+    25→  AlertCircle,
+    26→} from 'lucide-react';
+    27→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+    28→import { Badge } from '@/components/ui/badge';
+    29→import { Button } from '@/components/ui/button';
+    30→import { Separator } from '@/components/ui/separator';
+    31→import { Skeleton } from '@/components/ui/skeleton';
+    32→import { useTranslation } from '@/hooks/useTranslation';
+    33→import { useAuthStore } from '@/stores/auth';
+    34→import { toast } from 'sonner';
+    35→import ReportDialog from '@/components/common/ReportDialog';
+    36→import ReviewsSection from './ReviewsSection';
+    37→import type { 
+    38→  Listing, 
+    39→  ListingMedia, 
+    40→  ListingFieldValue, 
+    41→  CategoryField, 
+    42→  Locale,
+    43→  User,
+    44→  Category,
+    45→  Currency
+    46→} from '@/lib/types';
+    47→
+    48→// ─── Props ──────────────────────────────────────────────────────────
+    49→
+    50→interface ListingDetailProps {
+    51→  listingId?: string;
+    52→}
+    53→
+    54→// ─── Helpers ────────────────────────────────────────────────────────
+    55→
+    56→function getLocalizedName(
+    57→  item: { name_ar?: string; name_fr?: string; name_en?: string },
+    58→  locale: Locale
+    59→): string {
+    60→  switch (locale) {
+    61→    case 'ar': return item.name_ar ?? item.name_en ?? '';
+    62→    case 'fr': return item.name_fr ?? item.name_en ?? '';
+    63→    default: return item.name_en ?? '';
+    64→  }
+    65→}
+    66→
+    67→function formatPrice(
+    68→  price: number | null | undefined,
+    69→  currency: Currency | null | undefined,
+    70→  locale: Locale
+    71→): string {
+    72→  if (price === null || price === undefined) {
+    73→    return locale === 'ar' ? 'مجاني' : locale === 'fr' ? 'Gratuit' : 'Free';
+    74→  }
+    75→  
+    76→  const symbol = currency?.symbol ?? '';
+    77→  const formatted = price.toLocaleString(locale);
+    78→  
+    79→  return locale === 'ar' ? `${formatted} ${symbol}` : `${symbol}${formatted}`;
+    80→}
+    81→
+    82→function formatDate(dateString: string, locale: Locale): string {
+    83→  const date = new Date(dateString);
+    84→  return date.toLocaleDateString(
+    85→    locale === 'ar' ? 'ar-MA' : locale === 'fr' ? 'fr-FR' : 'en-US',
+    86→    { year: 'numeric', month: 'long', day: 'numeric' }
+    87→  );
+    88→}
+    89→
+    90→// ─── Types ──────────────────────────────────────────────────────────
+    91→
+    92→interface ExtendedListing extends Listing {
+    93→  field_values?: (ListingFieldValue & { field?: CategoryField })[];
+    94→}
+    95→
+    96→// ─── Animation Variants ─────────────────────────────────────────────
+    97→
+    98→const fadeIn = {
+    99→  initial: { opacity: 0 },
+   100→  animate: { opacity: 1 },
+   101→  exit: { opacity: 0 },
+   102→};
+   103→
+   104→const slideIn = {
+   105→  initial: { opacity: 0, x: -20 },
+   106→  animate: { opacity: 1, x: 0 },
+   107→  exit: { opacity: 0, x: 20 },
+   108→};
+   109→
+   110→// ─── Image Gallery Component ────────────────────────────────────────
+   111→
+   112→function ImageGallery({ 
+   113→  media, 
+   114→  title 
+   115→}: { 
+   116→  media: ListingMedia[]; 
+   117→  title: string;
+   118→}) {
+   119→  const [currentIndex, setCurrentIndex] = useState(0);
+   120→  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+   121→
+   122→  const currentImage = media[currentIndex];
+   123→  const hasMultipleImages = media.length > 1;
+   124→
+   125→  const goToPrev = () => {
+   126→    setCurrentIndex((prev) => (prev === 0 ? media.length - 1 : prev - 1));
+   127→  };
+   128→
+   129→  const goToNext = () => {
+   130→    setCurrentIndex((prev) => (prev === media.length - 1 ? 0 : prev + 1));
+   131→  };
+   132→
+   133→  if (!currentImage) {
+   134→    return (
+   135→      <div className="flex aspect-[4/3] items-center justify-center rounded-xl bg-muted">
+   136→        <ExternalLink className="size-12 text-muted-foreground/30" />
+   137→      </div>
+   138→    );
+   139→  }
+   140→
+   141→  return (
+   142→    <div className="space-y-3">
+   143→      {/* Main Image */}
+   144→      <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted group">
+   145→        <Image
+   146→          src={currentImage.url}
+   147→          alt={`${title} - ${currentIndex + 1}`}
+   148→          fill
+   149→          className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+   150→          priority
+   151→        />
+   152→        
+   153→        {/* Navigation Arrows */}
+   154→        {hasMultipleImages && (
+   155→          <>
+   156→            <button
+   157→              onClick={goToPrev}
+   158→              className="absolute start-3 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/70 group-hover:opacity-100"
+   159→              aria-label="Previous image"
+   160→            >
+   161→              <ChevronLeft className="size-5" />
+   162→            </button>
+   163→            <button
+   164→              onClick={goToNext}
+   165→              className="absolute end-3 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/70 group-hover:opacity-100"
+   166→              aria-label="Next image"
+   167→            >
+   168→              <ChevronRight className="size-5" />
+   169→            </button>
+   170→          </>
+   171→        )}
+   172→
+   173→        {/* Zoom/Lightbox button */}
+   174→        <button
+   175→          onClick={() => setIsLightboxOpen(true)}
+   176→          className="absolute end-3 top-3 flex size-9 items-center justify-center rounded-full bg-black/50 text-white opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/70 group-hover:opacity-100"
+   177→          aria-label="Zoom image"
+   178→        >
+   179→          <ZoomIn className="size-4" />
+   180→        </button>
+   181→
+   182→        {/* Image Counter */}
+   183→        {hasMultipleImages && (
+   184→          <div className="absolute start-3 bottom-3 rounded-full bg-black/60 px-3 py-1 text-xs text-white backdrop-blur-sm">
+   185→            {currentIndex + 1} / {media.length}
+   186→          </div>
+   187→        )}
+   188→      </div>
+   189→
+   190→      {/* Thumbnails */}
+   191→      {hasMultipleImages && (
+   192→        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+   193→          {media.map((m, idx) => (
+   194→            <button
+   195→              key={m.id}
+   196→              onClick={() => setCurrentIndex(idx)}
+   197→              className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
+   198→                idx === currentIndex
+   199→                  ? 'border-emerald ring-2 ring-emerald/20'
+   200→                  : 'border-border hover:border-muted-foreground/30'
+   201→              }`}
+   202→            >
+   203→              <Image
+   204→                src={m.url}
+   205→                alt=""
+   206→                fill
+   207→                className="object-cover"
+   208→              />
+   209→              {m.is_primary && (
+   210→                <div className="absolute start-1 top-1 flex items-center gap-0.5 rounded bg-emerald px-1 py-0.5">
+   211→                  <Star className="size-2.5 fill-white text-white" />
+   212→                </div>
+   213→              )}
+   214→            </button>
+   215→          ))}
+   216→        </div>
+   217→      )}
+   218→
+   219→      {/* Lightbox */}
+   220→      <AnimatePresence>
+   221→        {isLightboxOpen && (
+   222→          <motion.div
+   223→            initial={{ opacity: 0 }}
+   224→            animate={{ opacity: 1 }}
+   225→            exit={{ opacity: 0 }}
+   226→            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+   227→            onClick={() => setIsLightboxOpen(false)}
+   228→          >
+   229→            <button
+   230→              onClick={() => setIsLightboxOpen(false)}
+   231→              className="absolute end-4 top-4 flex size-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+   232→              aria-label="Close lightbox"
+   233→            >
+   234→              <X className="size-5" />
+   235→            </button>
+   236→
+   237→            {hasMultipleImages && (
+   238→              <button
+   239→                onClick={(e) => { e.stopPropagation(); goToPrev(); }}
+   240→                className="absolute start-4 top-1/2 flex size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+   241→              >
+   242→                <ChevronLeft className="size-6" />
+   243→              </button>
+   244→            )}
+   245→
+   246→            <motion.div
+   247→              key={currentIndex}
+   248→              initial={{ opacity: 0, scale: 0.95 }}
+   249→              animate={{ opacity: 1, scale: 1 }}
+   250→              exit={{ opacity: 0, scale: 0.95 }}
+   251→              onClick={(e) => e.stopPropagation()}
+   252→              className="relative max-h-[85vh] max-w-[85vw] overflow-hidden rounded-lg"
+   253→            >
+   254→              <Image
+   255→                src={currentImage.url}
+   256→                alt={title}
+   257→                width={1200}
+   258→                height={900}
+   259→                className="max-h-[85vh] w-auto object-contain"
+   260→              />
+   261→            </motion.div>
+   262→
+   263→            {hasMultipleImages && (
+   264→              <button
+   265→                onClick={(e) => { e.stopPropagation(); goToNext(); }}
+   266→                className="absolute end-4 top-1/2 flex size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+   267→              >
+   268→                <ChevronRight className="size-6" />
+   269→              </button>
+   270→            )}
+   271→          </motion.div>
+   272→        )}
+   273→      </AnimatePresence>
+   274→    </div>
+   275→  );
+   276→}
+   277→
+   278→// ─── Main Component ─────────────────────────────────────────────────
+   279→
+   280→export default function ListingDetail({ listingId: propListingId }: ListingDetailProps) {
+   281→  const params = useParams();
+   282→  const router = useRouter();
+   283→  const { t, locale } = useTranslation();
+   284→  const { user, isAuthenticated } = useAuthStore();
+   285→
+   286→  const listingId = propListingId || (params?.id as string);
+   287→  
+   288→  const [listing, setListing] = useState<ExtendedListing | null>(null);
+   289→  const [isLoading, setIsLoading] = useState(true);
+   290→  const [error, setError] = useState<string | null>(null);
+   291→  const [isFavorited, setIsFavorited] = useState(false);
+   292→  const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
+   293→  const [showReportDialog, setShowReportDialog] = useState(false);
+   294→
+   295→  // Fetch listing data
+   296→  const fetchListing = useCallback(async () => {
+   297→    if (!listingId) return;
+   298→
+   299→    setIsLoading(true);
+   300→    setError(null);
+   301→
+   302→    try {
+   303→      const res = await fetch(`/api/listings/${listingId}`);
+   304→      const data = await res.json();
+   305→
+   306→      if (!res.ok) {
+   307→        throw new Error(data.error || 'Failed to fetch listing');
+   308→      }
+   309→
+   310→      setListing(data);
+   311→    } catch (err) {
+   312→      setError(err instanceof Error ? err.message : 'An error occurred');
+   313→    } finally {
+   314→      setIsLoading(false);
+   315→    }
+   316→  }, [listingId]);
+   317→
+   318→  // Check favorite status
+   319→  const checkFavoriteStatus = useCallback(async () => {
+   320→    if (!listingId || !isAuthenticated || !user) return;
+   321→
+   322→    try {
+   323→      const res = await fetch(`/api/favorites?listing_id=${listingId}`);
+   324→      if (res.ok) {
+   325→        const data = await res.json();
+   326→        // Check if this listing is in favorites
+   327→        const isFav = Array.isArray(data) && data.some((f: { listing_id: string }) => f.listing_id === listingId);
+   328→        setIsFavorited(isFav);
+   329→      }
+   330→    } catch {
+   331→      // Ignore errors for favorite check
+   332→    }
+   333→  }, [listingId, isAuthenticated, user]);
+   334→
+   335→  useEffect(() => {
+   336→    fetchListing();
+   337→    checkFavoriteStatus();
+   338→  }, [fetchListing, checkFavoriteStatus]);
+   339→
+   340→  // Handle favorite toggle
+   341→  const handleFavoriteToggle = async () => {
+   342→    if (!isAuthenticated || !user || !listingId) {
+   343→      toast.error(t('favorites.login_required'));
+   344→      return;
+   345→    }
+   346→
+   347→    setIsFavoriteLoading(true);
+   348→    try {
+   349→      const res = await fetch(`/api/listings/${listingId}/favorite`, {
+   350→        method: 'POST',
+   351→      });
+   352→
+   353→      if (!res.ok) throw new Error('Failed to update favorite');
+   354→
+   355→      const data = await res.json();
+   356→      setIsFavorited(data.favorited);
+   357→      toast.success(data.favorited ? t('favorites.added') : t('favorites.removed'));
+   358→    } catch {
+   359→      toast.error(t('common.error'));
+   360→    } finally {
+   361→      setIsFavoriteLoading(false);
+   362→    }
+   363→  };
+   364→
+   365→  // Handle share
+   366→  const handleShare = async () => {
+   367→    if (navigator.share) {
+   368→      try {
+   369→        await navigator.share({
+   370→          title: listing?.title,
+   371→          text: listing?.description?.slice(0, 150),
+   372→          url: window.location.href,
+   373→        });
+   374→      } catch {
+   375→        // User cancelled or error
+   376→      }
+   377→    } else {
+   378→      // Fallback: copy to clipboard
+   379→      navigator.clipboard.writeText(window.location.href);
+   380→      toast.success('Link copied to clipboard');
+   381→    }
+   382→  };
+   383→
+   384→  // Handle contact seller
+   385→  const handleContactSeller = () => {
+   386→    if (!isAuthenticated) {
+   387→      toast.error(t('auth.login_to_continue'));
+   388→      return;
+   389→    }
+   390→    // Navigate to messages or open conversation
+   391→    router.push(`/messages?listing=${listingId}`);
+   392→  };
+   393→
+   394→  // Loading state
+   395→  if (isLoading) {
+   396→    return (
+   397→      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+   398→        <div className="grid gap-8 lg:grid-cols-5">
+   399→          <div className="lg:col-span-3 space-y-4">
+   400→            <Skeleton className="aspect-[4/3] w-full rounded-xl" />
+   401→            <Skeleton className="h-8 w-3/4" />
+   402→            <Skeleton className="h-4 w-full" />
+   403→            <Skeleton className="h-4 w-5/6" />
+   404→          </div>
+   405→          <div className="lg:col-span-2 space-y-4">
+   406→            <Skeleton className="h-12 w-full rounded-xl" />
+   407→            <Skeleton className="h-32 w-full rounded-xl" />
+   408→            <Skeleton className="h-48 w-full rounded-xl" />
+   409→          </div>
+   410→        </div>
+   411→      </div>
+   412→    );
+   413→  }
+   414→
+   415→  // Error state
+   416→  if (error || !listing) {
+   417→    return (
+   418→      <div className="flex flex-col items-center justify-center py-16 text-center">
+   419→        <AlertCircle className="mb-4 size-12 text-destructive" />
+   420→        <h2 className="text-xl font-semibold text-foreground">{t('error.not_found')}</h2>
+   421→        <p className="mt-2 text-muted-foreground">{error}</p>
+   422→        <Button variant="outline" className="mt-4" onClick={() => router.back()}>
+   423→          {t('common.back')}
+   424→        </Button>
+   425→      </div>
+   426→    );
+   427→  }
+   428→
+   429→  // Get localized values
+   430→  const categoryName = getLocalizedName(listing.category ?? {}, locale);
+   431→  const sellerName = listing.seller?.display_name ?? 'Unknown Seller';
+   432→
+   433→  return (
+   434→    <motion.div
+   435→      className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8"
+   436→      initial="initial"
+   437→      animate="animate"
+   438→      exit="exit"
+   439→      variants={fadeIn}
+   440→    >
+   441→      {/* Breadcrumb / Back */}
+   442→      <button
+   443→        onClick={() => router.back()}
+   444→        className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+   445→      >
+   446→        <ChevronLeft className="size-4" />
+   447→        {t('listings.back_to_browse')}
+   448→      </button>
+   449→
+   450→      <div className="grid gap-8 lg:grid-cols-5">
+   451→        {/* Left Column - Images & Description */}
+   452→        <div className="space-y-6 lg:col-span-3">
+   453→          {/* Image Gallery */}
+   454→          <ImageGallery media={listing.media} title={listing.title} />
+   455→
+   456→          {/* Title & Badges */}
+   457→          <div>
+   458→            <div className="mb-3 flex flex-wrap items-center gap-2">
+   459→              {listing.is_featured && (
+   460→                <Badge className="bg-gold text-primary border-0 gap-1">
+   461→                  <Star className="size-3 fill-current" />
+   462→                  {t('common.featured')}
+   463→                </Badge>
+   464→              )}
+   465→              {listing.is_urgent && (
+   466→                <Badge className="bg-destructive text-white border-0">
+   467→                  {t('common.urgent')}
+   468→                </Badge>
+   469→              )}
+   470→              <Badge variant="secondary">{categoryName}</Badge>
+   471→            </div>
+   472→            <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
+   473→              {listing.title}
+   474→            </h1>
+   475→          </div>
+   476→
+   477→          {/* Price */}
+   478→          <div className="text-3xl font-bold text-emerald">
+   479→            {formatPrice(listing.price, listing.currency, locale)}
+   480→          </div>
+   481→
+   482→          {/* Posted Date & Views */}
+   483→          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+   484→            <span className="flex items-center gap-1.5">
+   485→              <Calendar className="size-4" />
+   486→              {formatDate(listing.created_at, locale)}
+   487→            </span>
+   488→            <span className="flex items-center gap-1.5">
+   489→              <Eye className="size-4" />
+   490→              {listing.view_count} {t('listings.views')}
+   491→            </span>
+   492→          </div>
+   493→
+   494→          <Separator />
+   495→
+   496→          {/* Description */}
+   497→          <div>
+   498→            <h2 className="mb-3 text-lg font-semibold text-foreground">
+   499→              {t('listing.detail.description')}
+   500→            </h2>
+   501→            <div className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+   502→              {listing.description}
+   503→            </div>
+   504→          </div>
+   505→
+   506→          {/* Dynamic Field Values */}
+   507→          {listing.field_values && listing.field_values.length > 0 && (
+   508→            <>
+   509→              <Separator />
+   510→              <div>
+   511→                <h2 className="mb-3 text-lg font-semibold text-foreground">
+   512→                  {t('listing.dynamic_fields')}
+   513→                </h2>
+   514→                <div className="grid gap-3 sm:grid-cols-2">
+   515→                  {listing.field_values.map((fv) => (
+   516→                    fv.field && (
+   517→                      <div
+   518→                        key={fv.id}
+   519→                        className="flex items-center justify-between rounded-lg border border-border px-4 py-3"
+   520→                      >
+   521→                        <span className="text-sm text-muted-foreground">
+   522→                          {getLocalizedName(fv.field, locale)}
+   523→                        </span>
+   524→                        <span className="text-sm font-medium text-foreground">
+   525→                          {fv.value}
+   526→                          {fv.field.unit_ar && (
+   527→                            <span className="ms-1 text-muted-foreground">
+   528→                              ({getLocalizedName(
+   529→                                { 
+   530→                                  name_ar: fv.field.unit_ar, 
+   531→                                  name_fr: fv.field.unit_fr, 
+   532→                                  name_en: fv.field.unit_en 
+   533→                                }, 
+   534→                                locale
+   535→                              )})
+   536→                            </span>
+   537→                          )}
+   538→                        </span>
+   539→                      </div>
+   540→                    )
+   541→                  ))}
+   542→                </div>
+   543→              </div>
+   544→            </>
+   545→          )}
+   546→
+   547→          {/* Video Embed */}
+   548→          {listing.video_url && (
+   549→            <>
+   550→              <Separator />
+   551→              <div>
+   552→                <h2 className="mb-3 text-lg font-semibold text-foreground">
+   553→                  {t('listing.video_preview')}
+   554→                </h2>
+   555→                <div className="aspect-video overflow-hidden rounded-xl">
+   556→                  <iframe
+   557→                    src={listing.video_url.replace('watch?v=', 'embed/')}
+   558→                    title="Video"
+   559→                    className="h-full w-full"
+   560→                    allowFullScreen
+   561→                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+   562→                  />
+   563→                </div>
+   564→              </div>
+   565→            </>
+   566→          )}
+   567→
+   568→          {/* Reviews Section */}
+   569→          <ReviewsSection listingId={listing.id} sellerId={listing.seller_id} />
+   570→        </div>
+   571→
+   572→        {/* Right Column - Seller Info & Actions */}
+   573→        <div className="lg:col-span-2">
+   574→          <div className="sticky top-24 space-y-6">
+   575→            {/* Price (Mobile Hidden, Desktop Show) */}
+   576→            <Card className="lg:hidden">
+   577→              <CardContent className="pt-6">
+   578→                <div className="text-3xl font-bold text-emerald">
+   579→                  {formatPrice(listing.price, listing.currency, locale)}
+   580→                </div>
+   581→              </CardContent>
+   582→            </Card>
+   583→
+   584→            {/* Seller Card */}
+   585→            <Card className="overflow-hidden">
+   586→              <CardHeader className="border-b border-border bg-muted/30 pb-4">
+   587→                <CardTitle className="text-base">{t('listing.detail.seller')}</CardTitle>
+   588→              </CardHeader>
+   589→              <CardContent className="p-4">
+   590→                {listing.seller && (
+   591→                  <div className="flex items-center gap-3">
+   592→                    <div className="relative">
+   593→                      {listing.seller.avatar_url ? (
+   594→                        <Image
+   595→                          src={listing.seller.avatar_url}
+   596→                          alt={sellerName}
+   597→                          width={56}
+   598→                          height={56}
+   599→                          className="rounded-full object-cover"
+   600→                        />
+   601→                      ) : (
+   602→                        <div className="flex size-14 items-center justify-center rounded-full bg-emerald/10 text-lg font-bold text-emerald">
+   603→                          {sellerName.charAt(0).toUpperCase()}
+   604→                        </div>
+   605→                      )}
+   606→                      {listing.seller.is_verified && (
+   607→                        <BadgeCheck className="absolute -bottom-0.5 -end-0.5 size-5 rounded-full border-2 border-background text-emerald" />
+   608→                      )}
+   609→                    </div>
+   610→                    <div>
+   611→                      <p className="font-semibold text-foreground">{sellerName}</p>
+   612→                      <p className="text-xs text-muted-foreground">
+   613→                        {t('seller.member_since')} {formatDate(listing.seller.created_at, locale)}
+   614→                      </p>
+   615→                    </div>
+   616→                  </div>
+   617→                )}
+   618→
+   619→                <Separator className="my-4" />
+   620→
+   621→                {/* Action Buttons */}
+   622→                <div className="space-y-3">
+   623→                  <Button
+   624→                    className="w-full gap-2 bg-emerald hover:bg-emerald/90"
+   625→                    onClick={handleContactSeller}
+   626→                  >
+   627→                    <MessageCircle className="size-4" />
+   628→                    {t('listings.contact_seller')}
+   629→                  </Button>
+   630→
+   631→                  <div className="grid grid-cols-2 gap-3">
+   632→                    <Button
+   633→                      variant="outline"
+   634→                      className={`gap-2 ${isFavorited ? 'border-destructive text-destructive hover:bg-destructive/10' : ''}`}
+   635→                      onClick={handleFavoriteToggle}
+   636→                      disabled={isFavoriteLoading}
+   637→                    >
+   638→                      <Heart className={`size-4 ${isFavorited ? 'fill-current' : ''}`} />
+   639→                      {isFavorited ? t('listing.detail.remove_from_favorites') : t('listing.detail.add_to_favorites')}
+   640→                    </Button>
+   641→
+   642→                    <Button
+   643→                      variant="outline"
+   644→                      className="gap-2"
+   645→                      onClick={handleShare}
+   646→                    >
+   647→                      <Share2 className="size-4" />
+   648→                      {t('listing.detail.share')}
+   649→                    </Button>
+   650→                  </div>
+   651→
+   652→                  <Button
+   653→                    variant="ghost"
+   654→                    className="w-full gap-2 text-muted-foreground hover:text-destructive"
+   655→                    onClick={() => setShowReportDialog(true)}
+   656→                  >
+   657→                    <Flag className="size-4" />
+   658→                    {t('listing.detail.report')}
+   659→                  </Button>
+   660→                </div>
+   661→              </CardContent>
+   662→            </Card>
+   663→
+   664→            {/* Safety Tips Card */}
+   665→            <Card className="bg-amber/5 border-amber/20">
+   666→              <CardContent className="p-4">
+   667→                <h3 className="mb-2 text-sm font-semibold text-amber-dark">
+   668→                  ⚠️ {locale === 'ar' ? 'نصائح الأمان' : locale === 'fr' ? "Conseils de sécurité" : 'Safety Tips'}
+   669→                </h3>
+   670→                <ul className="space-y-1.5 text-xs text-muted-foreground">
+   671→                  <li>• {locale === 'ar' ? 'قابل البائع في مكان عام' : locale === 'fr' ? 'Rencontre le vendeur dans un lieu public' : 'Meet in a public place'}</li>
+   672→                  <li>• {locale === 'ar' ? 'افحص المنتج قبل الدفع' : locale === 'fr' ? 'Inspectez l\'article avant de payer' : 'Inspect the item before payment'}</li>
+   673→                  <li>• {locale === 'ar' ? 'ادفع فقط بعد استلام المنتج' : locale === 'fr' ? 'Payez seulement après réception' : 'Pay only after receiving the item'}</li>
+   674→                </ul>
+   675→              </CardContent>
+   676→            </Card>
+   677→          </div>
+   678→        </div>
+   679→      </div>
+   680→
+   681→      {/* Report Dialog */}
+   682→      <ReportDialog
+   683→        open={showReportDialog}
+   684→        onOpenChange={setShowReportDialog}
+   685→        targetType="listing"
+   686→        targetId={listing.id}
+   687→      />
+   688→    </motion.div>
+   689→  );
+   690→}
+   691→
+   692→// ─── Loading Skeleton ───────────────────────────────────────────────
+   693→
+   694→export function ListingDetailSkeleton() {
+   695→  return (
+   696→    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+   697→      <div className="grid gap-8 lg:grid-cols-5">
+   698→        <div className="lg:col-span-3 space-y-4">
+   699→          <Skeleton className="aspect-[4/3] w-full rounded-xl" />
+   700→          <Skeleton className="h-8 w-3/4" />
+   701→          <Skeleton className="h-4 w-full" />
+   702→          <Skeleton className="h-4 w-5/6" />
+   703→        </div>
+   704→        <div className="lg:col-span-2 space-y-4">
+   705→          <Skeleton className="h-12 w-full rounded-xl" />
+   706→          <Skeleton className="h-32 w-full rounded-xl" />
+   707→          <Skeleton className="h-48 w-full rounded-xl" />
+   708→        </div>
+   709→      </div>
+   710→    </div>
+   711→  );
+   712→}
+   713→

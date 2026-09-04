@@ -51,6 +51,17 @@ export default function CreateListingPage() {
   });
 
   const [images, setImages] = useState<string[]>([]);
+  
+  // Fetch real categories from API
+  const [categories, setCategories] = useState<Array<{
+    id: string;
+    name: string;
+    nameAr?: string;
+    nameFr?: string;
+    slug: string;
+    children?: Array<{ id: string; name: string; nameAr?: string; nameFr?: string; slug: string }>;
+  }>>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -58,6 +69,24 @@ export default function CreateListingPage() {
       router.push('/auth/login');
     }
   }, [user, authLoading, router]);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const res = await fetch('/api/categories');
+        if (res.ok) {
+          const data = await res.json();
+          setCategories(data || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    }
+    fetchCategories();
+  }, []);
 
   const steps: { id: Step; title: string; icon: React.ReactNode; description: string }[] = [
     { id: 'category', title: t('create_listing.category'), icon: <Package className="size-5" />, description: t('create_listing.choose_category') },
@@ -223,22 +252,30 @@ export default function CreateListingPage() {
             {currentStep === 'category' && (
               <div className="space-y-4">
                 <Label>{t('create_listing.select_category')}</Label>
-                <Select value={formData.category_id} onValueChange={(value) => setFormData(prev => ({ ...prev, category_id: value }))}>
-                  <SelectTrigger className="h-12">
-                    <SelectValue placeholder={t('create_listing.choose_category_placeholder')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {/* Categories will be loaded from API */}
-                    <SelectItem value="vehicles">{t('categories.vehicles')}</SelectItem>
-                    <SelectItem value="real_estate">{t('categories.real_estate')}</SelectItem>
-                    <SelectItem value="electronics">{t('categories.electronics')}</SelectItem>
-                    <SelectItem value="fashion">{t('categories.fashion')}</SelectItem>
-                    <SelectItem value="home_garden">{t('categories.home_garden')}</SelectItem>
-                    <SelectItem value="jobs">{t('categories.jobs')}</SelectItem>
-                    <SelectItem value="services">{t('categories.services')}</SelectItem>
-                    <SelectItem value="other">{t('categories.other')}</SelectItem>
-                  </SelectContent>
-                </Select>
+                {categoriesLoading ? (
+                  <div className="flex items-center gap-2 p-4 text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin" />
+                    {t('common.loading')}...
+                  </div>
+                ) : (
+                  <Select value={formData.category_id} onValueChange={(value) => setFormData(prev => ({ ...prev, category_id: value }))}>
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder={t('create_listing.choose_category_placeholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.nameAr || category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {categories.length === 0 && !categoriesLoading && (
+                  <p className="text-sm text-muted-foreground">
+                    No categories available. Please try refreshing the page.
+                  </p>
+                )}
               </div>
             )}
 

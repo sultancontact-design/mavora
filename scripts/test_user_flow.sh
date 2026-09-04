@@ -121,14 +121,15 @@ echo ""
 echo "📋 TEST 5: Create Listing (Authenticated)"
 echo "------------------------------------------"
 if [ -n "$ACCESS_TOKEN" ] && [ -n "$USER_ID" ]; then
+    # Use a REAL category ID from the database (Electronics = clxc72c0f64789dda2a25e542fd)
     LISTING_DATA=$(cat <<EOF
 {
   "title": "Test Listing from Phase 6",
-  "description": "This is a test listing created during Phase 6 diagnostics. It contains enough characters to pass validation requirements.",
-  "category_id": "electronics",
+  "description": "This is a test listing created during Phase 6 diagnostics. It contains enough characters to pass validation requirements for a proper integration test.",
+  "category_id": "clxc72c0f64789dda2a25e542fd",
   "price": 299.99,
   "condition": "new",
-  "locationAddress": "Casablanca, Morocco",
+  "location": "Casablanca, Morocco",
   "contactPhone": "+212600000000",
   "negotiable": true
 }

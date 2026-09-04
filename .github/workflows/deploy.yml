@@ -1,5 +1,5 @@
 # GitHub Actions - Auto Deploy to Vercel
-# هذا الملف ينشر المشروع تلقائياً إلى Vercل عند كل push إلى main
+# هذا الملف ينشر المشروع تلقائياً إلى Vercel عند كل push إلى main
 
 name: Deploy to Vercel
 

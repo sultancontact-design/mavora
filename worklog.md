@@ -777,3 +777,49 @@ __tests__/lib/password-reset.test.ts  🆕 (اختبارات شاملة)
 ✅ Integration Flow Simulation
 ✅ Performance Benchmarks
 ```
+
+---
+Task ID: 9-backend
+Agent: Main Agent
+Task: إضافة نظام إعادة تعيين كلمة المرور - الخلفية الكاملة
+
+Work Log:
+- إنشاء خدمة البريد الإلكتروني (`src/lib/email.ts`)
+  - قوالب بريد إلكتروني احترافية (عربي/إنجليزي)
+  - دمج مع Supabase Auth لإرسال روابط إعادة التعيين
+  - تصميم متجاوب للبريد مع ألوان Mavora
+  - تحذيرات أمنية وتعليمات واضحة للمستخدم
+
+- إنشاء نقطة نهاية API (`src/app/api/auth/reset-password/route.ts`)
+  - POST: طلب إعادة تعيين كلمة المرور مع Rate Limiting
+  - PUT: تأكيد كلمة المرور الجديدة مع التحقق
+  - GET: التحقق من صلاحية الجلسة
+  - حماية أمنية شاملة (Security Headers, Input Validation)
+
+- إنشاء خدمة إعادة التعيين (`src/lib/password-reset.ts`)
+  - توليد رموز آمنة (cryptographically secure)
+  - تجزئة الرموز (SHA-256) مع حماية من هجمات التوقيت
+  - التحقق من الرموز وانتهاء الصلاحية
+  - تنظيف الرموز المنتهية (cleanup function)
+  - تسجيل أحداث المراجعة (Audit Logging)
+
+- إنشاء اختبارات شاملة (`__tests__/password-reset.test.ts`)
+  - 20 اختبار ناجح يغطي:
+    * توليد والتحقق من الرموز
+    * تجزئة ومقارنة الرموز
+    * قوالب البريد الإلكتروني
+    * ميزات الأمان
+    * وظائف التنظيف
+
+Stage Summary:
+- تم بناء البنية التحتية الكاملة لنظام إعادة تعيين كلمة المرور
+- دعم كامل للغتين العربية والإنجليزية في قوالب البريد
+- حماية متقدمة من الهجمات (Enumeration, Timing Attacks)
+- جاهز للإنتاج مع Supabase Auth
+- جميع الاختبارات تمر بنجاح (20/20)
+
+الملفات المنشأة:
+- `src/lib/email.ts` 🆕
+- `src/app/api/auth/reset-password/route.ts` 🆕
+- `src/lib/password-reset.ts` 🆕
+- `__tests__/password-reset.test.ts` 🆕

@@ -3,7 +3,9 @@ import { getSupabaseServerClient } from '@/lib/supabase';
 
 export async function GET() {
   try {
+    console.log('[Categories API] Starting fetch...');
     const supabase = getSupabaseServerClient();
+    console.log('[Categories API] Supabase client created');
 
     // Fetch all active categories
     // IMPORTANT: Schema uses CAMELCASE columns (parentId, sortOrder, isActive)
@@ -13,9 +15,15 @@ export async function GET() {
       .eq('isActive', true)  // camelCase - matches schema
       .order('sortOrder', { ascending: true });  // camelCase - matches schema
 
+    console.log('[Categories API] Query result:', { 
+      dataLength: data?.length, 
+      error: error?.message,
+      errorCode: error?.code 
+    });
+
     if (error) {
       console.error('Categories fetch error:', error);
-      return NextResponse.json({ error: 'Failed to fetch categories', details: error.message }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to fetch categories', details: error.message, code: error.code }, { status: 500 });
     }
 
     // Group into parent-child hierarchy

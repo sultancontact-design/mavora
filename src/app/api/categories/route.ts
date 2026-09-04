@@ -6,11 +6,12 @@ export async function GET() {
     const supabase = getSupabaseServerClient();
 
     // Fetch all active categories
+    // Note: Supabase/PostgreSQL typically uses snake_case columns
     const { data, error } = await supabase
       .from('categories')
       .select('*')
-      .eq('isActive', true)
-      .order('sortOrder', { ascending: true });
+      .eq('is_active', true)  // Use snake_case for DB column
+      .order('sort_order', { ascending: true });  // Use snake_case for DB column
 
     if (error) {
       console.error('Categories fetch error:', error);
@@ -20,12 +21,12 @@ export async function GET() {
     // Group into parent-child hierarchy
     const allCategories = data ?? [];
     const parentCategories = allCategories
-      .filter((cat) => cat.parent_id === null)
+      .filter((cat) => cat.parent_id === null)  // Use snake_case for DB column
       .map((parent) => ({
         ...parent,
         children: allCategories
           .filter((cat) => cat.parent_id === parent.id)
-          .sort((a, b) => a.sortOrder - b.sortOrder),
+          .sort((a, b) => a.sort_order - b.sort_order),  // Use snake_case
       }));
 
     return NextResponse.json(parentCategories);

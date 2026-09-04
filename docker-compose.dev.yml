@@ -1,0 +1,192 @@
+# =============================================================================
+# Mavora - Local Development Docker Compose
+# Arabic Marketplace Platform (Morocco)
+# =============================================================================
+#
+# Usage:
+#   Start all services:    docker compose up -d
+#   Stop all services:     docker compose down
+#   View logs:             docker compose logs -f
+#   Restart service:       docker compose restart [service]
+#   Run commands:          docker compose exec app npm run dev
+#
+# Services:
+#   - app:        Next.js application (hot reload)
+#   - redis:      Redis for caching & sessions
+#   - postgres:   PostgreSQL database (alternative to Supabase)
+#   - mailhog:    Email testing UI (http://localhost:8025)
+#   - adminer:    Database admin UI (http://localhost:8080)
+#
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ===========================================================================
+  # Main Application / التطبيق الرئيسي
+  # ===========================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: mavora-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - NEXT_PUBLIC_APP_NAME=Mavora
+      - NEXT_PUBLIC_APP_LOCALE=ar-MA
+      - NEXT_PUBLIC_APP_Currency=MAD
+      # Database
+      - DATABASE_URL=postgresql://mavora:mavora123@postgres:5432/mavora
+      # Redis
+      - REDIS_URL=redis://redis:6379
+      # Auth
+      - NEXTAUTH_SECRET=dev-secret-change-in-production
+      - NEXTAUTH_URL=http://localhost:3000
+      # Email (MailHog for development)
+      - SMTP_HOST=mailhog
+      - SMTP_PORT=1025
+      - EMAIL_FROM=noreply@mavora.ma
+      # Feature flags
+      - ENABLE_2FA=false
+      - ENABLE_EMAIL_VERIFICATION=true
+      - ENABLE_PAYPAL=false
+      - ENABLE_PAYONEER=false
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - redis
+      - postgres
+      - mailhog
+    networks:
+      - mavora-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ===========================================================================
+  # Redis Cache / ذاكرة تخزين مؤقت
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: mavora-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    networks:
+      - mavora-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # PostgreSQL Database / قاعدة البيانات
+  # ===========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: mavora-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: mavora
+      POSTGRES_PASSWORD: mavora123
+      POSTGRES_DB: mavora
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - mavora-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mavora"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # MailHog - Email Testing / اختبار البريد الإلكتروني
+  # Access web UI at: http://localhost:8025
+  # ===========================================================================
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: mavora-mailhog
+    ports:
+      - "1025:1025"  # SMTP server
+      - "8025:8025"  # Web UI
+    networks:
+      - mavora-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Adminer - Database Admin / إدارة قاعدة البيانات
+  # Access at: http://localhost:8080
+  # ===========================================================================
+  adminer:
+    image: adminer:latest
+    container_name: mavora-adminer
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    networks:
+      - mavora-network
+    restart: unless-stopped
+    profiles:
+      - tools
+
+# =============================================================================
+# Volumes / وحدات التخزين
+# =============================================================================
+volumes:
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+
+# =============================================================================
+# Networks / الشبكات
+# =============================================================================
+networks:
+  mavora-network:
+    driver: bridge
+
+# =============================================================================
+# Quick Commands / أوامر سريعة
+# =============================================================================
+#
+# First time setup:
+#   docker compose up -d
+#   docker compose exec app npm install
+#   docker compose exec app npx prisma migrate dev
+#   docker compose exec app node scripts/seed-data.js
+#
+# Development workflow:
+#   docker compose up -d          # Start services
+#   docker compose logs -f app    # Watch app logs
+#   docker compose restart app    # Restart app
+#
+# Database management:
+#   docker compose exec postgres psql -U mavora -d mavora  # Open SQL console
+#   Open http://localhost:8080 for Adminer GUI
+#
+# Email testing:
+#   Open http://localhost:8025 for MailHog GUI
+#   All emails are captured and viewable in the UI
+#
+# Cleanup:
+#   docker compose down -v        # Remove everything including data
+#
+# =============================================================================

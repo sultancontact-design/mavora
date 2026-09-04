@@ -4,6 +4,11 @@ const nextConfig: NextConfig = {
   output: "standalone",
   
   // ============================================================
+  // Turbopack Configuration (Next.js 16+)
+  // ============================================================
+  turbopack: {}, // Empty config to allow webpack coexistence
+  
+  // ============================================================
   // TypeScript Configuration
   // ============================================================
   typescript: {
@@ -140,7 +145,7 @@ const nextConfig: NextConfig = {
       },
       {
         // Don't cache HTML pages (they're dynamic)
-        source: '/(?!_next/static)(.*)\\.html',
+        source: '/:path*.html',
         headers: [
           {
             key: 'Cache-Control',

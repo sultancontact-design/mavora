@@ -154,8 +154,8 @@ describe('Password Reset - Confirm Validation', () => {
     it('should reject very long password', () => {
       const result = resetPasswordConfirmSchema.safeParse({
         ...validData,
-        password: `${'a'.repeat(129}`,
-        confirmPassword: `${'a'.copyWithin(0, 0, 129)}`,
+        password: 'a'.repeat(129),
+        confirmPassword: 'a'.repeat(129),
       });
       
       expect(result.success).toBe(false);

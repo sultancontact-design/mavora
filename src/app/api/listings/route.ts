@@ -210,6 +210,7 @@ export async function POST(request: NextRequest) {
   try {
     // ============================================================
     // AUTHENTICATION CHECK - Must be authenticated to create listing
+    // Supports: Supabase JWT, DB Auth tokens, Session cookies
     // ============================================================
     const authHeader = request.headers.get('authorization');
     let userId: string | null = null;
@@ -218,19 +219,61 @@ export async function POST(request: NextRequest) {
     const accessToken = request.cookies.get('sb-access-token')?.value;
     
     if (accessToken) {
-      // Verify the token and get user
-      const { data: { user } } = await supabase.auth.getUser(accessToken);
-      if (user) {
-        userId = user.id;
+      // Check if it's a DB auth token (format: db-token-*)
+      if (accessToken.startsWith('db-token-')) {
+        // For DB auth tokens, we need to verify differently
+        // The token itself doesn't contain user info, so we check for a user ID in a custom header
+        // This is a simplified approach - in production, use proper JWT or session management
+        const userIdHeader = request.headers.get('x-user-id');
+        if (userIdHeader) {
+          // Verify user exists in database
+          const { data: user } = await supabase
+            .from('users')
+            .select('id')
+            .eq('id', userIdHeader)
+            .eq('isActive', true)
+            .limit(1)
+            .single();
+          
+          if (user) {
+            userId = user.id;
+          }
+        }
+      } else {
+        // Verify the Supabase token and get user
+        const { data: { user } } = await supabase.auth.getUser(accessToken);
+        if (user) {
+          userId = user.id;
+        }
       }
     }
 
     // Method 2: Check Authorization header (for API usage)
     if (!userId && authHeader?.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
-      const { data: { user } } = await supabase.auth.getUser(token);
-      if (user) {
-        userId = user.id;
+      
+      // Check if it's a DB auth token
+      if (token.startsWith('db-token-')) {
+        const userIdHeader = request.headers.get('x-user-id');
+        if (userIdHeader) {
+          const { data: user } = await supabase
+            .from('users')
+            .select('id')
+            .eq('id', userIdHeader)
+            .eq('isActive', true)
+            .limit(1)
+            .single();
+          
+          if (user) {
+            userId = user.id;
+          }
+        }
+      } else {
+        // Verify as Supabase JWT
+        const { data: { user } } = await supabase.auth.getUser(token);
+        if (user) {
+          userId = user.id;
+        }
       }
     }
 

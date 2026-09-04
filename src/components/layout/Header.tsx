@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   Search, 
   Plus, 
@@ -18,7 +20,8 @@ import {
   Wallet, 
   FileText,
   X,
-  ArrowRight
+  ArrowRight,
+  ArrowLeft
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -80,6 +83,7 @@ export default function Header() {
   const { setLocale } = useLocaleStore();
   const { user, setUser, isLoading } = useAuthStore();
   const { navigateCreateListing, navigateProfile, navigateFavorites, navigateMessages, navigateWallet, navigateInvoices } = useNavigationStore();
+  const router = useRouter();
   
   // State
   const [searchQuery, setSearchQuery] = useState('');
@@ -93,6 +97,15 @@ export default function Header() {
 
   const isRtl = locale === 'ar';
   const direction = isRtl ? 'rtl' : 'ltr';
+
+  /* ── Back Navigation Handler ── */
+  const handleGoBack = useCallback(() => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/');
+    }
+  }, [router]);
 
   /* ── Effects ── */
 
@@ -193,6 +206,17 @@ export default function Header() {
     <>
       <header className="sticky top-0 z-50 w-full border-b border-gray-200/80 bg-white/90 backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 shadow-sm">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:px-6 lg:px-8">
+          
+          {/* ── Back Button (visible on all screens when not on homepage) ── */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleGoBack}
+            className="shrink-0 touch-target rounded-xl hover:bg-gray-100"
+            aria-label={isRtl ? 'رجوع' : 'Go back'}
+          >
+            <ArrowLeft className={`size-5 text-gray-700 ${!isRtl ? 'rotate-180' : ''}`} />
+          </Button>
           
           {/* ── Mobile: Hamburger + Logo ── */}
           <div className="flex items-center gap-2 lg:hidden">
@@ -322,12 +346,16 @@ export default function Header() {
               </SheetContent>
             </Sheet>
             
-            <MavoraLogo size="sm" className="text-teal-600" />
+            <Link href="/" className="hover:opacity-80 transition-opacity">
+              <MavoraLogo size="sm" className="text-teal-600" />
+            </Link>
           </div>
 
           {/* ── Desktop: Logo ── */}
           <div className="hidden lg:flex lg:items-center lg:shrink-0">
-            <MavoraLogo size="md" className="text-teal-600" />
+            <Link href="/" className="hover:opacity-80 transition-opacity">
+              <MavoraLogo size="md" className="text-teal-600" />
+            </Link>
           </div>
 
           {/* ── Country Selector (Desktop) ── */}

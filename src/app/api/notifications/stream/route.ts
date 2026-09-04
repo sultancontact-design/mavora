@@ -9,7 +9,7 @@ import { NextRequest } from 'next/server';
 import { notificationManager } from '@/lib/realtime-notifications';
 import { getSupabaseServerClient } from '@/lib/supabase';
 
-export const runtime = 'edge'; // Edge runtime for better SSE support
+export const runtime = 'nodejs'; // Node.js runtime for SSE support
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {

@@ -675,3 +675,105 @@ const result = await storage.uploadImage(buffer, {
 - إنشاء thumbnails بتنسيق WebP (أصغر 50% من JPEG)
 - تخزين مؤقت لمدة سنة (Cache-Control)
 - معالجة متوازية للصور المتعددة
+
+---
+
+## 🔐 Phase 9: نظام إعادة تعيين كلمة المرور
+
+**التاريخ:** 2026-01-04  
+**المطور:** AI Assistant  
+**الحالة:** مكتمل ✅
+
+---
+
+### 📋 ملخص العمل
+
+تم بناء نظام كامل ومآمن لإعادة تعيين كلمة المرور مع واجهة مستخدم متعددة اللغات.
+
+### الملفات المنشأة/المحدثة:
+
+```
+src/app/auth/
+├── forgot-password/
+│   └── page.tsx              🆕 (صفحة طلب إعادة التعيين)
+├── reset-password/
+│   └── confirm/
+│       └── page.tsx          🆕 (صفحة تأكيد كلمة المرور الجديدة)
+├── login/
+│   └── page.tsx              ✏️ (تحديث رابط نسيت كلمة المرور)
+
+src/i18n/
+├── ar.json                    ✏️ (إضافة ترجمات عربية)
+├── fr.json                    ✏️ (إضافة ترجمات فرنسية)
+└── en.json                    ✏️ (إضافة ترجمات إنجليزية)
+
+__tests__/lib/password-reset.test.ts  🆕 (اختبارات شاملة)
+```
+
+### الميزات الجديدة:
+
+#### 1. صفحة "نسيت كلمة المرور" (`/auth/forgot-password`)
+- ✅ نموذج إدخال البريد الإلكتروني
+- ✅ تحقق من صحة البريد (client-side + server-side)
+- ✅ حماية من تعدد الطلبات (Rate Limiting: 3 محاولات/ساعة)
+- ✅ أمان: عدم الكشف عن وجود البريد أم لا (Email Enumeration Protection)
+- ✅ حالة نجاح مع تعليمات واضحة
+- ✅ تنبيه للمستخدم عند تفعيل Rate Limiting
+
+#### 2. صفحة "تأكيد إعادة التعيين" (`/auth/reset-password/confirm`)
+- ✅ إدخال كلمة المرور الجديدة مع تأكيد
+- ✅ مؤشر قوة كلمة المرور (Weak/Medium/Good/Strong)
+- ✅ فحص متطلبات كلمة المرور في الوقت الفعلي:
+  - 8 أحرف على الأقل
+  - حرف صغير
+  - حرف كبير
+  - رقم
+- ✅ إظهار/إخفاء كلمة المرور
+- ✅ تنبيه عدم تطابق كلمتي المرور فوري
+- ✅ معالجة خطأ الرمز المنتهي الصلاحية
+- ✅ حالة نجاح مع نصائح أمان
+
+#### 3. تحديث صفحة تسجيل الدخول
+- ✅ تصحيح رابط "نسيت كلمة المرور" لل指向 `/auth/forgot-password`
+- ✅ دعم الترجمة التلقائية
+
+#### 4. الترجمات (3 لغات)
+- **العربية**: 35+ عبارة جديدة
+- **الفرنسية**: 35+ عبارة جديدة  
+- **الإنجليزية**: 35+ عبارة جديدة
+
+### تدفق إعادة التعيين:
+
+```
+1. المستخدم ينقر على "نسيت كلمة المرور؟" من صفحة تسجيل الدخول
+         ↓
+2. يدخل بريده الإلكتروني في /auth/forgot-password
+         ↓
+3. النظام يرسل بريد إعادة التعيين (عبر Supabase Auth)
+         ↓
+4. المستخدم يفتح الرابط من البريد → ينتقل إلى /auth/reset-password/confirm
+         ↓
+5. يدخل كلمة المرور الجديدة ويؤكدها
+         ↓
+6. النظامحدث كلمة المرور ويظهر رسالة نجاح
+         ↓
+7. المستخدم يمكنه تسجيل الدخول بكلمته الجديدة
+```
+
+### الأمان المطبق:
+- **Rate Limiting**: 3 محاولات لكل بريد في الساعة
+- **Email Enumeration Prevention**: نفس الاستجابة للبريد الموجود وغير الموجود
+- **Token Expiration**: الرابط صالح لساعة واحدة فقط
+- **Password Strength**: فرض كلمات مرور قوية
+- **Security Headers**: X-Content-Type-Options, X-Frame-Options
+- **Input Validation**: Zod schemas على جانب العميل والخادم
+
+### الاختبارات:
+```
+✅ Request Validation Tests (email format, length, normalization)
+✅ Confirm Validation Tests (password strength, matching, token)
+✅ Error Message Localization Tests (ar, en, fr)
+✅ Security Considerations Tests (rate limiting, token security)
+✅ Integration Flow Simulation
+✅ Performance Benchmarks
+```

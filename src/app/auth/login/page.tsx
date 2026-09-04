@@ -14,7 +14,7 @@ import { Loader2, Eye, EyeOff, ArrowRight, Sparkles, Shield } from 'lucide-react
 
 export default function LoginPage() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { setUser } = useAuthStore();
   
   const [email, setEmail] = useState('');
@@ -154,10 +154,10 @@ export default function LoginPage() {
                   {t('auth.password')}
                 </Label>
                 <Link 
-                  href="/auth/reset-password" 
+                  href="/auth/forgot-password" 
                   className="text-xs font-medium text-teal-600 hover:text-teal-700 transition-colors"
                 >
-                  {t('auth.forgot_password')}
+                  {t('auth.forgot_password') || (locale === 'ar' ? 'نسيت كلمة المرور؟' : 'Forgot Password?')}
                 </Link>
               </div>
               <div className="relative group">

@@ -3,8 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>أنت غير متصل - مافورة</title>
+  <title>أنت غير متصل - مافورة | Mavora</title>
+  <meta name="description" content="منصة السوق العربية - أنت حالياً غير متصل بالإنترنت">
+  
+  <!-- Theme Color -->
+  <meta name="theme-color" content="#2563eb">
+  <meta name="msapplication-TileColor" content="#2563eb">
+  
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+  
   <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --success: #16a34a;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-500: #6b7280;
+      --gray-700: #374151;
+      --gray-900: #111827;
+    }
+    
     * {
       margin: 0;
       padding: 0;
@@ -19,6 +44,7 @@
       align-items: center;
       justify-content: center;
       padding: 20px;
+      direction: rtl;
     }
     
     .container {
@@ -26,138 +52,383 @@
       border-radius: 24px;
       padding: 48px 32px;
       text-align: center;
-      max-width: 400px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.25),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    /* Decorative header */
+    .container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: linear-gradient(90deg, var(--primary), #8b5cf6, var(--danger));
+    }
+    
+    .logo {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 36px;
+      font-weight: bold;
+      box-shadow: 0 10px 30px -5px rgba(37, 99, 235, 0.4);
     }
     
     .icon {
       width: 120px;
       height: 120px;
       margin: 0 auto 24px;
-      background: #fef3c7;
+      background: var(--gray-50);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
+      position: relative;
+    }
+    
+    .icon::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 2px dashed var(--warning);
+      animation: spin 20s linear infinite;
+    }
+    
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
     
     .icon svg {
-      width: 60px;
-      height: 60px;
-      color: #f59e0b;
+      width: 56px;
+      height: 56px;
+      color: var(--warning);
+    }
+    
+    .pulse {
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(0.95); }
     }
     
     h1 {
       font-size: 24px;
-      color: #1f2937;
+      color: var(--gray-900);
       margin-bottom: 12px;
       font-weight: 700;
+      line-height: 1.3;
     }
     
-    p {
-      color: #6b7280;
-      line-height: 1.6;
+    .subtitle {
+      color: var(--gray-500);
+      line-height: 1.7;
       margin-bottom: 32px;
+      font-size: 15px;
+    }
+    
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #fef2f2;
+      color: var(--danger);
+      padding: 8px 16px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 24px;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--danger);
+      border-radius: 50%;
+      animation: blink 1.5s ease-in-out infinite;
+    }
+    
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
     }
     
     .button {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      background: #2563eb;
+      justify-content: center;
+      gap: 10px;
+      background: var(--primary);
       color: white;
-      padding: 14px 28px;
-      border-radius: 12px;
+      padding: 16px 32px;
+      border-radius: 14px;
       text-decoration: none;
       font-weight: 600;
-      transition: all 0.2s;
+      font-size: 15px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      max-width: 280px;
     }
     
     .button:hover {
-      background: #1d4ed8;
+      background: var(--primary-dark);
       transform: translateY(-2px);
-      box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.4);
+      box-shadow: 0 12px 24px -6px rgba(37, 99, 235, 0.5);
+    }
+    
+    .button:active {
+      transform: translateY(0);
+    }
+    
+    .button svg {
+      transition: transform 0.3s;
+    }
+    
+    .button:hover svg {
+      transform: rotate(180deg);
     }
     
     .tips {
       margin-top: 32px;
       padding-top: 24px;
-      border-top: 1px solid #e5e7eb;
+      border-top: 1px solid var(--gray-200);
       text-align: right;
     }
     
     .tips h3 {
       font-size: 14px;
-      color: #374151;
-      margin-bottom: 12px;
+      color: var(--gray-700);
+      margin-bottom: 16px;
+      font-weight: 600;
     }
     
     .tips ul {
       list-style: none;
       font-size: 13px;
-      color: #6b7280;
+      color: var(--gray-500);
     }
     
     .tips li {
-      padding: 6px 0;
+      padding: 8px 0;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 12px;
+      line-height: 1.5;
     }
     
     .tips li::before {
-      content: '•';
-      color: #2563eb;
+      content: '✓';
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      background: #dcfce7;
+      color: var(--success);
+      border-radius: 50%;
+      font-size: 11px;
       font-weight: bold;
+      flex-shrink: 0;
+    }
+    
+    .offline-actions {
+      margin-top: 24px;
+      padding: 16px;
+      background: var(--gray-50);
+      border-radius: 12px;
+    }
+    
+    .offline-actions p {
+      font-size: 12px;
+      color: var(--gray-500);
+      margin-bottom: 12px;
+    }
+    
+    .action-links {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .action-links a {
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 16px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid var(--gray-200);
+      transition: all 0.2s;
+    }
+    
+    .action-links a:hover {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    
+    /* Footer */
+    .footer {
+      margin-top: 32px;
+      font-size: 12px;
+      color: var(--gray-300);
     }
     
     @media (max-width: 480px) {
       .container {
-        padding: 32px 24px;
+        padding: 36px 24px;
+        border-radius: 20px;
       }
       
       h1 {
         font-size: 20px;
       }
+      
+      .icon {
+        width: 100px;
+        height: 100px;
+      }
+      
+      .button {
+        padding: 14px 24px;
+      }
+    }
+    
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+      }
+      
+      .container {
+        background: #1f2937;
+      }
+      
+      h1 { color: #f9fafb; }
+      .subtitle { color: #9ca3af; }
+      .tips h3 { color: #e5e7eb; }
+      .tips li { color: #9ca3af; }
+      .tips li::before { background: #166534; color: #86efac; }
+      .offline-actions { background: #111827; }
+      .action-links a { 
+        background: #374151; 
+        color: #60a5fa; 
+        border-color: #4b5563; 
+      }
+      .status-badge { background: #450a0a; color: #fca5a5; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="icon">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+    <!-- Logo -->
+    <div class="logo">M</div>
+    
+    <!-- Icon -->
+    <div class="icon pulse">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
         <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414" />
       </svg>
     </div>
     
+    <!-- Status -->
+    <div class="status-badge">
+      <span class="status-dot"></span>
+      غير متصل
+    </div>
+    
     <h1>أنت غير متصل بالإنترنت</h1>
     
-    <p>
-      يبدو أن اتصال الإنترنت مقطوع. تحقق من اتصالك ثم حاول مرة أخرى.
+    <p class="subtitle">
+      يبدو أن اتصال الإنترنت مقطوع. لا تقلق، يمكنك استعراض بعض المحتوى المحفوظ أو العودة عندما يتوفر الاتصال.
     </p>
     
-    <a href="/" class="button" onclick="window.location.reload(); return false;">
+    <!-- Retry Button -->
+    <button class="button" onclick="window.location.reload()">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
       </svg>
       إعادة المحاولة
-    </a>
+    </button>
     
+    <!-- Tips -->
     <div class="tips">
       <h3>نصائح لحل المشكلة:</h3>
       <ul>
         <li>تحقق من اتصال Wi-Fi أو بيانات الهاتف</li>
         <li>حاول الاقتراب من جهاز الراوتر</li>
-li>أعد تشغيل جهازك أو الراوتر</li>
+        <li>أعد تشغيل جهازك أو الراوتر</li>
+        <li>تحقق من إعدادات الشبكة</li>
       </ul>
+    </div>
+    
+    <!-- Offline Actions -->
+    <div class="offline-actions">
+      <p>يمكنك أيضًا:</p>
+      <div class="action-links">
+        <a href="/">الصفحة الرئيسية</a>
+        <a href="/favorites">المفضلة المحفوظة</a>
+        <a href="/help">مركز المساعدة</a>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="footer">
+      مافورة © 2024 - منصة السوق العربية
     </div>
   </div>
   
   <script>
     // Auto-retry when back online
     window.addEventListener('online', () => {
-      window.location.reload();
+      // Show reconnecting state
+      document.querySelector('.status-badge').innerHTML = '<span style="background: #22c55e;"></span> متصل!';
+      document.querySelector('.status-badge').style.background = '#dcfce7';
+      document.querySelector('.status-badge').style.color = '#16a34a';
+      
+      // Reload after short delay
+      setTimeout(() => window.location.reload(), 1000);
     });
+    
+    // Listen for online/offline events
+    window.addEventListener('offline', () => {
+      console.log('[Offline Page] User went offline');
+    });
+    
+    // Check initial status
+    if (navigator.onLine) {
+      console.log('[Offline Page] User is online - redirecting...');
+      window.location.reload();
+    }
+    
+    // Register service worker if available
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(reg => {
+        console.log('[Offline Page] Service Worker ready:', reg.scope);
+      }).catch(err => {
+        console.log('[Offline Page] No Service Worker:', err.message);
+      });
+    }
   </script>
 </body>
 </html>

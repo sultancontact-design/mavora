@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8fafc"/>
+      <stop offset="100%" style="stop-color:#e2e8f0"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1080" height="1920" fill="url(#bg)"/>
+  
+  <!-- Status Bar -->
+  <rect width="1080" height="60" fill="#2563eb"/>
+  <text x="540" y="40" font-family="Arial" font-size="24" fill="white" text-anchor="middle">9:41</text>
+  
+  <!-- Header -->
+  <rect x="0" y="60" width="1080" height="120" fill="#2563eb"/>
+  <text x="540" y="135" font-family="Arial" font-size="42" font-weight="bold" fill="white" text-anchor="middle">مافورة</text>
+  
+  <!-- Search Bar -->
+  <rect x="40" y="210" width="1000" height="80" rx="20" fill="white" stroke="#e2e8f0" stroke-width="2"/>
+  <text x="80" y="262" font-family="Arial" font-size="28" fill="#9ca3af">ابحث عن المنتجات...</text>
+  
+  <!-- Category Grid -->
+  <g transform="translate(40, 330)">
+    <!-- Row 1 -->
+    <rect x="0" y="0" width="160" height="160" rx="20" fill="#dbeafe"/>
+    <text x="80" y="95" font-family="Arial" font-size="48" text-anchor="middle">📱</text>
+    <text x="80" y="135" font-family="Arial" font-size="22" fill="#374151" text-anchor="middle">إلكترونيات</text>
+    
+    <rect x="200" y="0" width="160" height="160" rx="20" fill="#fef3c7"/>
+    <text x="280" y="95" font-family="Arial" font-size="48" text-anchor="middle">🚗</text>
+    <text x="280" y="135" font-family="Arial" font-size="22" fill="#374151" text-anchor="middle">سيارات</text>
+    
+    <rect x="400" y="0" width="160" height="160" rx="20" fill="#d1fae5"/>
+    <text x="480" y="95" font-family="Arial" font-size="48" text-anchor="middle">🏠</text>
+    <text x="480" y="135" font-family="Arial" font-size="22" fill="#374151" text-anchor="middle">عقارات</text>
+    
+    <rect x="600" y="0" width="160" height="160" rx="20" fill="#fce7f3"/>
+    <text x="680" y="95" font-family="Arial" font-size="48" text-anchor="middle">👗</text>
+    <text x="680" y="135" font-family="Arial" font-size="22" fill="#374151" text-anchor="middle">أزياء</text>
+    
+    <rect x="800" y="0" width="160" height="160" rx="20" fill="#e0e7ff"/>
+    <text x="880" y="95" font-family="Arial" font-size="48" text-anchor="middle">💼</text>
+    <text x="880" y="135" font-family="Arial" font-size="22" fill="#374151" text-anchor="middle">وظائف</text>
+  </g>
+  
+  <!-- Featured Listings Title -->
+  <text x="40" y="560" font-family="Arial" font-size="32" font-weight="bold" fill="#1f2937">إعلانات مميزة</text>
+  
+  <!-- Listing Cards -->
+  <g transform="translate(40, 590)">
+    <!-- Card 1 -->
+    <rect x="0" y="0" width="480" height="400" rx="16" fill="white" stroke="#e5e7eb" stroke-width="1"/>
+    <rect x="0" y="0" width="480" height="240" rx="16" fill="#cbd5e1"/>
+    <text x="240" y="130" font-family="Arial" font-size="48" text-anchor="middle">📸</text>
+    <text x="20" y="290" font-family="Arial" font-size="24" font-weight="bold" fill="#1f2937">iPhone 15 Pro Max</text>
+    <text x="20" y="330" font-family="Arial" font-size="28" font-weight="bold" fill="#16a34a">12,500 MAD</text>
+    <text x="20" y="370" font-family="Arial" font-size="20" fill="#6b7280">📍 الدار البيضاء</text>
+    
+    <!-- Card 2 -->
+    <rect x="520" y="0" width="480" height="400" rx="16" fill="white" stroke="#e5e7eb" stroke-width="1"/>
+    <rect x="520" y="0" width="480" height="240" rx="16" fill="#bfdbfe"/>
+    <text x="760" y="130" font-family="Arial" font-size="48" text-anchor="middle">🏠</text>
+    <text x="540" y="290" font-family="Arial" font-size="24" font-weight="bold" fill="#1f2937">شقة للكراء - الرباط</text>
+    <text x="540" y="330" font-family="Arial" font-size="28" font-weight="bold" fill="#16a34a">3,500 MAD/شهر</text>
+    <text x="540" y="370" font-family="Arial" font-size="20" fill="#6b7280">📍 الرباط</text>
+  </g>
+  
+  <!-- Bottom Navigation -->
+  <rect x="0" y="1840" width="1080" height="80" fill="white" stroke="#e5e7eb" stroke-width="1"/>
+  <g font-family="Arial" font-size="20" fill="#6b7280" text-anchor="middle">
+    <text x="180" y="1890">🏠 الرئيسية</text>
+    <text x="380" y="1890">🔍 بحث</text>
+    <text x="580" y="1890">❤️ المفضلة</text>
+    <text x="800" y="1890">💬 رسائل</text>
+    <text x="980" y="1890">👤 حسابي</text>
+  </g>
+</svg>

@@ -27,17 +27,17 @@ export async function GET() {
         .from('profiles')
         .select('userId', { count: 'exact', head: true }),
       
-      // Total active categories
+      // Total active categories (schema uses camelCase: isActive)
       supabase
         .from('categories')
         .select('id', { count: 'exact', head: true })
-        .eq('is_active', true),
+        .eq('isActive', true),
       
-      // Total active cities
+      // Total active cities (schema uses camelCase: isActive)
       supabase
         .from('cities')
         .select('id', { count: 'exact', head: true })
-        .eq('is_active', true),
+        .eq('isActive', true),
     ]);
 
     // Calculate stats

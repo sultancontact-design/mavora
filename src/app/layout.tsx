@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import AuthProvider from "@/components/auth/AuthProvider";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/footer/Footer";
+import { PerformanceMonitor } from "@/components/common/PerformanceMonitor";
 
 /* ── Font Configuration ──
  * Tajawal: Modern Arabic font, excellent for RTL content
@@ -234,6 +235,9 @@ export default function RootLayout({
             },
           }}
         />
+        
+        {/* Performance Monitor (Development Only) */}
+        <PerformanceMonitor showBadge={process.env.NODE_ENV === 'development'} />
       </body>
     </html>
   );

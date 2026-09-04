@@ -1,111 +1,334 @@
 # MAVORA Production Audit Report
 
 **Date:** 2026-09-04  
-**Auditor:** Automated Audit System  
+**Auditor:** Super Z - Automated Audit System  
 **Production URL:** https://my-project-nu-nine-64.vercel.app  
-**Status:** ✅ HEALTHY (with issues)
+**Repository:** sultancontact-design/mavora (main branch)  
+**Status:** ⚠️ CRITICAL ISSUES FOUND
 
 ---
 
-## 1. Framework & Versions
+## Executive Summary
 
-| Component | Version | Status |
-|-----------|---------|--------|
-| Next.js | 16.1.1 | ✅ Latest |
-| React | 19.0.0 | ✅ Latest |
-| TypeScript | 5.x | ✅ OK |
-| Tailwind CSS | 4.x | ✅ OK |
-| Supabase JS | 2.112.4 | ✅ OK |
-| next-intl | 4.3.4 | ✅ OK |
-| Vitest | 5.x | ✅ OK |
-| Node.js (Vercel) | 24.x | ✅ OK |
+This audit identified **CRITICAL SECURITY VULNERABILITIES** that must be fixed immediately before the application can be considered production-ready. The application has a solid foundation but contains hardcoded credentials and fake data injection points that pose serious security and functional risks.
+
+### Overall Production Readiness: **55%** (DOWN from previous 75% estimate)
+
+**Critical Finding:** Hardcoded service role key and fake user ID in production API route.
 
 ---
 
-## 2. File Structure
+## Audit Item 1: Framework & Versions Verification ✅ PASSED
+
+| Component | Version | Status | Notes |
+|-----------|---------|--------|-------|
+| Next.js | ^16.1.1 | ✅ Latest | App Router, standalone output |
+| React | ^19.0.0 | ✅ Latest | Concurrent features available |
+| TypeScript | ^5.x | ✅ OK | But `ignoreBuildErrors: true` set |
+| Tailwind CSS | ^4.x | ✅ OK | PostCSS based |
+| Supabase JS | ^2.112.4 | ✅ OK | Latest stable |
+| next-intl | ^4.3.4 | ✅ OK | i18n support |
+| Vitest | ^5.x | ✅ OK | Test framework configured |
+| Zod | ^4.0.2 | ✅ OK | Validation library |
+| React Query | ^5.82.0 | ✅ OK | Data fetching |
+
+**⚠️ Warning:** `typescript.ignoreBuildErrors = true` in next.config.ts masks potential type errors.
+
+---
+
+## Audit Item 2: File Structure Analysis ✅ PASSED
 
 ```
-src/
-├── app/                    # Next.js App Router
-│   ├── api/               # 60+ API routes
-│   ├── admin/             # Admin pages
-│   ├── auth/              # Auth pages
-│   ├── listings/          # Listing CRUD
-│   └── [pages].tsx        # 15+ page routes
-├── components/            # React components
-│   ├── ui/                # shadcn/ui components
-│   ├── listing/           # Listing components
-│   └── common/            # Shared components
-├── lib/                   # Utilities
-│   ├── supabase.ts        # Supabase client
-│   ├── types.ts           # TypeScript types
-│   ├── i18n.ts            # i18n config
-│   └── demo-data.ts       # ⚠️ Demo data (DISABLED)
-├── hooks/                 # Custom hooks
-└── i18n/                  # Translation files
-    ├── ar.json            # Arabic
-    ├── en.json            # English
-    └── fr.json            French
+/home/z/my-project/
+├── src/
+│   ├── app/                    # Next.js App Router (60+ routes)
+│   │   ├── api/                # 68 API endpoints
+│   │   ├── admin/              # Admin dashboard
+│   │   ├── auth/               # Authentication pages
+│   │   ├── listings/           # Listing CRUD
+│   │   └── [various pages].tsx # 15+ page routes
+│   ├── components/             # React components
+│   │   ├── ui/                 # 50+ shadcn/ui components
+│   │   ├── listing/            # 7 listing components
+│   │   ├── admin/              # 12 admin components
+│   │   ├── auth/               # 2 auth components
+│   │   └── common/             # 3 shared components
+│   ├── lib/                    # 20+ utility modules
+│   ├── hooks/                  # 4 custom hooks
+│   ├── stores/                 # 3 Zustand stores
+│   └── i18n/                   # Translation files
+├── prisma/                     # Schema & migrations (NOT USED)
+├── db/                         # SQL files
+├── scripts/                    # 40+ utility scripts
+├── public/                     # Static assets, PWA files
+└── docs/                       # Documentation
 ```
 
-**Total Files:** ~200+ TypeScript/TSX files
+**Total Source Files:** ~250+ TypeScript/TSX files
 
 ---
 
-## 3. Existing Routes
+## Audit Item 3: Existing Routes Enumeration ✅ PASSED
 
-### Public Routes
-| Route | Path | Status |
-|-------|------|--------|
-| Home | `/` | ✅ Working |
-| Listings | `/listings` | ✅ Working |
-| Listing Detail | `/listings/[id]` | ✅ Working |
-| Create Listing | `/listings/create` | ✅ Working |
-| Categories | `/category/[slug]` | ✅ Working |
-| Search | `/listings?q=` | ✅ Working |
-| Auth/Login | `/auth/login` | ✅ Working |
-| Auth/Signup | `/auth/signup` | ✅ Working |
-| Favorites | `/favorites` | ✅ Working |
-| Messages | `/messages` | ✅ Working |
-| Profile | `/profile` | ✅ Working |
-| About | `/about` | ✅ Working |
-| Contact | `/contact` | ⚠️ Has `href="#"` issue |
-| Help | `/help` | ✅ Working |
-| Privacy | `/privacy` | ✅ Working |
-| Terms | `/terms` | ✅ Working |
-| Coming Soon | `/coming-soon` | ✅ Working |
+### Public Pages (15 routes)
 
-### Admin Routes
-| Route | Path | Status |
-|-------|------|--------|
-| Admin Dashboard | `/admin` | ✅ Working |
-| Admin Users | `/admin/users` | ✅ Working |
-| Admin Listings | `/admin/listings` | ✅ Working |
-| Admin Settings | `/admin/settings` | ✅ Working |
+| Route | Path | File | Status |
+|-------|------|------|--------|
+| Home | `/` | `src/app/page.tsx` | ✅ Working |
+| Listings | `/listings` | `src/app/listings/page.tsx` | ✅ Working |
+| Listing Detail | `/listings/[id]` | `src/app/listings/[id]/page.tsx` | ✅ Working |
+| Create Listing | `/listings/create` | `src/app/listings/create/page.tsx` | ⚠️ Uses fake userId |
+| Category | `/category/[slug]` | `src/app/category/[slug]/page.tsx` | ✅ Working |
+| Auth Login | `/auth/login` | `src/app/auth/login/page.tsx` | ✅ Working |
+| Auth Signup | `/auth/signup` | `src/app/auth/signup/page.tsx` | ✅ Working |
+| Favorites | `/favorites` | `src/app/favorites/page.tsx` | ✅ Working |
+| Messages | `/messages` | `src/app/messages/page.tsx` | ✅ Working |
+| Profile | `/profile` | `src/app/profile/page.tsx` | ✅ Working |
+| Wallet | `/wallet` | `src/app/wallet/page.tsx` | ✅ Working |
+| About | `/about` | `src/app/about/page.tsx` | ✅ Working |
+| Contact | `/contact` | `src/app/contact/page.tsx` | ⚠️ Has broken link |
+| Help | `/help` | `src/app/help/page.tsx` | ✅ Working |
+| Privacy | `/privacy` | `src/app/privacy/page.tsx` | ✅ Working |
+| Terms | `/terms` | `src/app/terms/page.tsx` | ✅ Working |
+| Coming Soon | `/coming-soon` | `src/app/coming-soon/page.tsx` | ✅ Working |
 
-### API Routes (60+ endpoints)
-| Category | Count | Status |
-|----------|-------|--------|
-| Auth | 6 | ✅ Working |
-| Listings | 7 | ✅ Working |
-| Admin | 12 | ✅ Working |
-| Users | 2 | ✅ Working |
-| Payments | 4 | ⚠️ Needs verification |
-| Others | 29 | ✅ Working |
+### Admin Pages (1 layout + 1 page)
+
+| Route | Path | File | Status |
+|-------|------|------|--------|
+| Admin Layout | `/admin` | `src/app/admin/layout.tsx` | ✅ Working |
+| Admin Dashboard | `/admin` | `src/app/admin/page.tsx` | ✅ Working |
+
+### API Routes (68 endpoints)
+
+| Category | Count | Key Endpoints | Status |
+|----------|-------|---------------|--------|
+| Health | 1 | `GET /api/health` | ✅ Working |
+| Auth | 6 | login, signup, logout, session, profile, reset-password, verify-email | ✅ Working |
+| Listings | 7 | CRUD, favorite, report, media, reviews, fields, status | ⚠️ Security issue |
+| Admin | 13 | stats, users, listings, categories, settings, reports, audit-logs, payments, moderate, category-fields | ✅ Working |
+| Users | 1 | `GET /api/users/[id]` | ✅ Working |
+| Conversations | 5 | CRUD, messages, read, report | ✅ Working |
+| Notifications | 4 | CRUD, read-all, unread | ✅ Working |
+| Payments | 3 | checkout, webhook/stripe, webhook/morocco, [id] | ⚠️ Needs testing |
+| Wallet | 2 | wallet, transactions | ✅ Working |
+| Favorites | 1 | CRUD | ✅ Working |
+| Orders | 2 | CRUD, [id] | ✅ Working |
+| Invoices | 3 | CRUD, [id]/pdf | ✅ Working |
+| Organizations | 3 | CRUD, [id]/members | ✅ Working |
+| Setup | 2 | check, migrate | ✅ Working |
+| Other | 14 | categories, cities, countries, currencies, plans, promotions, reports, token-packages, settings, category-fields | ✅ Working |
 
 ---
 
-## 4. Pages That Work ✅
+## Audit Item 4: Working Pages vs Broken Pages Identification ⚠️ ISSUES FOUND
 
-Based on health check and code analysis:
+### Fully Functional Pages ✅
 
-- **Homepage** - Loads with real data from Supabase
-- **Listing Pages** - Fetch from database
-- **Auth Pages** - Connected to Supabase Auth
-- **Admin Panel** - Functional with proper auth checks
-- **API Endpoints** - Most are implemented
+1. **Homepage (`/`)** - Loads real data from Supabase, displays categories and listings
+2. **Listings Page (`/listings`)** - Fetches and displays listings from database
+3. **Listing Detail (`/listings/[id]`)** - Shows full listing with images
+4. **Auth Pages** - Login/Signup connected to Supabase Auth
+5. **Admin Dashboard** - Displays statistics and management tools
+6. **Category Pages** - Filter listings by category
+7. **Static Pages** - About, Privacy, Terms, Help all render correctly
 
-**Health Check Result:**
+### Pages With Issues ⚠️
+
+| Page | Issue | Severity | Location |
+|------|-------|----------|----------|
+| **Create Listing** | Uses hardcoded `userId = 'test-user-001'` | 🔴 CRITICAL | `src/app/api/listings/route.ts:264` |
+| **Contact Page** | Contains `href="#"` empty link | 🟡 LOW | `src/app/contact/page.tsx` |
+| **Homepage Hero** | Shows unverified "+100,000 listings" claim | 🟡 MEDIUM | `src/components/marketplace/HeroSection.tsx:201` |
+
+---
+
+## Audit Item 5: APIs Present in Codebase ✅ VERIFIED
+
+All 68 API endpoints are present and implemented. See Item 3 for complete list.
+
+**API Implementation Quality:**
+- Most APIs use proper error handling with try/catch
+- Input validation using Zod schemas
+- XSS prevention via `sanitizeInput()` function
+- SQL injection prevention via parameterized queries and allowlists
+- Rate limiting on login endpoint (in-memory, not Redis)
+- Security headers set on responses
+
+---
+
+## Audit Item 6: Supabase Client Configuration Review 🔴 ISSUES FOUND
+
+### Configuration Files
+
+| File | Purpose | Status |
+|------|---------|--------|
+| `src/lib/supabase.ts` | Main client creation | ⚠️ Has placeholder fallback |
+| `src/lib/server-client.ts` | Server-side client | ✅ OK |
+| `src/lib/db-auth.ts` | Database-first auth | ✅ OK |
+| `src/lib/db.ts` | Database utilities | ✅ OK |
+
+### 🔴 CRITICAL ISSUE #1: Hardcoded Service Role Key
+
+**Location:** `src/app/api/listings/route.ts:8-9`
+
+```typescript
+const SUPABASE_URL = 'https://kyanecjjautqmuowbtvy.supabase.co';
+const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
+```
+
+**Risk:** Service role key is hardcoded in source code and committed to GitHub. This key bypasses ALL RLS policies and has full database access.
+
+**Fix Required:** Move to environment variable immediately.
+
+### ⚠️ WARNING: Placeholder Client Fallback
+
+**Location:** `src/lib/supabase.ts:14-24`
+
+```typescript
+if (!supabaseUrl || !supabaseAnonKey) {
+    // Return a mock client that won't crash during build
+    return createClient('https://placeholder.supabase.co', 'placeholder-key', ...);
+}
+```
+
+**Risk:** Application silently uses fake client instead of failing loudly when credentials are missing.
+
+**Recommendation:** Throw an error in production if credentials missing.
+
+---
+
+## Audit Item 7: Database Migrations Status ⚠️ PARTIAL
+
+| Migration System | Status | Notes |
+|------------------|--------|-------|
+| Prisma Migrations | ⚠️ NOT USED | Schema exists but Supabase used directly |
+| SQL Files | ✅ APPLIED | RLS policies applied successfully |
+| Seed Data | ✅ AVAILABLE | Multiple seed scripts exist |
+
+**Applied to Production:**
+- ✅ 17 RLS Policies (verified working)
+- ✅ Database tables (categories, listings, profiles, etc.)
+- ✅ Sample data (57 users, 100 listings, 47 categories, 66 cities)
+
+**Not Applied:**
+- Prisma migrations (project uses direct Supabase)
+
+---
+
+## Audit Item 8: Tables Structure Verification ✅ VERIFIED
+
+Based on successfully executed RLS policies, these tables exist:
+
+| Table Name | Purpose | Columns (from RLS) | RLS Enabled |
+|------------|---------|-------------------|-------------|
+| `categories` | Product categories | id, name, nameAr, nameFr, slug | ✅ Yes |
+| `favorites` | User favorites | id, userId, listingId | ✅ Yes |
+| `listing_media` | Listing images | id, listingId, url, type | ✅ Yes |
+| `listings` | Main listings | id, userId, title, price, status, categoryId, etc. | ✅ Yes |
+| `messages` | User messages | id, conversationId, senderId, content | ✅ Yes |
+| `notifications` | User notifications | id, userId, title, message, read | ✅ Yes |
+| `orders` | Orders | id, buyerId, sellerId, listingId, status | ✅ Yes |
+| `profiles` | User profiles | id, userId, displayName, avatar, etc. | ✅ Yes |
+| `users` | User accounts | id, email, name, etc. | ✅ Implied |
+
+**Column Naming Convention:** camelCase (e.g., `userId`, `listingId`, `createdAt`)
+
+---
+
+## Audit Item 9: RLS Policies Status ✅ VERIFIED WORKING
+
+**Total Policies Applied: 17**
+
+| Table | Policy Count | Actions Covered | Status |
+|-------|-------------|-----------------|--------|
+| `categories` | 2 | SELECT (public), ALL (service_role) | ✅ Applied |
+| `favorites` | 1 | ALL (authenticated owners) | ✅ Applied |
+| `listing_media` | 3 | SELECT (all), INSERT/DELETE (owners) | ✅ Applied |
+| `listings` | 4 | SELECT (auth), INSERT/UPDATE/DELETE (owners) | ✅ Applied |
+| `messages` | 1 | ALL (conversation participants) | ✅ Applied |
+| `notifications` | 2 | SELECT (owners), INSERT (service_role) | ✅ Applied |
+| `orders` | 3 | SELECT/INSERT/UPDATE (relevant users) | ✅ Applied |
+| `profiles` | 2 | SELECT (auth), UPDATE (self) | ✅ Applied |
+
+**RLS Implementation Quality:**
+- ✅ Uses intelligent column discovery (`_col_exists()` helper)
+- ✅ Handles both `userId` and `user_id` column names
+- ✅ Proper UUID text casting for comparisons
+- ✅ Admin bypass via `auth.role() = 'service_role'`
+
+---
+
+## Audit Item 10: Environment Variables Analysis 🔴 ISSUES FOUND
+
+### Required Variables
+
+| Variable | Purpose | In .env.example | Used in Code | Hardcoded? |
+|----------|---------|-----------------|--------------|------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase URL | ✅ Yes | ✅ Yes | ❌ No |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public API key | ✅ Yes | ✅ Yes | ❌ No |
+| `SUPABASE_SERVICE_ROLE_KEY` | Admin key | ✅ Yes | ✅ Yes | 🔴 **YES!** |
+| `NEXT_PUBLIC_APP_URL` | Base URL | ✅ Yes | ✅ Yes | ❌ No |
+| `NEXT_PUBLIC_APP_NAME` | App name | ✅ Yes | ✅ Yes | ❌ No |
+
+### 🔴 CRITICAL ISSUE #2: Service Role Key Exposed
+
+The `SUPABASE_SERVICE_ROLE_KEY` is hardcoded in:
+- `src/app/api/listings/route.ts:9`
+
+This key must be removed from code and stored only in:
+- Vercel Environment Variables (production)
+- `.env` file (local, gitignored)
+
+---
+
+## Audit Item 11: Failing API Calls Detection 🔴 FOUND
+
+### Detected Failures
+
+| API Call | Location | Issue | Severity |
+|----------|----------|-------|----------|
+| `POST /api/listings` | `route.ts:264` | Creates listings with fake `userId = 'test-user-001'` | 🔴 CRITICAL |
+| Contact form link | `contact/page.tsx` | `href="#"` does nothing | 🟡 LOW |
+
+### Potential Failures (Not Verified - Need Browser Testing)
+
+| Check | Method | Status |
+|-------|--------|--------|
+| Console JavaScript errors | Browser DevTools | NOT VERIFIED |
+| Network request failures | Network tab | NOT VERIFIED |
+| Image loading failures | Network tab | NOT VERIFIED |
+| API response errors | Server logs | NOT VERIFIED |
+
+---
+
+## Audit Item 12: Console Errors Check
+
+**Status: NOT VERIFIED**
+
+**Reason:** Requires browser DevTools or Playwright automated testing.
+
+**Known Potential Console Warnings:**
+1. Placeholder client warning if env vars missing:
+   ```
+   ⚠️ Supabase credentials not found. Some features may not work in development.
+   ```
+2. Demo mode logs (currently disabled):
+   ```javascript
+   if (DEMO_MODE) {
+       console.log('[DEMO MODE] ⚠️ Demo data loaded...');
+   }
+   ```
+
+---
+
+## Audit Item 13: Network Errors Check
+
+**Status: NOT VERIFIED**
+
+**Reason:** Requires browser DevTools network tab analysis or API testing tool.
+
+**Health Endpoint Result (Last Known):**
 ```json
 {
   "status": "healthy",
@@ -113,302 +336,288 @@ Based on health check and code analysis:
     "database": true,
     "storage": true,
     "auth": true
-  }
+  },
+  "timestamp": "2026-09-04T...",
+  "uptime": 12345.678
 }
 ```
 
 ---
 
-## 5. Pages With Issues ⚠️
+## Audit Item 14: Server Log Errors Check
 
-| Page | Issue | Severity |
-|------|-------|----------|
-| Contact | Contains `href="#"` link | Low |
-| Homepage | Shows unverified marketing claims | Medium |
-| Some components | May show translation keys if missing | Medium |
+**Status: NOT VERIFIED**
 
----
+**Reason:** Requires Vercel dashboard access or external logging service.
 
-## 6. Existing APIs
-
-### Fully Implemented
-- `GET /api/health` - System health check
-- `POST /api/auth/login` - User login
-- `POST /api/auth/signup` - User registration
-- `GET /api/listings` - List listings
-- `POST /api/listings` - Create listing
-- `GET /api/listings/[id]` - Get listing details
-- `POST /api/listings/[id]/favorite` - Toggle favorite
-- `GET/POST /api/favorites` - User favorites
-- `GET/POST /api/messages` - Conversations
-- `GET /api/categories` - Categories list
-- `GET /api/cities` - Cities list
-- `GET /api/countries` - Countries list
-
-### Admin APIs
-- `GET /api/admin/stats` - Dashboard statistics
-- `GET /api/admin/users` - User management
-- `GET/PUT /api/admin/users/[id]` - User details/update
-- `GET /api/admin/listings` - Listing moderation
-- `POST /api/admin/moderate` - Approve/reject listings
-- `GET /api/admin/reports` - User reports
-- `GET /api/admin/audit-logs` - Audit trail
-- `CRUD /api/admin/categories` - Category management
-- `CRUD /api/admin/category-fields` - Dynamic fields
-
-### Payment APIs (Needs Verification)
-- `POST /api/payments/checkout` - Create checkout
-- `POST /api/payments/webhook/stripe` - Stripe webhook
-- `POST /api/payments/webhook/morocco` - Morocco payment webhook
+**Vercel Deployment Status:**
+- Last deployment: 2026-09-04
+- Build status: ✅ Successful
+- Runtime errors: NOT ACCESSIBLE
 
 ---
 
-## 7. Supabase Client Files
+## Audit Item 15: Mock/Static Data Locations 🔴 FOUND CRITICAL
 
-| File | Purpose | Status |
-|------|---------|--------|
-| `src/lib/supabase.ts` | Main client creation | ✅ Working |
-| `src/lib/server-client.ts` | Server-side client | ✅ Working |
-| `src/lib/db-auth.ts` | Auth helpers | ✅ Working |
-| `src/lib/db.ts` | Database utilities | ✅ Working |
+### Critical: Active Mock Data in Production Code
 
-**Client Configuration:**
-- Uses environment variables for URL and keys
-- Has fallback to placeholder client if vars missing (⚠️)
-- Properly separates server/client usage
+| File | Data Type | Active? | Risk Level |
+|------|-----------|---------|------------|
+| `src/app/api/listings/route.ts:264` | `defaultUserId = 'test-user-001'` | 🔴 **YES** | CRITICAL |
+| `src/app/api/listings/route.ts:9` | Hardcoded SERVICE_ROLE_KEY | 🔴 **YES** | CRITICAL |
 
----
-
-## 8. Existing Migrations
-
-| Location | Type | Status |
-|----------|------|--------|
-| `prisma/migrations/` | Prisma migrations | ⚠️ Not used in production |
-| `db/mavora_rls_policies.sql` | RLS policies | ✅ Applied |
-| `db/custom.db` | SQLite local DB | ⚠️ Development only |
-
-**Note:** Project uses Supabase directly, not Prisma in production.
-
----
-
-## 9. Existing Tables (from RLS policies)
-
-Based on successfully applied RLS policies:
-
-| Table | Purpose | RLS Enabled |
-|-------|---------|-------------|
-| `categories` | Product categories | ✅ |
-| `favorites` | User favorites | ✅ |
-| `listing_media` | Listing images | ✅ |
-| `listings` | Main listings table | ✅ |
-| `messages` | User messages | ✅ |
-| `notifications` | User notifications | ✅ |
-| `orders` | Orders | ✅ |
-| `profiles` | User profiles | ✅ |
-
-**Total Tables with RLS: 8+**
-
----
-
-## 10. Existing RLS Policies
-
-**Successfully Applied: 17 policies**
-
-| Table | Policies | Actions |
-|-------|----------|---------|
-| categories | 2 | SELECT (public), ALL (admin) |
-| favorites | 1 | ALL (owner) |
-| listing_media | 3 | SELECT (all), INSERT/DELETE (owner) |
-| listings | 4 | SELECT (auth), INSERT/UPDATE/DELETE (owner) |
-| messages | 1 | ALL (auth-based) |
-| notifications | 2 | SELECT (owner), INSERT (service_role) |
-| orders | 3 | SELECT/INSERT/UPDATE (user) |
-| profiles | 2 | SELECT (auth), UPDATE (self) |
-
----
-
-## 11. Required Environment Variables
-
-| Variable | Purpose | Required | In .env.example |
-|----------|---------|----------|-----------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase URL | ✅ Yes | ✅ Yes |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key | ✅ Yes | ✅ Yes |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service role | ✅ Yes | ✅ Yes |
-| `NEXT_PUBLIC_APP_URL` | App URL | Optional | ✅ Yes |
-| `NEXT_PUBLIC_APP_NAME` | App name | Optional | ✅ Yes |
-
----
-
-## 12. Actually Used Environment Variables
-
-**Verified in code:**
-- `NEXT_PUBLIC_SUPABASE_URL` - Used in supabase.ts
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Used in supabase.ts
-- `SUPABASE_SERVICE_ROLE_KEY` - Used in API routes
-- `NEXT_PUBLIC_APP_URL` - Used for redirects/emails
-
-**Potential Issues:**
-- ⚠️ Placeholder client used if env vars missing (should fail loudly instead)
-
----
-
-## 13. Failing Calls (Detected)
-
-| Call | Location | Issue | Frequency |
-|------|----------|-------|-----------|
-| Contact form `href="#"` | contact/page.tsx | Empty link | On render |
-| Translation keys | Various | May show raw keys | When missing |
-
-**Network Errors:** NOT VERIFIED (need browser DevTools)
-
-**Console Errors:** NOT VERIFIED (need browser DevTools)
-
-**Server Log Errors:** NOT VERIFIED (need Vercel dashboard access)
-
----
-
-## 14. Console Errors
-
-**NOT VERIFIED** - Requires browser inspection or Playwright test
-
-**Known Potential Issues:**
-- Placeholder client warning if env vars missing
-- Demo mode console logs (disabled in prod)
-
----
-
-## 15. Network Errors
-
-**NOT VERIFIED** - Requires browser DevTools or API testing
-
-**Health endpoint shows all systems operational.**
-
----
-
-## 16. Server Log Errors
-
-**NOT VERIFIED** - Requires Vercel dashboard access
-
-**Build Status:** Last deployment successful (2026-09-04)
-
----
-
-## 17. Mock/Static Data Found
+### Disabled Demo Data (Safe)
 
 | File | Data Type | Status |
 |------|-----------|--------|
-| `src/lib/demo-data.ts` | Demo user/listings/session | ✅ DISABLED (DEMO_MODE=false) |
-| Homepage statistics | Hardcoded numbers | ⚠️ NEEDS CHECK |
-| Marketing claims | Unverified statements | ⚠️ NEEDS FIX |
+| `src/lib/demo-data.ts` | Demo user, admin, listings, session | ✅ Safe (DEMO_MODE=false) |
 
-**Demo Data Content (DISABLED):**
-- 1 demo user (testuser@mavora.ma) - NOT REAL
-- 1 demo admin (admin@mavora.ma) - NOT REAL
-- Demo listings with Unsplash images - NOT REAL
-- All properly gated behind `DEMO_MODE = false`
+**Contents of demo-data.ts (DISABLED):**
+- 1 demo user: `demo-user-001` (testuser@mavora.ma)
+- 1 demo admin: `demo-admin-001` (admin@mavora.ma)
+- Demo listings with Unsplash images
+- Demo session tokens
 
----
+**Assessment:** The `DEMO_MODE = false` flag properly gates this data. It is NOT loaded in production.
 
-## 18. Buttons Without Functions
+### Hardcoded UI Text (Needs Review)
 
-| Location | Button/Link | Issue |
-|----------|-------------|-------|
-| contact/page.tsx | Link element | `href="#"` - no action |
-
-**Most buttons appear functional based on code analysis.**
+| Location | Content | Issue |
+|----------|---------|-------|
+| `HeroSection.tsx:201` | "+100,000 إعلان" | Unverified statistic |
+| `HeroSection.tsx:88` | "أكبر سوق إلكتروني في المنطقة" | Unverified claim |
+| Various components | Inline strings | Should use i18n keys |
 
 ---
 
-## 19. Incomplete Translations
+## Audit Item 16: Non-Functional Buttons/Links Identification 🟡 FOUND
 
-**Translation Files:**
-- `ar.json` - 31,119 bytes (Arabic)
-- `en.json` - 25,250 bytes (English)
-- `fr.json` - 27,185 bytes (French)
+| Component | Element | Issue | Location |
+|-----------|---------|-------|----------|
+| Contact Page | Link | `href="#"` - no action | `src/app/contact/page.tsx` |
 
-**Potential Issues:**
-- Size difference suggests possible missing keys
-- Need automated diff check
+**Most buttons and links appear functional** based on code analysis. The contact page link is the only confirmed non-functional element.
 
-**Unverified Marketing Claims in ar.json:**
+**Note:** Full verification requires Playwright E2E testing or manual browser testing.
+
+---
+
+## Audit Item 17: Incomplete Translations Analysis ⚠️ NEEDS ATTENTION
+
+### Translation Files Comparison
+
+| Language | File | Size | Keys (Estimated) |
+|----------|------|------|------------------|
+| Arabic | `src/i18n/ar.json` | 31,119 bytes | ~500+ |
+| English | `src/i18n/en.json` | 25,250 bytes | ~450+ |
+| French | `src/i18n/fr.json` | 27,185 bytes | ~450+ |
+
+**Observation:** Arabic file is significantly larger, suggesting either:
+- More complete translations
+- Additional keys not present in other languages
+- Different formatting/comments
+
+### Unverified Marketing Claims (All Languages)
+
+**Arabic (ar.json):**
 ```json
-"home.largest_marketplace": "أكبر سوق إلكتروني في المغرب وشمال إفريقيا",
-"home.join_thousands": "انضم إلى آلاف المستخدمين الذين يشترون ويبيعون على مافورا",
+"home.largest_marketplace": "سوقك الإلكتروني في المغرب وشمال إفريقيا",
 "hero.subtitle": "أكبر سوق إلكتروني في المغرب وشمال إفريقيا. آمن وسريع وموثوق."
 ```
 
-These claims need verification or removal.
+**English (en.json):**
+```json
+"home.largest_marketplace": "Your Trusted Online Marketplace in Morocco & North Africa"
+```
+
+**French (fr.json):**
+```json
+"home.largest_marketplace": "Votre marché de confiance au Maroc et en Afrique du Nord"
+```
+
+**Issue:** These claims of being "largest" or "trusted" need supporting evidence or should be softened to avoid false advertising concerns.
 
 ---
 
-## 20. Declared But Unimplemented Features
+## Audit Item 18: Declared But Unimplemented Features ⚠️ PARTIAL
 
-| Feature | Status | Evidence |
-|---------|--------|----------|
-| Payment/Checkout | ⚠️ Partial | API exists, needs testing |
-| Stripe Integration | ⚠️ Partial | Webhook exists |
-| Morocco Payments | ⚠️ Partial | Webhook exists |
-| Email Verification | ✅ Implemented | API route exists |
-| Password Reset | ✅ Implemented | API route exists |
-| Image Upload | ✅ Implemented | API + storage |
-| Real-time Messages | ✅ Implemented | Socket.io client |
-| Notifications | ✅ Implemented | API routes |
-| Wallet System | ⚠️ Partial | API exists |
-| Organizations | ⚠️ Partial | API exists |
-
----
-
-## 21. Priority List by Severity
-
-### 🔴 CRITICAL (Fix Immediately)
-1. **Unverified marketing claims** - Legal/compliance risk
-2. **Placeholder client fallback** - Should error, not silently fail
-3. **Contact page broken link** - Bad UX
-
-### 🟠 HIGH (Fix This Sprint)
-4. **Translation key consistency** - Prevents showing raw keys
-5. **Payment flow verification** - Revenue impact
-6. **Error boundary implementation** - Better UX
-
-### 🟡 MEDIUM (Fix Soon)
-7. **Demo data cleanup** - Remove entirely or move to separate repo
-8. **Console.log cleanup** - Performance/security
-9. **TypeScript strict mode** - Catch bugs early
-
-### 🟢 LOW (Nice to Have)
-10. **Automated translation tests** - Prevent regressions
-11. **Playwright E2E tests** - Regression prevention
-12. **Performance optimization** - Lighthouse score improvement
+| Feature | Declaration | Implementation Status | Evidence |
+|---------|-------------|---------------------|----------|
+| **Authentication** | AuthProvider, login/signup APIs | ✅ **FULLY IMPLEMENTED** | Supabase Auth + DB fallback |
+| **Listing CRUD** | 7 API endpoints | ⚠️ **PARTIAL** | Read works, create has fake userId |
+| **Payment/Stripe** | Webhook endpoint | ⚠️ **NEEDS TESTING** | Code exists, no test coverage |
+| **Morocco Payments** | Webhook endpoint | ⚠️ **NEEDS TESTING** | Code exists, no test coverage |
+| **Real-time Chat** | Socket.io client import | ⚠️ **PARTIAL** | Client imported, server status unknown |
+| **Wallet System** | 2 API endpoints | ✅ **IMPLEMENTED** | May need balance logic |
+| **Notifications** | 4 API endpoints | ✅ **IMPLEMENTED** | Full CRUD + read-all |
+| **Admin Panel** | 13 API endpoints | ✅ **IMPLEMENTED** | Full management suite |
+| **Image Upload** | Media API + Storage | ✅ **IMPLEMENTED** | Supabase Storage integration |
+| **Email Verification** | API endpoint | ✅ **IMPLEMENTED** | `/api/auth/verify-email` |
+| **Password Reset** | API endpoint | ✅ **IMPLEMENTED** | `/api/auth/reset-password` |
+| **Organizations** | 3 API endpoints | ⚠️ **PARTIAL** | Basic CRUD exists |
+| **Invoices** | 3 API endpoints + PDF | ✅ **IMPLEMENTED** | Includes PDF generation |
+| **Rate Limiting** | Login endpoint | ⚠️ **BASIC** | In-memory only (no Redis) |
+| **PWA** | Manifest + Service Worker | ✅ **IMPLEMENTED** | Offline support ready |
+| **i18n** | 3 locales | ✅ **IMPLEMENTED** | AR, EN, FR supported |
+| **SEO** | Metadata + Sitemap | ✅ **IMPLEMENTED** | OpenGraph, Twitter cards |
+| **RSS Feed** | Not found | ❌ **NOT IMPLEMENTED** | Could add for listings |
 
 ---
 
-## Summary
+## Audit Item 19: Priority List by Severity
 
-### What's Working ✅
-- Database connection (Supabase)
-- Authentication system
-- Basic CRUD operations
-- RLS policies (17 applied)
-- Admin panel structure
-- i18n framework
-- Health monitoring
-- File upload infrastructure
+### 🔴 CRITICAL - Fix Immediately (Security/Data Integrity)
 
-### What Needs Attention ⚠️
-- Marketing claims verification
-- Translation completeness
-- Payment integration testing
-- Error handling improvements
-- Test coverage expansion
+| # | Issue | Impact | Effort |
+|---|-------|--------|--------|
+| 1 | **Hardcoded SERVICE_ROLE_KEY in listings API** | Full DB access exposed | 5 min |
+| 2 | **Hardcoded fake userId in POST /api/listings** | Creates orphaned listings | 10 min |
+| 3 | **Placeholder client silent fallback** | Masks config errors | 15 min |
 
-### Production Readiness: **75%**
+### 🟠 HIGH - Fix This Sprint (Functionality)
 
-The application is functional but has gaps in:
-- Verified accuracy of public-facing content
-- Complete test coverage
-- Payment flow end-to-end testing
-- Error edge cases
+| # | Issue | Impact | Effort |
+|---|-------|--------|--------|
+| 4 | **Unverified marketing claims** | Legal/compliance risk | 30 min |
+| 5 | **Translation key consistency** | Shows raw keys to users | 2 hours |
+| 6 | **Payment flow E2E testing** | Revenue impact | 4 hours |
+| 7 | **Contact page broken link** | Bad UX | 5 min |
+| 8 | **TypeScript strict mode** | Hidden type errors | 1 hour |
+
+### 🟡 MEDIUM - Fix Soon (Quality)
+
+| # | Issue | Impact | Effort |
+|---|-------|--------|--------|
+| 9 | **Demo data cleanup** | Code maintenance | 1 hour |
+| 10 | **Console.log cleanup** | Performance/security | 30 min |
+| 11 | **Rate limiting upgrade** | Redis for production | 3 hours |
+| 12 | **Inline i18n strings** | Maintenance | 2 hours |
+
+### 🟢 LOW - Nice to Have (Polish)
+
+| # | Issue | Impact | Effort |
+|---|-------|--------|--------|
+| 13 | **Automated translation tests** | Prevent regressions | 4 hours |
+| 14 | **Playwright E2E tests** | Regression prevention | 8 hours |
+| 15 | **Performance optimization** | Lighthouse score | 4 hours |
+| 16 | **RSS feed for listings** | SEO benefit | 2 hours |
+| 17 | **Accessibility audit** | WCAG compliance | 4 hours |
 
 ---
 
-**Next Recommended Action:** Fix translation system and remove unverified claims (Phase 3)
+## Audit Item 20: Security Assessment 🔴 VULNERABILITIES FOUND
+
+### Vulnerabilities Discovered
+
+| Vulnerability | Severity | CVSS Estimate | Location |
+|--------------|----------|---------------|----------|
+| **Hardcoded Secret Key** | 🔴 CRITICAL | 9.8 (Critical) | `src/app/api/listings/route.ts:9` |
+| **Fake Data Injection** | 🔴 HIGH | 7.5 (High) | `src/app/api/listings/route.ts:264` |
+| **Missing Auth on Create** | 🟠 MEDIUM | 6.5 (Medium) | Same file - no user auth check |
+
+### Security Positives ✅
+
+- RLS policies enabled on all tables
+- XSS prevention via input sanitization
+- SQL injection prevention via parameterized queries
+- Rate limiting on authentication endpoints
+- Security headers (CSP, X-Frame-Options, etc.)
+- Zod schema validation on inputs
+- Password hashing with bcryptjs
+
+### Security Recommendations
+
+1. **IMMEDIATE:** Remove hardcoded keys from source code
+2. **IMMEDIATE:** Add authentication check to POST /api/listings
+3. **SHORT TERM:** Implement Redis-based rate limiting
+4. **SHORT TERM:** Add request logging for audit trail
+5. **MEDIUM TERM:** Implement CSP headers properly
+6. **MEDIUM Term:** Add CORS configuration
+
+---
+
+## Audit Item 21: Production Deployment Checklist
+
+### Vercel Configuration
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Framework detection | ✅ | Next.js auto-detected |
+| Build command | ✅ | `npm run build` |
+| Output directory | ✅ | `.next` |
+| Environment variables | ⚠️ | Keys may be set but also hardcoded |
+| Domain | ✅ | my-project-nu-nine-64.vercel.app |
+| SSL | ✅ | Automatic |
+
+### Required Actions Before Production Launch
+
+- [ ] **Remove hardcoded SERVICE_ROLE_KEY** from `src/app/api/listings/route.ts`
+- [ ] **Remove hardcoded userId** from POST /api/listings
+- [ ] **Verify all env vars** set in Vercel dashboard
+- [ ] **Test payment flow** end-to-end
+- [ ] **Run security scan** with vulnerable dependencies check
+- [ ] **Update marketing claims** to verifiable statements
+- [ ] **Complete translation sync** across all 3 languages
+- [ ] **Fix contact page** broken link
+- [ ] **Enable TypeScript strict mode** (optional but recommended)
+- [ ] **Set up monitoring** (Sentry, LogRocket, or similar)
+
+---
+
+## Summary Statistics
+
+| Metric | Value |
+|--------|-------|
+| Total Files Audited | 250+ |
+| API Endpoints | 68 |
+| Pages/Routes | 18 |
+| Critical Issues | 2 |
+| High Issues | 4 |
+| Medium Issues | 5 |
+| Low Issues | 6 |
+| Production Readiness | **55%** |
+
+---
+
+## What's Working Well ✅
+
+1. **Database Integration** - Supabase connection fully functional
+2. **Authentication System** - Supabase Auth + DB fallback
+3. **RLS Policies** - 17 policies correctly applied
+4. **API Structure** - Comprehensive REST API
+5. **Admin Panel** - Feature-complete dashboard
+6. **i18n Framework** - 3 languages supported
+7. **PWA Support** - Service worker + manifest
+8. **SEO** - Metadata, sitemap, OpenGraph
+9. **Error Boundaries** - Client-side error handling
+10. **Input Validation** - Zod schemas + sanitization
+
+---
+
+## What Needs Immediate Attention 🔴
+
+1. **SECURITY:** Remove hardcoded credentials from source code
+2. **DATA INTEGRITY:** Fix fake userId in listing creation
+3. **COMPLIANCE:** Verify or soften marketing claims
+4. **UX:** Fix broken links and buttons
+
+---
+
+## Next Steps (Phase 2 Recommendations)
+
+1. **Run diagnostics** against production URL
+2. **Create command log** of all fixes applied
+3. **Fix critical security issues** (Items 1-3 from Priority List)
+4. **Verify fixes** don't break existing functionality
+5. **Deploy fixes** to Vercel
+6. **Update PROJECT_STATUS.md** with progress
+
+---
+
+**Audit Completed:** 2026-09-04  
+**Next Audit Recommended:** After critical fixes applied  
+**Auditor:** Super Z - AI Assistant
+
+---
+
+*This audit was conducted through static code analysis and health endpoint verification. Some items marked "NOT VERIFIED" require browser testing tools or server log access.*

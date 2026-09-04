@@ -1,0 +1,1 @@
+{"$schema": "https://openapi.vercel.sh/vercel.json", "framework": "nextjs", "buildCommand": "npm run build", "outputDirectory": ".next", "installCommand": "npm ci", "devCommand": "npm run dev", "regions": ["iad1"], "env": {"NEXT_PUBLIC_SUPABASE_URL": "@supabase_url", "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key", "SUPABASE_SERVICE_ROLE_KEY": "@service_role_key"}}

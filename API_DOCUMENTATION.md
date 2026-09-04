@@ -1,26 +1,39 @@
 # 📚 Mavora API Documentation
 
-## نظرة عامة على API
+## نظرة عامة
 
-مرحباً في وثائق API منصة **Mavora** للإعلانات المبوبة. هذا الدليل يشرح جميع نقاط النهاية المتاحة للمطورين الخارجيين.
+مرحباً بك في وثائق API منصة **مافورة**. هذا الدليل يشرح جميع نقاط النهاية (Endpoints) المتاحة، كيفية استخدامها، والأمثلة العملية.
 
-### Base URL
+**Base URL**: `https://mavora.ma/api`
 
-```
-Production: https://api.mavora.ma/v1
-Staging: https://staging-api.mavora.ma/v1
-Local: http://localhost:3000/api
-```
+**الإصدار الحالي**: v1.0.0
 
-### المصادقة (Authentication)
+---
 
-جميع الطلبات المحمية تتطلب **Bearer Token** في header:
+## جدول المحتويات
+
+1. [المصادقة](#المصادقة)
+2. [المستخدمين](#المستخدمين)
+3. [الإعلانات](#الإعلانات)
+4. [الفئات](#الفئات)
+5. [الرسائل](#الرسائل)
+6. [الإشعارات](#الإشعارات)
+7. [المحفظة](#المحفظة)
+8. [الدفع](#الدفع)
+9. [الطلبات](#الطلبات)
+10. [لوحة التحكم](#لوحة-التحكم)
+
+---
+
+## المصادقة
+
+جميع الـ APIs المحمية تتطلب **Bearer Token** في header:
 
 ```http
-Authorization: Bearer YOUR_ACCESS_TOKEN
+Authorization: Bearer YOUR_JWT_TOKEN
 ```
 
-#### الحصول على Token
+### الحصول على Token:
 
 ```http
 POST /api/auth/login
@@ -28,16 +41,16 @@ Content-Type: application/json
 
 {
   "email": "user@example.com",
-  "password": "your-password"
+  "password": "password123"
 }
 ```
 
-**الاستجابة:**
+**Response:**
 ```json
 {
   "success": true,
   "data": {
-    "user": { "id": "xxx", "email": "..." },
+    "user": { "id": "...", "email": "..." },
     "token": "eyJhbGciOiJIUzI1NiIs..."
   }
 }
@@ -45,881 +58,738 @@ Content-Type: application/json
 
 ---
 
-## 📋 جدول المحتويات
+## المستخدمين
 
-- [المصادقة](#-مصادقة-authentication)
-- [الإعلانات](#-الإعلانات-listings)
-- [الفئات](#-الفئات-categories)
-- [الرسائل](#-الرسائل-messages)
-- [المستخدمون](#-المستخدمون-users)
-- [المحفظة والدفع](#-المحفظة-والدفع-wallet--payments)
-- [الإشعارات](#-الإشعارات-notifications)
-- [الإدارة](#-الإدارة-admin)
-- [أكواد الأخطاء](#-أكواد-الأخطاء-error-codes)
+### GET /api/users/:id
 
----
+الحصول على معلومات مستخدم.
 
-## 🔐 المصادقة (Authentication)
-
-### `POST /auth/login` - تسجيل الدخول
-
-تسجيل الدخول باستخدام البريد الإلكتروني وكلمة المرور.
-
-**Request Body:**
-| الحقل | نوع | مطلوب | الوصف |
-|-------|------|--------|-------|
-| email | string | ✅ | البريد الإلكتروني |
-| password | string | ✅ | كلمة المرور |
-
-**Response 200:**
-```json
-{
-  "success": true,
-  "data": {
-    "user": {
-      "id": "usr_xxx",
-      "email": "user@example.com",
-      "displayName": "اسم المستخدم",
-      "avatar": "https://...",
-      "role": "user",
-      "isVerified": true,
-      "createdAt": "2025-01-01T00:00:00Z"
-    },
-    "token": "eyJhbGciOiJIUzI1NiIs..."
-  }
-}
+```bash
+curl -H "Authorization: Bearer TOKEN" \
+  https://mavora.ma/api/users/user-id
 ```
 
-**Errors:**
-| Code | Status | الوصف |
-|------|--------|-------|
-| INVALID_CREDENTIALS | 401 | بيانات الدخول غير صحيحة |
-| ACCOUNT_SUSPENDED | 403 | الحساب معلق |
-| VALIDATION_ERROR | 400 | بيانات ناقصة أو غير صالحة |
-
----
-
-### `POST /auth/signup` - إنشاء حساب جديد
-
-**Request Body:**
-| الحقل | نوع | مطلوب | الوصف |
-|-------|------|--------|-------|
-| email | string | ✅ | البريد الإلكتروني |
-| password | string | ✅ | كلمة المرور (8+ أحرف) |
-| displayName | string | ✅ | اسم العرض |
-| phone | string | ❌ | رقم الهاتف |
-
-**Password Requirements:**
-- 8 أحرف على الأقل
-- حرف كبير واحد على الأقل
-- حرف صغير واحد على الأقل
-- رقم واحد على الأقل
-- رمز خاص واحد على الأقل
-
----
-
-### `POST /auth/reset-password` - طلب إعادة تعيين كلمة المرور
-
-**Request Body:**
-| الحقل | نوع | مطلوب |
-|-------|------|--------|
-| email | string | ✅ |
-
-**ملاحظة أمنية:** دائماً يعيد `{ success: true }` حتى إذا كان البريد غير مسجل (لمنع تعداد البريد).
-
----
-
-### `PUT /auth/reset-password` - تأكيد كلمة المرور الجديدة
-
-**Request Body:**
-| الحقل | نوع | مطلوب |
-|-------|------|--------|
-| token | string | ✅ |
-| password | string | ✅ |
-| confirmPassword | string | ✅ |
-
----
-
-### `GET /auth/session` - التحقق من الجلسة
-
-**Response 200:**
+**Response:**
 ```json
 {
-  "success": true,
-  "data": {
-    "user": { ... },
-    "expiresAt": "2025-01-31T00:00:00Z"
-  }
-}
-```
-
-**Response 401:** غير مصدق (لا توجد جلسة صالحة)
-
----
-
-### `POST /auth/logout` - تسجيل الخروج
-
-**Response 200:**
-```json
-{ "success": true, "message": "تم تسجيل الخروج بنجاح" }
-```
-
----
-
-## 🏪 الإعلانات (Listings)
-
-### `GET /listings` - قائمة الإعلانات
-
-الحصول على قائمة الإعلانات مع دعم البحث والفلترة والترقيم.
-
-**Query Parameters:**
-| المعامل | نوع | افتراضي | الوصف |
-|---------|------|---------|-------|
-| page | number | 1 | رقم الصفحة |
-| limit | number | 20 | عدد النتائج في الصفحة |
-| search | string | - | البحث في العنوان والوصف |
-| category | string | - | فلتر حسب الفئة |
-| city | string | - | فلتر حسب المدينة |
-| condition | string | - | new / used / like_new |
-| min_price | number | - | الحد الأدنى للسعر |
-| max_price | number | -د | الحد الأقصى للسعر |
-| sort | string | created_at | ترتيب: price_asc, price_desc, created_at, views |
-| lat | number | - | خط العرض (للبحث القريب) |
-| lng | number | - | خط الطول (للبحث القريب) |
-| radius | number | 50 | نصف القطر بالكيلومتر |
-
-**Response 200:**
-```json
-{
-  "success": true,
-  "data": {
-    "listings": [
-      {
-        "id": "lst_xxx",
-        "title": "iPhone 15 Pro Max",
-        "description": "...",
-        "price": 12000,
-        "currency": "MAD",
-        "category": { "id": "cat_xxx", "name": "إلكترونيات", "slug": "electronics" },
-        "condition": "like_new",
-        "city": "الدار البيضاء",
-        "location": { "lat": 33.5731, "lng": -7.5898 },
-        "images": ["https://..."],
-        "seller": {
-          "id": "usr_xxx",
-          "displayName": "محمد علي",
-          "avatar": "https://...",
-          "isVerified": true,
-          "rating": 4.8
-        },
-        "stats": {
-          "views": 567,
-          "likes": 45,
-          "messages": 12
-        },
-        "createdAt": "2025-01-10T12:00:00Z"
-      }
-    ],
-    "pagination": {
-      "page": 1,
-      "limit": 20,
-      "total": 150,
-      "totalPages": 8
-    }
-  }
-}
-```
-
----
-
-### `GET /listings/:id` - تفاصيل إعلان
-
-**Response 200:**
-```json
-{
-  "success": true,
-  "data": {
-    "listing": {
-      "id": "lst_xxx",
-      "title": "...",
-      "description": "...",
-      "price": 12000,
-      "currency": "MAD",
-      // ... جميع حقول الإعلان
-      "customFields": [
-        { "name": "اللون", "value": "أسود", "type": "select" },
-        { "name": "سنة الصنع", "value": "2023", "type": "number" }
-      ],
-      "reviews": [...],
-      "similarListings": [...]
-    }
-  }
-}
-```
-
-**Errors:**
-| Code | Status | الوصف |
-|------|--------|-------|
-| NOT_FOUND | 404 | الإعلان غير موجود |
-
----
-
-### `POST /listings` - إنشاء إعلان جديد
-
-**Requires Authentication:** ✅
-
-**Request Body:**
-```json
-{
-  "title": "iPhone 15 Pro Max",
-  "description": "جديد في العلبة، ضمان سنة",
-  "price": 12000,
-  "currency": "MAD",
-  "categoryId": "cat_xxx",
-  "condition": "like_new",
+  "id": "uuid",
+  "email": "user@example.com",
+  "name": "أحمد محمد",
+  "avatar_url": "https://...",
   "city": "الدار البيضاء",
-  "location": { "lat": 33.5731, "lng": -7.5898 },
-  "images": ["base64..."],
-  "customFields": { "color": "أسود" },
-  "tags": ["iphone", "apple"]
+  "created_at": "2024-01-01T00:00:00Z"
 }
 ```
 
-**Response 201:**
+### PUT /api/users/:id
+
+تحديث بيانات المستخدم.
+
+```http
+PUT /api/users/:id
+Authorization: Bearer TOKEN
+Content-Type: application/json
+
+{
+  "name": "اسم جديد",
+  "phone": "+212600000000",
+  "bio": "نبذة عن المستخدم"
+}
+```
+
+---
+
+## الإعلانات
+
+### GET /api/listings
+
+قائمة جميع الإعلانات مع دعم الفلترة والترقيم.
+
+**Parameters:**
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| `category` | string | فلترة حسب الفئة | `electronics` |
+| `city` | string | فلترة حسب المدينة | `casablanca` |
+| `min_price` | number | السعر الأدنى | `1000` |
+| `max_price` | number | السعر الأقصى | `5000` |
+| `search` | string | بحث في العنوان والوصف | `iPhone` |
+| `sort` | string | ترتيب: `price_asc`, `price_desc`, `newest`, `popular` | `newest` |
+| `page` | number | رقم الصفحة | `1` |
+| `limit` | عدد النتائج | `20` |
+
+**Example:**
+```bash
+curl "https://mavora.ma/api/listings?category=electronics&city=casablanca&min_price=1000&sort=newest&page=1&limit=10"
+```
+
+**Response:**
 ```json
 {
   "success": true,
-  "data": { "listing": { "id": "lst_new", ... } },
-  "message": "تم إنشاء الإعلان بنجاح"
-}
-```
-
----
-
-### `PUT /listings/:id` - تحديث إعلان
-
-**Requires Authentication:** ✅  
-**Permission:** يجب أن يكون المستخدم هو البائع
-
----
-
-### `DELETE /listings/:id` - حذف إعلان
-
-**Requires Authentication:** ✅  
-**Permission:** يجب أن يكون المستخدم هو البائع أو مشرف
-
-**Response 200:**
-```json
-{ "success": true, "message": "تم حذف الإعلان" }
-```
-
----
-
-### `POST /listings/:id/favorite` - إضافة للمفضلة
-
-**Requires Authentication:** ✅
-
-**Response 200:**
-```json
-{ "success": true, "message": "تمت الإضافة إلى المفضلة" }
-```
-
-**Response 409:** مضاف بالفعل
-
----
-
-### `DELETE /listings/:id/favorite` - إزالة من المفضلة
-
-**Requires Authentication:** ✅
-
----
-
-### `GET /listings/:id/reviews` - تقييمات الإعلان
-
-**Query Parameters:**
-| المعامل | نوع | الوصف |
-|---------|------|-------|
-| page | number | رقم الصفحة |
-| limit | number | عدد النتائج |
-| sort | new | ترتيب: new, helpful, rating |
-
----
-
-### `POST /listings/:id/reviews` - إضافة تقييم
-
-**Requires Authentication:** ✅
-
-**Request Body:**
-```json
-{
-  "rating": 5,
-  "comment": "منتج رائع، البائع موثوق!",
-  "pros": ["سرعة التوصيل", "جودة المنتج"],
-  "cons": []
-}
-```
-
-**Validation:**
-- `rating`: 1-5 (مطلوب)
-- `comment`: 10-2000 حرف
-
----
-
-## 📂 الفئات (Categories)
-
-### `GET /categories` - قائمة الفئات
-
-**Response 200:**
-```json
-{
-  "success": true,
-  "data": {
-    "categories": [
-      {
-        "id": "cat_xxx",
-        "name": "إلكترونيات",
-        "nameEn": "Electronics",
-        "slug": "electronics",
-        "icon": "smartphone",
-        "image": "https://...",
-        "parentId": null,
-        "childrenCount": 5,
-        "listingsCount": 1234
-      }
-    ]
-  }
-}
-```
-
-### `GET /categories/:slug` - تفاصيل فئة
-
-يعرض الفئة مع الفئات الفرعية والإعلانات فيها.
-
-### `GET /categories/:slug/fields` - حقول فئة مخصصة
-
-**Response 200:**
-```json
-{
-  "success": true,
-  "data": {
-    "fields": [
-      {
-        "id": "field_xxx",
-        "name": "اللون",
-        "nameEn": "Color",
-        "type": "select",
-        "required": false,
-        "options": ["أسود", "أبيض", "ذهبي", "أحمر"]
-      }
-    ]
-  }
-}
-```
-
----
-
-## 💬 الرسائل (Messages)
-
-### `GET /conversations` - قائمة المحادثات
-
-**Requires Authentication:** ✅
-
-**Query Parameters:**
-| المعامل | نوع | الوصف |
-|---------|------|-------|
-| page | number | رقم الصفحة |
-| limit | number | عدد النتائج |
-| search | بحث | بحث في المحادثات |
-| sort | string | ترتيب: last_message, created_at |
-| unread | boolean | فلتر غير المقروء فقط |
-
----
-
-### `POST /conversations` - إنشاء محادثة جديدة
-
-**Requires Authentication:** ✅
-
-**Request Body:**
-```json
-{
-  "recipientId": "usr_xxx",
-  "listingId": "lst_xxx",
-  "message": "مرحباً، هل المنتج لا يزال متاحاً؟"
-}
-```
-
----
-
-### `GET /conversations/:id` - تفاصيل محادثة
-
-**Response 200:**
-```json
-{
-  "success": true,
-  "data": {
-    "conversation": {
-      "id": "conv_xxx",
-      "participants": [
-        { "id": "usr_1", "displayName": "أحمد", "avatar": "..." },
-        { "id": "usr_2", "displayName": "محمد", "avatar": "..." }
-      ],
-      "listing": { "id": "lst_xxx", "title": "..." },
-      "lastMessage": { "content": "...", "createdAt": "..." },
-      "unreadCount": 2,
-      "messages": [...]
+  "data": [
+    {
+      "id": "uuid",
+      "title": "iPhone 15 Pro Max",
+      "description": "بحالة ممتازة...",
+      "price": 12500,
+      "currency": "MAD",
+      "images": ["url1", "url2"],
+      "category": { "id": "uuid", "name": "إلكترونيات", "slug": "electronics" },
+      "seller": { "id": "uuid", "name": "أحمد" },
+      "location": { "city": "الدار البيضاء", "lat": 33.57, "lng": -7.59 },
+      "status": "active",
+      "created_at": "2024-01-15T10:30:00Z"
     }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 150,
+    "total_pages": 15
   }
 }
 ```
 
----
+### POST /api/listings
 
-### `GET /conversations/:id/messages` - رسائل المحادثة
+إنشاء إعلان جديد.
 
-**Query Parameters:** page, limit
+```http
+POST /api/listings
+Authorization: Bearer TOKEN
+Content-Type: application/json
 
----
-
-### `POST /conversations/:id/messages` - إرسال رسالة
-
-**Requires Authentication:** ✅
-
-**Request Body:**
-```json
-{ "content": "شكراً على الرد!" }
-```
-
-**Validation:**
-- `content`: 1-5000 حرف (مطلوب)
-
----
-
-### `PUT /conversations/:id/read` - تعيين كمقروء
-
-**Requires Authentication:** ✅
-
----
-
-### `POST /conversations/:id/report` - الإبلاغ عن محادثة
-
-**Requires Authentication:** ✅
-
-**Request Body:**
-```json
 {
-  "reason": "spam",
-  "description": "يرسل رسائل spam بشكل متكرر"
+  "title": "iPhone 15 Pro Max للبيع",
+  "description": "جهاز بحالة ممتازة...",
+  "price": 12500,
+  "currency": "MAD",
+  "category_id": "uuid",
+  "city": "casablanca",
+  "images": ["base64_or_url..."],
+  "custom_fields": {
+    "condition": "like_new",
+    "brand": "Apple",
+    "model": "iPhone 15 Pro Max"
+  }
 }
 ```
 
+### GET /api/listings/:id
+
+الحصول على تفاصيل إعلان.
+
+```bash
+curl https://mavora.ma/api/listings/listing-id
+```
+
+### PUT /api/listings/:id
+
+تحديث إعلان (للبائع فقط).
+
+```http
+PUT /api/listings/:id
+Authorization: Bearer TOKEN
+Content-Type: application/json
+
+{
+  "title": "عنوان محدث",
+  "price": 12000
+}
+```
+
+### DELETE /api/listings/:id
+
+حذف إعلان (للبائع أو الأدمن).
+
+```http
+DELETE /api/listings/:id
+Authorization: Bearer TOKEN
+```
+
+### POST /api/listings/:id/favorite
+
+إضافة/إزالة من المفضلة.
+
+```http
+POST /api/listings/:id/favorite
+Authorization: Bearer TOKEN
+```
+
+### GET /api/listings/:id/reviews
+
+الحصول على تقييمات إعلان.
+
+```bash
+curl https://mavora.ma/api/listings/listing-id/reviews
+```
+
 ---
 
-### `DELETE /conversations/:id` - حذف/إخفاء محادثة
+## الفئات
 
-**Requires Authentication:** ✅
+### GET /api/categories
 
----
+قائمة جميع الفئات.
 
-## 👤 المستخدمون (Users)
+```bash
+curl https://mavora.ma/api/categories
+```
 
-### `GET /users/:id` - بيانات مستخدم
-
-**Response 200:**
+**Response:**
 ```json
 {
   "success": true,
-  "data": {
-    "user": {
-      "id": "usr_xxx",
-      "displayName": "محمد علي",
-      "email": "m***@example.com",
-      "phone": "+2126XXXXXXXX",
-      "avatar": "https://...",
-      "bio": "بائع موثوق منذ 2020",
-      "location": "الدار البيضاء، المغرب",
-      "joinedAt": "2024-01-01",
-      "isVerified": true,
-      "rating": 4.8,
-      "totalReviews": 125,
-      "responseRate": 95,
-      "responseTime": "خلال ساعة",
-      "stats": {
-        "totalListings": 24,
-        "activeListings": 18,
-        "totalSales": 156
-      }
+  "data": [
+    {
+      "id": "uuid",
+      "name": "إلكترونيات",
+      "name_en": "Electronics",
+      "slug": "electronics",
+      "icon": "📱",
+      "listing_count": 1250
     }
-  }
+  ]
 }
 ```
 
-### `PUT /users/:id` - تحديث بيانات المستخدم
+### GET /api/category-fields/:id
 
-**Requires Authentication:** ✅ (الملك فقط)
+الحصول على حقول مخصصة لفئة.
 
-**Request Body:**
+```bash
+curl https://mavora.ma/api/category-fields/category-id
+```
+
+---
+
+## الرسائل
+
+### GET /api/conversations
+
+قائمة محادثات المستخدم.
+
+```http
+GET /api/conversations
+Authorization: Bearer TOKEN
+```
+
+**Response:**
 ```json
 {
-  "displayName": "اسم جديد",
-  "phone": "+2126XXXXXXXX",
-  "bio": "نص جديد",
-  "avatar": "base64..."
+  "success": true,
+  "data": [
+    {
+      "id": "uuid",
+      "participant": { "id": "...", "name": "محمد" },
+      "last_message": "مرحباً، هل المنتج متاح؟",
+      "unread_count": 2,
+      "updated_at": "2024-01-15T12:00:00Z"
+    }
+  ]
 }
+```
+
+### POST /api/conversations
+
+إنشاء محادثة جديدة.
+
+```http
+POST /api/conversations
+Authorization: Bearer TOKEN
+Content-Type: application/json
+
+{
+  "recipient_id": "user-uuid",
+  "listing_id": "listing-uuid",
+  "message": "مرحباً، أريد الاستفسار عن المنتج"
+}
+```
+
+### GET /api/conversations/:id/messages
+
+رسائل محادثة محددة.
+
+```http
+GET /api/conversations/:id/messages?page=1&limit=50
+Authorization: Bearer TOKEN
+```
+
+### POST /api/conversations/:id/messages
+
+إرسال رسالة جديدة.
+
+```http
+POST /api/conversations/:id/messages
+Authorization: Bearer TOKEN
+Content-Type: application/json
+
+{
+  "content": "شكراً على ردك!"
+}
+```
+
+### PUT /api/conversations/:id/read
+
+تعيين المحادثة كمقروءة.
+
+```http
+PUT /api/conversations/:id/read
+Authorization: Bearer TOKEN
 ```
 
 ---
 
-### `GET /users/:id/listings` - إعلانات المستخدم
+## الإشعارات
 
-### `GET /users/:id/reviews` -> تقييمات المستخدم كبائع
+### GET /api/notifications
+
+قائمة إشعارات المستخدم.
+
+```http
+GET /api/notifications?type=all&unreadOnly=false&page=1&limit=20
+Authorization: Bearer TOKEN
+```
+
+**Types:** `message`, `like`, `order`, `review`, `system`, `warning`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "uuid",
+      "type": "message",
+      "title": "رسالة جديدة",
+      "body": "أرسل لك محمد رسالة",
+      "read": false,
+      "data": { "conversation_id": "..." },
+      "created_at": "2024-01-15T12:00:00Z"
+    }
+  ],
+  "unread_count": 5
+}
+```
+
+### GET /api/notifications/unread
+
+عدد الإشعارات غير المقروءة.
+
+```http
+GET /api/notifications/unread
+Authorization: Bearer TOKEN
+```
+
+### PUT /api/notifications/[id]/read
+
+تعيين إشعار كمقروء.
+
+```http
+PUT /api/notifications/notification-id/read
+Authorization: Bearer TOKEN
+```
+
+### PUT /api/notifications/read-all
+
+قراءة جميع الإشعارات.
+
+```http
+PUT /api/notifications/read-all
+Authorization: Bearer TOKEN
+```
 
 ---
 
-## 💰 المحفظة والدفع (Wallet & Payments)
+## المحفظة
 
-### `GET /wallet` - رصيد المحفظة
+### GET /api/wallet
 
-**Requires Authentication:** ✅
+رصيد ومعلومات المحفظة.
 
-**Response 200:**
+```http
+GET /api/wallet
+Authorization: Bearer TOKEN
+```
+
+**Response:**
 ```json
 {
   "success": true,
   "data": {
     "balance": 2500.00,
     "currency": "MAD",
-    "pendingPayout": 750.00,
-    "frozen": 0.00,
-    "lastUpdated": "2025-01-11T12:00:00Z"
+    "frozen_balance": 500.00,
+    "available_balance": 2000.00,
+    "stats": {
+      "total_earned": 15000,
+      "total_spent": 12500
+    }
   }
 }
 ```
 
----
+### GET /api/wallet/transactions
 
-### `GET /wallet/transactions` - سجل المعاملات
+سجل المعاملات.
 
-**Requires Authentication:** ✅
-
-**Query Parameters:** page, limit, type (deposit, withdrawal, payment, refund), start_date, end_date
-
-**Response 200:**
-```json
-{
-  "success": true,
-  "data": {
-    "transactions": [
-      {
-        "id": "txn_xxx",
-        "type": "payment_received",
-        "amount": 12000,
-        "currency": "MAD",
-        "balanceAfter": 2500,
-        "description": "دفع مقابل iPhone 15 Pro Max",
-        "referenceId": "ord_xxx",
-        "status": "completed",
-        "createdAt": "2025-01-10T14:30:00Z"
-      }
-    ],
-    "pagination": { ... }
-  }
-}
+```http
+GET /api/wallet/transactions?type=credit&from_date=2024-01-01&to_date=2024-01-31&page=1
+Authorization: Bearer TOKEN
 ```
 
+**Types:** `credit`, `debit`, `freeze`, `unfreeze`, `payout`
+
 ---
 
-### `POST /payments/checkout` - إنشاء عملية دفع
+## الدفع
 
-**Requires Authentication:** ✅
+### POST /api/payments/checkout
 
-**Request Body:**
-```json
+إنشاء جلسة دفع.
+
+```http
+POST /api/payments/checkout
+Authorization: Bearer TOKEN
+Content-Type: application/json
+
 {
-  "amount": 12000,
+  "amount": 12500,
   "currency": "MAD",
-  "paymentMethod": "card",
-  "listingId": "lst_xxx",
-  "description": "دفع مقابل iPhone 15 Pro Max"
-}
-```
-
-**Response 200:**
-```json
-{
-  "success": true,
-  "data": {
-    "paymentId": "pay_xxx",
-    "amount": 12000,
-    "currency": "MAD",
-    "status": "pending",
-    "checkoutUrl": "https://checkout.stripe.com/..."
+  "description": "شراء iPhone 15 Pro Max",
+  "returnUrl": "https://mavora.ma/payment/success",
+  "cancelUrl": "https://mavora.ma/payment/cancel",
+  "metadata": {
+    "listing_id": "uuid",
+    "seller_id": "uuid"
   }
 }
-```
-
----
-
-### `GET /payments/:id` - حالة دفع
-
----
-
-### `POST /payments/webhook/stripe` - Webhook Stripe
-
-**Internal endpoint** - يستقبل إشعارات Stripe.
-
----
-
-## 🔔 الإشعارات (Notifications)
-
-### `GET /notifications` - قائمة الإشعارات
-
-**Requires Authentication:** ✅
-
-**Query Parameters:** page, limit, type, is_read
-
-**Response 200:**
-```json
-{
-  "success": true,
-  "data": {
-    "notifications": [
-      {
-        "id": "notif_xxx",
-        "type": "new_message",
-        "title": "رسالة جديدة",
-        "body": "أحمد أرسل لك رسالة",
-        "data": { "conversationId": "conv_xxx" },
-        "isRead": false,
-        "actionUrl": "/messages/conv_xxx",
-        "createdAt": "2025-01-11T15:30:00Z"
-      }
-    ],
-    "unreadCount": 5
-  }
-}
-```
-
----
-
-### `GET /notifications/unread` - عدد الإشعارات غير المقروءة
-
-**Response 200:**
-```json
-{ "success": true, "data": { "count": 5 } }
-```
-
----
-
-### `PUT /notifications/:id` - تعيين كمقروء
-
-### `POST /notifications/read-all` - تعيين الكل كمقروء
-
-### `DELETE /notifications/:id` - حذف إشعار
-
----
-
-### `GET /notifications/stream` - stream الإشعارات الفورية (SSE)
-
-**Requires Authentication:** ✅
-
-**Response:** Server-Sent Events stream
-
-```javascript
-const eventSource = new EventSource('/api/notifications/stream', {
-  headers: { 'Authorization': 'Bearer TOKEN' }
-});
-
-eventSource.onmessage = (event) => {
-  const notification = JSON.parse(event.data);
-  console.log('New notification:', notification);
-};
-```
-
----
-
-## ⚙️ الإدارة (Admin)
-
-> **Note:** جميع نقاط النهاية هذه تتطلب دور **admin** أو **moderator**
-
-### `GET /admin/stats` - إحصائيات النظام
-
-**Response 200:**
-```json
-{
-  "success": true,
-  "data": {
-    "totalUsers": 15420,
-    "activeUsersToday": 1234,
-    "totalListings": 45678,
-    "activeListings": 38765,
-    "totalOrders": 8934,
-    "revenue": { "monthly": 234000, "today": 8500 },
-    "pendingReviews": 45,
-    "reportedContent": 12
-  }
-}
-```
-
----
-
-### `GET /admin/users` - إدارة المستخدمين
-
-**Query Parameters:** page, limit, search, status (active, suspended, banned), role, sort, start_date, end_date
-
-### `PUT /admin/users/:id` - تحديث مستخدم (تعليق/حظر/إلغاء حظر)
-
----
-
-### `GET /admin/listings` - إدارة الإعلانات
-
-**Query Parameters:** page, limit, search, status (pending, active, rejected, sold, expired), category, sort
-
-### `PUT /admin/listings/bulk` - عمليات جماعية على الإعلانات
-
-**Request Body:**
-```json
-{
-  "action": "approve", // approve, reject, delete, feature
-  "ids": ["lst_1", "lst_2", "lst_3"],
-  "reason": "سبب الرفض (للرفض فقط)"
-}
-```
-
----
-
-### `GET /admin/reports` - تقارير المحتوى المبلغ عنه
-
-### `GET /admin/audit-logs` - سجل التدقيق
-
----
-
-## 🌐 موارد أخرى
-
-### `GET /cities` - قائمة المدن المدعومة
-
-### `GET /countries` - قائمة الدول
-
-### `GET /currencies` - العملات المدعومة
-
-### `GET /plans` - خطط الاشتراك
-
-### `GET /token-packages` - باقات الرموز
-
-### `GET /health` - فحص صحة الخادم
-
-**Response 200:**
-```json
-{
-  "status": "healthy",
-  "timestamp": "2025-01-11T16:00:00Z",
-  "version": "1.0.0",
-  "uptime": 86400,
-  "database": "connected",
-  "cache": "connected"
-}
-```
-
----
-
-## ❌ أكواد الأخطاء (Error Codes)
-
-| الكود | HTTP Status | الوصف |
-|-------|------------|-------|
-| SUCCESS | 200 | العملية نجحت |
-| CREATED | 201 | تم الإنشاء بنجاح |
-| NO_CONTENT | 204 | تم الحذف/التحديث بنجاح |
-| BAD_REQUEST | 400 | بيانات غير صالحة أو ناقصة |
-| UNAUTHORIZED | 401 | غير مصدق (مطلوب تسجيل الدخول) |
-| FORBIDDEN | 403 | ممنوع (عدم وجود صلاحية) |
-| NOT_FOUND | 404 | المورد غير موجود |
-| CONFLICT | 409 | تعارض (موجود بالفعل) |
-| RATE_LIMITED | 429 | تجاوز حد الطلبات |
-| INTERNAL_ERROR | 500 | خطأ داخلي في الخادم |
-| SERVICE_UNAVAILABLE | 503 | الخادم غير مت مؤقتياً |
-
-**تنسيق الخطأ:**
-```json
-{
-  "success": false,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "رسالة خطأ واضحة للمستخدم",
-    "details": [...] // اختياري: تفاصيل إضافية للتطويرين
-  }
-}
-```
-
----
-
-## 📊 Rate Limiting (تقييد المعدل)
-
-| Endpoint | Limit | Window |
-|---------|-------|--------|
-| `/auth/login` | 5 requests | per hour |
-| `/auth/signup` | 3 requests | per hour |
-| `/auth/reset-password` | 5 requests | per hour |
-| `/listings` | 100 requests | per minute |
-| `/api/*` (general) | 60 requests | per minute |
-
-**Response Headers:**
-```
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 95
-X-RateLimit-Reset: 1640995200
-Retry-After: 60
-```
-
----
-
-## 🔄 Pagination
-
-جميع endpoints التي تدعم pagination تستخدم نفس التنسيق:
-
-**Request:**
-```
-GET /listings?page=2&limit=20
 ```
 
 **Response:**
 ```json
 {
-  "data": [...],
-  "pagination": {
-    "page": 2,
-    "limit": 20,
-    "total": 150,
-    "totalPages": 8,
-    "hasNextPage": true,
-    "hasPrevPage": true
+  "success": true,
+  "paymentUrl": "https://checkout.paypal.com/...",
+  "paymentId": "pay_xxx",
+  "provider": "paypal"
+}
+```
+
+### POST /api/payments/paypal
+
+إنشاء طلب PayPal.
+
+```http
+POST /api/payments/paypal
+Authorization: Bearer TOKEN
+Content-Type: application/json
+
+{
+  "amount": 12500,
+  "currency": "MAD",
+  "orderId": "order-uuid",
+  "description": "Payment for order"
+}
+```
+
+### POST /api/payments/paypal/webhook
+
+Webhook PayPal (Server-to-Server).
+
+```http
+POST /api/payments/paypal/webhook
+Content-Type: application/json
+
+// PayPal sends event data automatically
+```
+
+---
+
+## الطلبات
+
+### GET /api/orders
+
+قائمة طلبات المستخدم.
+
+```http
+GET /api/orders?status=active&page=1
+Authorization: Bearer TOKEN
+```
+
+### POST /api/orders
+
+إنشاء طلب جديد.
+
+```http
+POST /api/orders
+Authorization: Bearer TOKEN
+Content-Type: application/json
+
+{
+  "listing_id": "uuid",
+  "quantity": 1,
+  "shipping_address": {
+    "full_name": "أحمد محمد",
+    "phone": "+212600000000",
+    "address": "شارع محمد الخامس",
+    "city": "الدار البيضاء",
+    "postal_code": "20000"
   }
 }
 ```
 
----
+### GET /api/orders/:id
 
-## 🌍 التدويل (i18n)
+تفاصيل طلب.
 
-استخدم header `Accept-Language` لتحديد لغة الاستجابة:
-
+```bash
+curl -H "Authorization: Bearer TOKEN" \
+  https://mavora.ma/api/orders/order-id
 ```
-Accept-Language: ar,fr,en;q=0.9
+
+---
+
+## لوحة التحكم (Admin)
+
+> ⚠️ تتطلب صلاحيات **Admin**
+
+### GET /api/admin/stats
+
+إحصائيات لوحة التحكم.
+
+```http
+GET /api/admin/stats?period=30d
+Authorization: Bearer ADMIN_TOKEN
 ```
 
-اللغات المدعومة:
-- `ar` - العربية (افتراضي)
-- `en` - الإنجليزية
-- `fr` - الفرنسية
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "total_users": 15234,
+    "total_listings": 45678,
+    "total_orders": 12345,
+    "revenue": 234567.89,
+    "active_users_today": 567,
+    "new_listings_today": 89
+  }
+}
+```
+
+### GET /api/admin/users
+
+إدارة المستخدمين.
+
+```http
+GET /api/admin/users?status=active&search=ahmed&page=1
+Authorization: Bearer ADMIN_TOKEN
+```
+
+### PUT /api/admin/users/:id
+
+تحديث مستخدم (تغيير الحالة، إلخ).
+
+```http
+PUT /api/admin/users/:id
+Authorization: Bearer ADMIN_TOKEN
+Content-Type: application/json
+
+{
+  "status": "suspended",
+  "reason": "انتهاك شروط الاستخدام"
+}
+```
+
+### GET /api/admin/listings
+
+إدارة الإعلانات.
+
+```http
+GET /api/admin/listings?status=pending&reported=true
+Authorization: Bearer ADMIN_TOKEN
+```
+
+### POST /api/admin/listings/bulk
+
+إجراء جماعي على الإعلانات.
+
+```http
+POST /api/admin/listings/bulk
+Authorization: Bearer ADMIN_TOKEN
+Content-Type: application/json
+
+{
+  "action": "approve", // أو reject, delete
+  "ids": ["uuid1", "uuid2", "uuid3"],
+  "reason": "غير مطابق للشروط"
+}
+```
+
+### GET /api/admin/reports
+
+تقارير الإبلاغات.
+
+```http
+GET /api/admin/reports?status=open&type=spam
+Authorization: Bearer ADMIN_TOKEN
+```
+
+### GET /api/admin/audit-log
+
+سجل التدقيق.
+
+```http
+GET /api/admin/audit-log?action=user_update&from_date=2024-01-01
+Authorization: Bearer ADMIN_TOKEN
+```
 
 ---
 
-## 📞 الدعم والمساعدة
+## أخطاء شائعة
 
-- **الوثائق**: https://docs.mavora.ma
-- **البريد الإلكتروني**: api-support@mavora.ma
-- **GitHub Issues**: https://github.com/sultancontact-design/mavora/issues
-- **Status Page**: https://status.mavora.ma
+### Error Response Format:
+
+```json
+{
+  "error": "Error message here",
+  "code": "ERROR_CODE",
+  "details": {}
+}
+```
+
+### HTTP Status Codes:
+
+| Code | Description |
+|------|-------------|
+| 200 | نجاح |
+| 201 | تم الإنشاء بنجاح |
+| 400 | طلب غير صحيح |
+| 401 | غير مصرح (مطلوب تسجيل دخول) |
+| 403 | ممنوع (صلاحيات غير كافية) |
+| 404 | غير موجود |
+| 409 | تعارض في البيانات |
+| 422 | فشل في التحقق |
+| 429 | الكثير من الطلبات (Rate Limited) |
+| 500 | خطأ داخلي في الخادم |
+
+### Rate Limiting:
+
+- **العادي**: 100 طلب/دقيقة
+- **المصادق**: 200 طلب/دقيقة  
+- **Admin**: 300 طلب/دقيقة
+
+**Headers:**
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1640995200
+```
 
 ---
 
-**آخر تحديث**: 2025-01-11  
-**إصدار API**: v1.0.0
+## SDKs والمكتبات
+
+### JavaScript/TypeScript:
+
+```typescript
+import { MavoraClient } from '@mavora/sdk';
+
+const client = new MavoraClient({
+  baseUrl: 'https://mavora.ma/api',
+  token: 'YOUR_TOKEN'
+});
+
+// البحث عن إعلانات
+const listings = await client.listings.list({
+  category: 'electronics',
+  city: 'casablanca',
+  minPrice: 1000
+});
+
+// إنشاء إعلان
+const newListing = await client.listings.create({
+  title: 'iPhone للبيع',
+  price: 12000,
+  categoryId: 'uuid'
+});
+```
+
+### Python:
+
+```python
+from mavora import MavoraClient
+
+client = MavoraClient(
+    base_url="https://mavora.ma/api",
+    token="YOUR_TOKEN"
+)
+
+# البحث
+listings = client.listings.list(
+    category="electronics",
+    search="iPhone"
+)
+
+# الحصول على مستخدم
+user = client.users.get("user-id")
+```
+
+---
+
+## Webhooks
+
+### Payment Webhooks:
+
+**PayPal:**
+```
+POST /api/payments/paypal/webhook
+```
+
+**Payoneer:**
+```
+POST /api/payments/payoneer/webhook
+```
+
+**Morocco Payments:**
+```
+POST /api/payments/webhook/morocco
+```
+
+### Event Types:
+
+| Event | Description |
+|-------|-------------|
+| `payment.completed` | اكتمل الدفع بنجاح |
+| `payment.failed` | فشل الدفع |
+| `payment.refunded` | تم استرداد المبلغ |
+| `order.created` | إنشاء طلب جديد |
+| `order.status_changed` | تغيير حالة الطلب |
+
+---
+
+## دعم اللغات
+
+API يدعم لغات متعددة عبر header:
+
+```http
+Accept-Language: ar-MA  # العربية (المغرب)
+Accept-Language: en     # English
+Accept-Language: fr     # Français
+```
+
+---
+
+## 📞 المساعدة
+
+- **Documentation**: [docs.mavora.ma](https://docs.mavora.ma)
+- **Support Email**: api-support@mavora.ma
+- **Status Page**: [status.mavora.ma](https://status.mavora.ma)
+- **GitHub Issues**: [github.com/mavora/issues](https://github.com/mavora/issues)
+
+---
+
+**آخر تحديث**: 2026-01-09  
+**API Version**: 1.0.0

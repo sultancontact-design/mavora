@@ -202,74 +202,98 @@ export async function dbLogin(email: string, password: string): Promise<DbLoginR
     // Step 1: FIRST check demo passwords (for admin access without DB user)
     const demoPassword = DEMO_PASSWORDS[normalizedEmail] || DEMO_PASSWORDS[email];
     if (demoPassword && password === demoPassword) {
-      console.log('[DB Auth] Demo password matched for:', email);
+      console.log('[DB Auth] ✅ Demo password matched for:', email);
       
-      // Try to find or create user in database
-      const { data: existingUsers } = await supabaseAdmin
-        .from('users')
-        .select('*')
-        .eq('email', normalizedEmail)
-        .limit(1);
-      
+      // Try to find or create user in database (with full error handling)
       let user;
       
-      if (existingUsers && existingUsers.length > 0) {
-        user = existingUsers[0];
-        // Update password hash if needed
-        if (!user.passwordHash) {
-          const passwordHash = await hash(password, 10);
-          await supabaseAdmin
-            .from('users')
-            .update({ passwordHash, lastLoginAt: new Date().toISOString() })
-            .eq('id', user.id);
-        }
-      } else {
-        // Auto-create the user in database
-        console.log('[DB Auth] Auto-creating user for:', email);
-        const userId = randomUUID();
-        const now = new Date().toISOString();
-        const passwordHash = await hash(password, 10);
-        
-        const { data: newUser, error: createError } = await supabaseAdmin
-          .from('users')
-          .insert({
-            id: userId,
-            email: normalizedEmail,
-            name: email.includes('admin') ? 'مدير مافورا' : 'مستخدم',
-            role: email.includes('admin') ? 'super_admin' : 'user',
-            emailVerified: true,
-            isActive: true,
-            passwordHash,
-            createdAt: now,
-            updatedAt: now,
-            lastLoginAt: now,
-          })
-          .select('*')
-          .single();
-        
-        if (createError || !newUser) {
-          console.warn('[DB Auth] Create user warning:', createError?.message);
-          // Return success anyway with demo data
+      try {
+        if (!supabaseAdmin) {
+          console.warn('[DB Auth] ⚠️ Supabase client not available, using demo session');
           return createDemoSession(email, password);
         }
         
-        user = newUser;
+        const { data: existingUsers, error: queryError } = await supabaseAdmin
+          .from('users')
+          .select('*')
+          .eq('email', normalizedEmail)
+          .limit(1);
         
-        // Create profile
-        await supabaseAdmin.from('profiles').insert({
-          id: userId,
-          userId: userId,
-          display_name: email.includes('admin') ? 'مدير مافورا' : 'مستخدم',
-          email: normalizedEmail,
-          isVerified: true,
-          isSuspended: false,
-          createdAt: now,
-          updatedAt: now,
-        }).catch(e => console.warn('[DB Auth] Profile create warning:', e));
+        if (queryError) {
+          console.warn('[DB Auth] ⚠️ Query error, falling back to demo session:', queryError.message);
+          return createDemoSession(email, password);
+        }
+        
+        if (existingUsers && existingUsers.length > 0) {
+          user = existingUsers[0];
+          // Update password hash if needed
+          try {
+            if (!user.passwordHash) {
+              const passwordHash = await hash(password, 10);
+              await supabaseAdmin
+                .from('users')
+                .update({ passwordHash, lastLoginAt: new Date().toISOString() })
+                .eq('id', user.id);
+            }
+          } catch (updateError) {
+            console.warn('[DB Auth] ⚠️ Password update failed, continuing anyway');
+          }
+        } else {
+          // Auto-create the user in database
+          console.log('[DB Auth] Auto-creating user for:', email);
+          const userId = randomUUID();
+          const now = new Date().toISOString();
+          const passwordHash = await hash(password, 10);
+          
+          const { data: newUser, error: createError } = await supabaseAdmin
+            .from('users')
+            .insert({
+              id: userId,
+              email: normalizedEmail,
+              name: email.includes('admin') ? 'مدير مافورا' : 'مستخدم',
+              role: email.includes('admin') ? 'super_admin' : 'user',
+              emailVerified: true,
+              isActive: true,
+              passwordHash,
+              createdAt: now,
+              updatedAt: now,
+              lastLoginAt: now,
+            })
+            .select('*')
+            .single();
+          
+          if (createError || !newUser) {
+            console.warn('[DB Auth] ⚠️ Create user warning:', createError?.message, '- Using demo session');
+            return createDemoSession(email, password);
+          }
+          
+          user = newUser;
+          
+          // Create profile (non-critical)
+          try {
+            await supabaseAdmin.from('profiles').insert({
+              id: userId,
+              userId: userId,
+              display_name: email.includes('admin') ? 'مدير مافورا' : 'مستخدم',
+              email: normalizedEmail,
+              isVerified: true,
+              isSuspended: false,
+              createdAt: now,
+              updatedAt: now,
+            });
+          } catch (e) {
+            console.warn('[DB Auth] Profile create warning:', e);
+          }
+        }
+        
+        // Return successful login with DB user
+        return createUserSession(user);
+        
+      } catch (dbError) {
+        // Any database error - fall back to demo session
+        console.error('[DB Auth] ❌ Database operation failed, using demo session:', dbError);
+        return createDemoSession(email, password);
       }
-      
-      // Return successful login
-      return createUserSession(user);
     }
     
     // Step 2: If not a demo account, check database normally

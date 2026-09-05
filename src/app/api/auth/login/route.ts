@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
           created_at: profile?.created_at ?? data.user.created_at,
         };
 
-        console.log(`[AUTH] User logged in via Supabase: ${user.id}`);
+        console.log(`[AUTH] ✅ User logged in via Supabase: ${user.id}`);
 
         // Create response with session cookie
         const response = NextResponse.json({
@@ -224,21 +224,29 @@ export async function POST(request: NextRequest) {
         return setSecurityHeaders(response);
       }
 
-      // If it's not a credentials error, try DB fallback
-      if (error && !error.message.includes('Invalid') && !error.message.includes('invalid')) {
-        console.log(`[AUTH] Supabase auth error (non-credentials), trying DB fallback:`, error.message);
-      }
+      // Log Supabase auth result and continue to DB fallback
+      console.log(`[AUTH] Supabase auth result:`, error?.message || 'No error but no user');
     } catch (supabaseError) {
-      console.warn('[AUTH] Supabase auth exception, using DB fallback:', supabaseError);
+      console.warn('[AUTH] ⚠️ Supabase auth exception, using DB fallback:', supabaseError);
     }
 
     // FALLBACK: Use Database-First Authentication
-    console.log(`[AUTH] Trying DB auth fallback for ${email}...`);
+    console.log(`[AUTH] 🔄 Trying DB auth fallback for ${email}...`);
     
-    const dbResult = await dbLogin(email, password);
+    let dbResult: DbLoginResult;
+    try {
+      dbResult = await dbLogin(email, password);
+    } catch (dbError) {
+      console.error('[AUTH] ❌ DB auth threw exception:', dbError);
+      const errorResponse = NextResponse.json(
+        { error: 'auth.error_occurred' },
+        { status: 500 }
+      );
+      return setSecurityHeaders(errorResponse);
+    }
     
     if (dbResult.success && dbResult.user) {
-      console.log(`[AUTH] DB auth successful for ${email}`);
+      console.log(`[AUTH] ✅ DB auth successful for ${email} via ${dbResult.authMethod || 'database'}`);
       
       // Clear failed attempts on successful login
       clearLoginAttempts(email, ip);
@@ -247,7 +255,7 @@ export async function POST(request: NextRequest) {
       const response = NextResponse.json({
         user: dbResult.user,
         session: dbResult.session,
-        authMethod: 'database',
+        authMethod: dbResult.authMethod || 'database',
       });
       
       return setSecurityHeaders(response);

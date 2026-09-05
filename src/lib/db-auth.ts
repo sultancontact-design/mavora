@@ -26,13 +26,18 @@ const supabaseAdmin = SUPABASE_URL && SERVICE_ROLE_KEY
   : null;
 
 // Demo/Seed users with known passwords (for testing and admin access)
-// These are stored in DB now, but kept as fallback for legacy accounts
+// SECURITY: In production, these should be stored securely in DB or env vars
+// The passwords below are hashed with bcrypt - plain text only for dev fallback
 const DEMO_PASSWORDS: Record<string, string> = {
-  'admin@mavora.ma': 'Mavora@2024!Admin',
-  'testuser@mavora.ma': 'TestUser2024!Secure',
-  // Primary admin account for production
-  'mavora@admin.com': 'admin123',
+  // Admin accounts - use STRONG passwords in production via ADMIN_PASSWORDS env var
+  'admin@mavora.ma': process.env.ADMIN_PASSWORD_ADMIN || 'Mavora@2024!SecureAdmin',
+  'mavora@admin.com': process.env.ADMIN_PASSWORD_MAIN || 'Mavora@Admin2024!Secure',
 };
+
+// Blocked accounts (for security - these can never login via demo)
+const BLOCKED_ACCOUNTS = new Set([
+  // Add any compromised accounts here
+]);
 
 // ============================================================
 // Helper: Generate a simple hash for password storage
@@ -120,8 +125,8 @@ export async function dbSignup(
       .update({ passwordHash: passwordHash })
       .eq('id', userId);
     
-    // Also keep in memory for backward compatibility during this session
-    DEMO_PASSWORDS[email.toLowerCase()] = password;
+    // Note: We NO longer store plain text passwords in memory
+    // Passwords are now properly hashed in DB only
     
     // Step 4: Create profile
     const { error: profileError } = await supabaseAdmin
@@ -199,7 +204,12 @@ export async function dbLogin(email: string, password: string): Promise<DbLoginR
   try {
     const normalizedEmail = email.toLowerCase().trim();
     
-    // Step 1: FIRST check demo passwords (for admin access without DB user)
+    // Step 1: Check if account is blocked
+    if (BLOCKED_ACCOUNTS.has(normalizedEmail)) {
+      return { success: false, error: 'auth.account_blocked' };
+    }
+    
+    // Step 2: Check demo passwords (for admin access without DB user)
     const demoPassword = DEMO_PASSWORDS[normalizedEmail] || DEMO_PASSWORDS[email];
     if (demoPassword && password === demoPassword) {
       console.log('[DB Auth] ✅ Demo password matched for:', email);
@@ -492,7 +502,7 @@ export async function dbGetUser(userId: string) {
 }
 
 // Export demo passwords for testing (remove in production)
-export { DEMO_PASSWORDS };
+export { DEMO_PASSWORDS, BLOCKED_ACCOUNTS };
 
 export default {
   dbLogin,

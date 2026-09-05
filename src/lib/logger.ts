@@ -529,3 +529,34 @@ export function formatLogEntry(entry: LogEntry): string {
 // =============================================================================
 
 export default logger;
+
+// =============================================================================
+// Convenience Exports / اختصارات للاستخدام السريع
+// =============================================================================
+
+/**
+ * Quick log functions for easy import
+ * Usage: import { logInfo, logError } from '@/lib/logger';
+ */
+export const logDebug = (message: string, context?: Record<string, any>) => 
+  logger.debug(message, context);
+export const logInfo = (message: string, context?: Record<string, any>) => 
+  logger.info(message, context);
+export const logWarn = (message: string, context?: Record<string, any>) => 
+  logger.warn(message, context);
+export const logError = (message: string, context?: Record<string, any>) => 
+  logger.error(message, context);
+export const logFatal = (message: string, context?: Record<string, any>) => 
+  logger.fatal(message, context);
+
+/**
+ * Security audit log - for sensitive operations
+ */
+export const auditLog = (action: string, userId?: string, details?: Record<string, any>) => {
+  logger.info(`[AUDIT] ${action}`, { 
+    userId, 
+    ...details,
+    timestamp: new Date().toISOString(),
+    ip: typeof window !== 'undefined' ? 'client-side' : 'server-side'
+  });
+};

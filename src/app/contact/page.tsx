@@ -243,14 +243,22 @@ export default function ContactPage() {
                 {locale === 'ar' ? 'تابعنا' : locale === 'fr' ? 'Suivez-nous' : 'Follow Us'}
               </h3>
               <div className="flex gap-3">
-                {[Facebook, Twitter, Instagram, Linkedin].map((Social, index) => (
+                {[
+                  { Icon: Facebook, href: 'https://facebook.com/mavora.ma', label: 'Facebook' },
+                  { Icon: Twitter, href: 'https://twitter.com/mavora_ma', label: 'Twitter/X' },
+                  { Icon: Instagram, href: 'https://instagram.com/mavora.ma', label: 'Instagram' },
+                  { Icon: Linkedin, href: 'https://linkedin.com/company/mavora', label: 'LinkedIn' },
+                ].map((social, index) => (
                   <a
                     key={index}
-                    href="#"
+                    href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex size-10 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-rose-500 transition-colors"
-                    onClick={(e) => { e.preventDefault(); alert('روابط التواصل الاجتماعي قريباً'); }}
+                    title={`${social.label} - Mavora`}
+                    aria-label={`Follow us on ${social.label}`}
                   >
-                    <Social className="size-5" />
+                    <social.Icon className="size-5" />
                   </a>
                 ))}
               </div>

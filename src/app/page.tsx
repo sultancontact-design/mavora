@@ -25,6 +25,197 @@ import TrustBadges from '@/components/marketplace/TrustBadges';
 
 import type { Listing, Category } from '@/lib/types';
 
+// Mock data for when API is unavailable
+const MOCK_LISTINGS: Listing[] = [
+  {
+    id: '1',
+    title: 'iPhone 15 Pro Max - جديد في الصندوق',
+    description: 'آيفون 15 برو ماكس 256GB لون تيتانيوم طبيعي - ضمان سنة',
+    price: 15000,
+    currency: 'MAD',
+    location: 'الدار البيضاء',
+    category: { id: 'electronics', name: 'إلكترونيات', slug: 'electronics' },
+    images: ['https://placehold.co/400x300/1a1a2e/eee?text=iPhone+15+Pro+Max'],
+    seller: {
+      id: 'seller-1',
+      name: 'أحمد محمد',
+      avatar: null,
+      rating: 4.8,
+      isVerified: true
+    },
+    status: 'active',
+    featured: true,
+    views: 245,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: '2',
+    title: 'شقة فاخرة للإيجار في مركز الدار البيضاء',
+    description: 'شقة 120م² مع إطلالة بحرية - طابق 6 مصعد - garage',
+    price: 5000,
+    currency: 'MAD',
+    location: 'الدار البيضاء',
+    category: { id: 'realestate', name: 'عقارات', slug: 'realestate' },
+    images: ['https://placehold.co/400x300/16213e/eee?text=Apartment+Casablanca'],
+    seller: {
+      id: 'seller-2',
+      name: 'فاطمة الزهراء',
+      avatar: null,
+      rating: 4.9,
+      isVerified: true
+    },
+    status: 'active',
+    featured: true,
+    views: 189,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: '3',
+    title: 'سيارة تويوتا كامري 2023 - 20,000 كم فقط',
+    description: 'تويوتا كامري هايبريد 2023 لون أبيض - حالة ممتازة',
+    price: 280000,
+    currency: 'MAD',
+    location: 'الرباط',
+    category: { id: 'cars', name: 'سيارات', slug: 'cars' },
+    images: ['https://placehold.co/400x300/0f3460/eee?text=Toyota+Camry+2023'],
+    seller: {
+      id: 'seller-3',
+      name: 'محمد الأمين',
+      avatar: null,
+      rating: 4.7,
+      isVerified: true
+    },
+    status: 'active',
+    featured: true,
+    views: 567,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: '4',
+    title: 'كنبة مودرن 3 مقاعد - حالة ممتازة',
+    description: 'كنبة إيطالية أصلية - جلد طبيعي - شراء قبل شهرين',
+    price: 3500,
+    currency: 'MAD',
+    location: 'مراكش',
+    category: { id: 'furniture', name: 'أثاث', slug: 'furniture' },
+    images: ['https://placehold.co/400x300/533483/eee?text=Modern+Sofa'],
+    seller: {
+      id: 'seller-4',
+      name: 'سعيد',
+      avatar: null,
+      rating: 4.5,
+      isVerified: false
+    },
+    status: 'active',
+    featured: true,
+    views: 98,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: '5',
+    title: 'لابتوب Dell XPS 15 - OLED Touch',
+    description: 'Dell XPS 9530 i7 32GB RAM 1TB SSD RTX 4060 - ضمان',
+    price: 12000,
+    currency: 'MAD',
+    location: 'فاس',
+    category: { id: 'electronics', name: 'إلكترونيات', slug: 'electronics' },
+    images: ['https://placehold.co/400x300/1a1a2e/eee?text=Dell+XPS+15'],
+    seller: {
+      id: 'seller-1',
+      name: 'أحمد محمد',
+      avatar: null,
+      rating: 4.8,
+      isVerified: true
+    },
+    status: 'active',
+    featured: true,
+    views: 334,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: '6',
+    title: 'دراجة هوائية جبلية Trek - جديدة',
+    description: 'Trek Marlin 7 2024 - إطار M - لم تستخدم أبداً',
+    price: 2500,
+    currency: 'MAD',
+    location: 'أكادير',
+    category: { id: 'sports', name: 'رياضة', slug: 'sports' },
+    images: ['https://placehold.co/400x300/e94560/eee?text=Mountain+Bike'],
+    seller: {
+      id: 'seller-5',
+      name: 'كريم',
+      avatar: null,
+      rating: 4.6,
+      isVerified: true
+    },
+    status: 'active',
+    featured: true,
+    views: 156,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: '7',
+    title: 'مكنسة روبوت سامسونج Jet Bot AI+',
+    description: 'سامسونج Jet Bot AI+ - ذكية - تعمل مع التطبيق',
+    price: 1800,
+    currency: 'MAD',
+    location: 'طنجة',
+    category: { id: 'appliances', name: 'أجهزة منزلية', slug: 'appliances' },
+    images: ['https://placehold.co/400x300/0f3460/eee?text=Samsung+Robot+Vacuum'],
+    seller: {
+      id: 'seller-6',
+      name: 'نادية',
+      avatar: null,
+      rating: 4.4,
+      isVerified: false
+    },
+    status: 'active',
+    featured: true,
+    views: 78,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: '8',
+    title: 'جهاز iPad Pro 12.9 M2 256GB WiFi',
+    description: 'آيباد برو 2022 مع Apple Pencil 2 - لونه فضي',
+    price: 9000,
+    currency: 'MAD',
+    location: 'الدار البيضاء',
+    category: { id: 'electronics', name: 'إلكترونيات', slug: 'electronics' },
+    images: ['https://placehold.co/400x300/1a1a2e/eee?text=iPad+Pro+12.9'],
+    seller: {
+      id: 'seller-7',
+      name: 'ليلى',
+      avatar: null,
+      rating: 4.9,
+      isVerified: true
+    },
+    status: 'active',
+    featured: true,
+    views: 412,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+];
+
+const MOCK_CATEGORIES: Category[] = [
+  { id: 'electronics', name: 'إلكترونيات', slug: 'electronics', icon: '📱', listingCount: 156 },
+  { id: 'realestate', name: 'عقارات', slug: 'realestate', icon: '🏠', listingCount: 89 },
+  { id: 'cars', name: 'سيارات', slug: 'cars', icon: '🚗', listingCount: 67 },
+  { id: 'furniture', name: 'أثاث', slug: 'furniture', icon: '🛋️', listingCount: 45 },
+  { id: 'fashion', name: 'أزياء', slug: 'fashion', icon: '👗', listingCount: 134 },
+  { id: 'sports', name: 'رياضة', slug: 'sports', icon: '⚽', listingCount: 78 },
+  { id: 'appliances', name: 'أجهزة منزلية', slug: 'appliances', icon: '🏠', listingCount: 56 },
+  { id: 'jobs', name: 'وظائف', slug: 'jobs', icon: '💼', listingCount: 92 },
+];
+
 /* ── Homepage Component ── */
 
 export default function HomePage() {
@@ -48,10 +239,20 @@ export default function HomePage() {
         const res = await fetch('/api/listings?limit=8&featured=true');
         if (res.ok) {
           const data = await res.json();
-          setListings(data.listings || []);
+          if (data.listings && data.listings.length > 0) {
+            setListings(data.listings);
+          } else {
+            // Use mock data when API returns empty
+            setListings(MOCK_LISTINGS);
+          }
+        } else {
+          // Use mock data when API fails
+          setListings(MOCK_LISTINGS);
         }
       } catch (error) {
-        console.error('Failed to fetch listings:', error);
+        console.error('Failed to fetch listings, using mock data:', error);
+        // Use mock data when API is unavailable
+        setListings(MOCK_LISTINGS);
       } finally {
         setIsLoadingListings(false);
       }
@@ -63,10 +264,18 @@ export default function HomePage() {
         const res = await fetch('/api/categories');
         if (res.ok) {
           const data = await res.json();
-          setCategories(data);
+          if (data && Array.isArray(data) && data.length > 0) {
+            setCategories(data);
+          } else {
+            setCategories(MOCK_CATEGORIES);
+          }
+        } else {
+          setCategories(MOCK_CATEGORIES);
         }
       } catch (error) {
-        console.error('Failed to fetch categories:', error);
+        console.error('Failed to fetch categories, using mock data:', error);
+        // Use mock data when API is unavailable
+        setCategories(MOCK_CATEGORIES);
       } finally {
         setIsLoadingCategories(false);
       }

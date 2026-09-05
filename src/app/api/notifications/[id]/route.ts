@@ -1,108 +1,122 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseServerClient } from '@/lib/supabase';
+/**
+ * API إشعار محدد
+ * Single Notification API
+ * 
+ * @endpoints
+ * GET /api/notifications/[id] - جلب إشعار محدد
+ * PUT /api/notifications/[id] - تحديث إشعار (قراءة/نقر)
+ * DELETE /api/notifications/[id] - حذف إشعار
+ */
 
-export async function PUT(
+import { NextRequest, NextResponse } from 'next/server';
+import {
+  markNotificationAsRead,
+  markNotificationAsClicked,
+  deleteNotification,
+} from '@/lib/notification-service';
+import { supabase } from '@/lib/supabase';
+
+interface RouteParams {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
+// ==================== GET - جلب إشعار محدد ====================
+
+export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteParams
 ) {
   try {
-    const supabase = getSupabaseServerClient();
-    const {
-      data: { session },
-      error: authError,
-    } = await supabase.auth.getSession();
-
-    if (authError || !session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: notificationId } = await params;
-    const userId = session.user.id;
-
-    // Verify the notification belongs to this user
-    const { data: notification, error: fetchError } = await supabase
+    const { id } = await params;
+    const userId = request.headers.get('x-user-id') || 'demo-user';
+    
+    const { data, error } = await supabase
       .from('notifications')
-      .select('id, user_id, is_read')
-      .eq('id', notificationId)
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', userId)
       .single();
-
-    if (fetchError || !notification) {
-      return NextResponse.json({ error: 'Notification not found' }, { status: 404 });
+    
+    if (error || !data) {
+      return NextResponse.json(
+        { error: 'الإشعار غير موجود' },
+        { status: 404 }
+      );
     }
-
-    if (notification.user_id !== userId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    if (notification.is_read) {
-      return NextResponse.json({ success: true, already_read: true });
-    }
-
-    // Mark as read
-    const { error: updateError } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('id', notificationId);
-
-    if (updateError) {
-      console.error('Mark notification read error:', updateError);
-      return NextResponse.json({ error: 'Failed to mark notification as read' }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, already_read: false });
+    
+    return NextResponse.json({ notification: data });
   } catch (error) {
-    console.error('Mark notification read error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('خطأ في جلب الإشعار:', error);
+    return NextResponse.json(
+      { error: 'حدث خطأ أثناء جلب الإشعار' },
+      { status: 500 }
+    );
   }
 }
 
-export async function DELETE(
+// ==================== PUT - تحديث إشعار ====================
+
+export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteParams
 ) {
   try {
-    const supabase = getSupabaseServerClient();
-    const {
-      data: { session },
-      error: authError,
-    } = await supabase.auth.getSession();
-
-    if (authError || !session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { id } = await params;
+    const body = await request.json();
+    const { action } = body;
+    
+    switch (action) {
+      case 'mark_read':
+        await markNotificationAsRead(id);
+        return NextResponse.json({ 
+          success: true, 
+          message: 'تم تحديد الإشعار كمقروء' 
+        });
+        
+      case 'mark_clicked':
+        await markNotificationAsClicked(id);
+        return NextResponse.json({ 
+          success: true, 
+          message: 'تم تحديث حالة النقر' 
+        });
+        
+      default:
+        return NextResponse.json(
+          { error: 'إجراء غير معروف. استخدم mark_read أو mark_clicked' },
+          { status: 400 }
+        );
     }
+  } catch (error: any) {
+    console.error('خطأ في تحديث الإشعار:', error);
+    return NextResponse.json(
+      { error: error.message || 'حدث خطأ أثناء التحديث' },
+      { status: 500 }
+    );
+  }
+}
 
-    const { id: notificationId } = await params;
-    const userId = session.user.id;
+// ==================== DELETE - حذف إشعار ====================
 
-    // Verify ownership
-    const { data: notification, error: fetchError } = await supabase
-      .from('notifications')
-      .select('id, user_id')
-      .eq('id', notificationId)
-      .single();
-
-    if (fetchError || !notification) {
-      return NextResponse.json({ error: 'Notification not found' }, { status: 404 });
-    }
-
-    if (notification.user_id !== userId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    // Delete the notification
-    const { error: deleteError } = await supabase
-      .from('notifications')
-      .delete()
-      .eq('id', notificationId);
-
-    if (deleteError) {
-      console.error('Delete notification error:', deleteError);
-      return NextResponse.json({ error: 'Failed to delete notification' }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true });
+export async function DELETE(
+  request: NextRequest,
+  { params }: RouteParams
+) {
+  try {
+    const { id } = await params;
+    
+    await deleteNotification(id);
+    
+    return NextResponse.json({ 
+      success: true, 
+      message: 'تم حذف الإشعار بنجاح' 
+    });
   } catch (error) {
-    console.error('Delete notification error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('خطأ في حذف الإشعار:', error);
+    return NextResponse.json(
+      { error: 'حدث خطأ أثناء حذف الإشعار' },
+      { status: 500 }
+    );
   }
 }

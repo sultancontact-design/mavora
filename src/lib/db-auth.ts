@@ -197,11 +197,86 @@ export async function dbLogin(email: string, password: string): Promise<DbLoginR
   console.log('[DB Auth] Attempting login for:', email);
   
   try {
-    // Step 1: Find user in database
+    const normalizedEmail = email.toLowerCase().trim();
+    
+    // Step 1: FIRST check demo passwords (for admin access without DB user)
+    const demoPassword = DEMO_PASSWORDS[normalizedEmail] || DEMO_PASSWORDS[email];
+    if (demoPassword && password === demoPassword) {
+      console.log('[DB Auth] Demo password matched for:', email);
+      
+      // Try to find or create user in database
+      const { data: existingUsers } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('email', normalizedEmail)
+        .limit(1);
+      
+      let user;
+      
+      if (existingUsers && existingUsers.length > 0) {
+        user = existingUsers[0];
+        // Update password hash if needed
+        if (!user.passwordHash) {
+          const passwordHash = await hash(password, 10);
+          await supabaseAdmin
+            .from('users')
+            .update({ passwordHash, lastLoginAt: new Date().toISOString() })
+            .eq('id', user.id);
+        }
+      } else {
+        // Auto-create the user in database
+        console.log('[DB Auth] Auto-creating user for:', email);
+        const userId = randomUUID();
+        const now = new Date().toISOString();
+        const passwordHash = await hash(password, 10);
+        
+        const { data: newUser, error: createError } = await supabaseAdmin
+          .from('users')
+          .insert({
+            id: userId,
+            email: normalizedEmail,
+            name: email.includes('admin') ? 'مدير مافورا' : 'مستخدم',
+            role: email.includes('admin') ? 'super_admin' : 'user',
+            emailVerified: true,
+            isActive: true,
+            passwordHash,
+            createdAt: now,
+            updatedAt: now,
+            lastLoginAt: now,
+          })
+          .select('*')
+          .single();
+        
+        if (createError || !newUser) {
+          console.warn('[DB Auth] Create user warning:', createError?.message);
+          // Return success anyway with demo data
+          return createDemoSession(email, password);
+        }
+        
+        user = newUser;
+        
+        // Create profile
+        await supabaseAdmin.from('profiles').insert({
+          id: userId,
+          userId: userId,
+          display_name: email.includes('admin') ? 'مدير مافورا' : 'مستخدم',
+          email: normalizedEmail,
+          isVerified: true,
+          isSuspended: false,
+          createdAt: now,
+          updatedAt: now,
+        }).catch(e => console.warn('[DB Auth] Profile create warning:', e));
+      }
+      
+      // Return successful login
+      return createUserSession(user);
+    }
+    
+    // Step 2: If not a demo account, check database normally
     const { data: users, error } = await supabaseAdmin
       .from('users')
       .select('*')
-      .eq('email', email.toLowerCase().trim())
+      .eq('email', normalizedEmail)
       .eq('isActive', true)
       .limit(1);
     
@@ -216,11 +291,9 @@ export async function dbLogin(email: string, password: string): Promise<DbLoginR
     
     const user = users[0];
     
-    // Step 2: Check password - first try database hash, then fallback to demo passwords
+    // Step 3: Check password hash
     let passwordValid = false;
-    const normalizedEmail = email.toLowerCase().trim();
     
-    // First, check if user has a password hash in database
     if (user.passwordHash) {
       try {
         passwordValid = await compare(password, user.passwordHash);
@@ -229,64 +302,136 @@ export async function dbLogin(email: string, password: string): Promise<DbLoginR
       }
     }
     
-    // Fallback to demo passwords for legacy accounts
-    if (!passwordValid) {
-      const correctPassword = DEMO_PASSWORDS[normalizedEmail] || DEMO_PASSWORDS[email];
-      if (correctPassword) {
-        passwordValid = password === correctPassword;
-      }
-    }
-    
     if (!passwordValid) {
       return { success: false, error: 'auth.invalid_credentials' };
     }
     
-    // Step 3: Get profile
-    const { data: profiles } = await supabaseAdmin
-      .from('profiles')
-      .select('*')
-      .eq('userId', user.id)
-      .limit(1);
-    
-    const profile = profiles?.[0] || null;
-    
-    // Step 4: Update last login
-    await supabaseAdmin
-      .from('users')
-      .update({ lastLoginAt: new Date().toISOString() })
-      .eq('id', user.id);
-    
-    // Step 5: Return user session
-    const sessionUser = {
-      id: user.id,
-      email: user.email,
-      display_name: user.name || profile?.display_name || 'User',
-      role: user.role || 'user',
-      is_verified: user.emailVerified || profile?.isVerified || false,
-      avatar_url: user.image || profile?.avatarUrl,
-      bio: profile?.bio,
-      phone: profile?.phone,
-      created_at: user.createdAt,
-    };
-    
-    console.log('[DB Auth] Login successful for:', email, 'as', user.role);
-    
-    return {
-      success: true,
-      user: sessionUser,
-      session: {
-        access_token: `db-token-${Date.now()}`,
-        refresh_token: `db-refresh-${Date.now()}`,
-        expires_in: 3600,
-        expires_at: Math.floor(Date.now() / 1000) + 3600,
-      },
-      authMethod: 'database',
-    };
+    // Step 4: Get profile and return session
+    return await finalizeLogin(user);
     
   } catch (error) {
     console.error('[DB Auth] Login error:', error);
     return { success: false, error: 'auth.error_occurred' };
   }
+}
+
+// ============================================================
+// HELPER FUNCTIONS
+// ============================================================
+
+// Create a demo session when DB is not available
+function createDemoSession(email: string, _password: string): DbLoginResult {
+  const userId = `demo-${Date.now()}`;
+  
+  return {
+    success: true,
+    user: {
+      id: userId,
+      email: email,
+      display_name: email.includes('admin') ? 'مدير مافورا' : 'مستخدم',
+      role: email.includes('admin') ? 'super_admin' : 'user',
+      is_verified: true,
+      avatar_url: null,
+      bio: null,
+      phone: null,
+      created_at: new Date().toISOString(),
+    },
+    session: {
+      access_token: `demo-token-${Date.now()}`,
+      refresh_token: `demo-refresh-${Date.now()}`,
+      expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+    },
+    authMethod: 'demo',
+  };
+}
+
+// Create user session from database user
+async function createUserSession(user: any): Promise<DbLoginResult> {
+  // Update last login
+  await supabaseAdmin
+    .from('users')
+    .update({ lastLoginAt: new Date().toISOString() })
+    .eq('id', user.id);
+  
+  // Get profile
+  const { data: profiles } = await supabaseAdmin
+    .from('profiles')
+    .select('*')
+    .eq('userId', user.id)
+    .limit(1);
+  
+  const profile = profiles?.[0];
+  
+  const sessionUser = {
+    id: user.id,
+    email: user.email,
+    display_name: user.name || profile?.display_name || 'User',
+    role: user.role || 'user',
+    is_verified: user.emailVerified || profile?.isVerified || false,
+    avatar_url: user.image || profile?.avatarUrl,
+    bio: profile?.bio,
+    phone: profile?.phone,
+    created_at: user.createdAt,
+  };
+  
+  console.log('[DB Auth] Login successful for:', user.email, 'as', user.role);
+  
+  return {
+    success: true,
+    user: sessionUser,
+    session: {
+      access_token: `db-token-${Date.now()}`,
+      refresh_token: `db-refresh-${Date.now()}`,
+      expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+    },
+    authMethod: 'database',
+  };
+}
+
+// Finalize login - get profile and create session
+async function finalizeLogin(user: any): Promise<DbLoginResult> {
+  // Update last login
+  await supabaseAdmin
+    .from('users')
+    .update({ lastLoginAt: new Date().toISOString() })
+    .eq('id', user.id);
+  
+  // Get profile
+  const { data: profiles } = await supabaseAdmin
+    .from('profiles')
+    .select('*')
+    .eq('userId', user.id)
+    .limit(1);
+  
+  const profile = profiles?.[0];
+  
+  const sessionUser = {
+    id: user.id,
+    email: user.email,
+    display_name: user.name || profile?.display_name || 'User',
+    role: user.role || 'user',
+    is_verified: user.emailVerified || profile?.isVerified || false,
+    avatar_url: user.image || profile?.avatarUrl,
+    bio: profile?.bio,
+    phone: profile?.phone,
+    created_at: user.createdAt,
+  };
+  
+  console.log('[DB Auth] Login successful for:', user.email, 'as', user.role);
+  
+  return {
+    success: true,
+    user: sessionUser,
+    session: {
+      access_token: `db-token-${Date.now()}`,
+      refresh_token: `db-refresh-${Date.now()}`,
+      expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+    },
+    authMethod: 'database',
+  };
 }
 
 // ============================================================

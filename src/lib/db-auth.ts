@@ -25,11 +25,13 @@ const supabaseAdmin = SUPABASE_URL && SERVICE_ROLE_KEY
     })
   : null;
 
-// Demo/Seed users with known passwords (for testing) - these are stored in DB now
-// But we keep this as fallback for accounts created before password hashing was added
+// Demo/Seed users with known passwords (for testing and admin access)
+// These are stored in DB now, but kept as fallback for legacy accounts
 const DEMO_PASSWORDS: Record<string, string> = {
   'admin@mavora.ma': 'Mavora@2024!Admin',
   'testuser@mavora.ma': 'TestUser2024!Secure',
+  // Primary admin account for production
+  'mavora@admin.com': 'admin123',
 };
 
 // ============================================================

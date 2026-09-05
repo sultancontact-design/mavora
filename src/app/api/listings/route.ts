@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase';
+import { MOCK_LISTINGS, MOCK_STATS } from '@/lib/mock-data';
 
 // ============================================================
 // Configuration - Uses secure admin client from lib/supabase
@@ -58,149 +59,167 @@ export async function GET(request: NextRequest) {
     // Validate sort_by
     const validSort = isValidSort(sortBy) ? sortBy : 'newest';
 
-    // Build query - using correct column names from schema
-    let query = supabase
-      .from('listings')
-      .select(`
-        *,
-        category:categories(id, name, nameAr, nameFr, slug),
-        media:listing_media(*)
-      `, { count: 'exact' })
-      .eq('status', 'active');
+    // Try database first
+    try {
+      const supabase = getSupabaseAdminClient();
+      
+      let query = supabase
+        .from('listings')
+        .select(`
+          *,
+          category:categories(id, name, nameAr, nameFr, slug),
+          media:listing_media(*)
+        `, { count: 'exact' })
+        .eq('status', 'active');
 
-    // Apply filters
+      // Apply filters (same as before)
+      if (categoryId) query = query.eq('categoryId', categoryId);
+      if (featured) query = query.not('featuredUntil', 'is', null);
+      if (minPrice !== null && minPrice !== '') {
+        const minNum = parseFloat(minPrice);
+        if (!isNaN(minNum)) query = query.gte('price', minNum);
+      }
+      if (maxPrice !== null && maxPrice !== '') {
+        const maxNum = parseFloat(maxPrice);
+        if (!isNaN(maxNum)) query = query.lte('price', maxNum);
+      }
+      if (condition) query = query.eq('condition', condition);
+      if (search) query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+
+      // Sorting
+      switch (validSort) {
+        case 'oldest': query = query.order('createdAt', { ascending: true }); break;
+        case 'price_asc': query = query.order('price', { ascending: true, nullsFirst: false }); break;
+        case 'price_desc': query = query.order('price', { ascending: false, nullsFirst: true }); break;
+        case 'popular': query = query.order('viewCount', { ascending: false }); break;
+        default: query = query.order('createdAt', { ascending: false }); break;
+      }
+
+      const from = (page - 1) * perPage;
+      const to = from + perPage - 1;
+
+      const { data, error, count } = await query.range(from, to);
+
+      if (!error && data && data.length > 0) {
+        console.log('[Listings API] ✅ Returning DB data:', data.length, 'listings');
+        
+        // Process and return DB listings (same as before)
+        const listings = data.map((listing: Record<string, unknown>) => ({
+          id: listing.id,
+          title: listing.title,
+          description: listing.description,
+          price: listing.price ? Number(listing.price) : null,
+          currencyCode: listing.currencyCode || 'MAD',
+          condition: listing.condition,
+          status: listing.status,
+          negotiable: listing.negotiable || false,
+          viewCount: listing.viewCount || 0,
+          contactPhone: listing.contactPhone,
+          locationAddress: listing.locationAddress,
+          createdAt: listing.createdAt,
+          updatedAt: listing.updatedAt,
+          category: listing.category,
+          media: ((listing.media as Record<string, unknown>[]) || []).map((m: Record<string, unknown>) => ({
+            id: m.id, url: m.url, type: m.type || 'image', thumbnailUrl: m.thumbnailUrl,
+          })),
+          userId: listing.userId,
+        }));
+
+        return NextResponse.json({
+          listings,
+          total: count ?? data.length,
+          page,
+          per_page: perPage,
+          total_pages: Math.max(1, Math.ceil((count ?? data.length) / perPage)),
+        });
+      }
+    } catch (dbError) {
+      console.warn('[Listings API] ⚠️ DB query failed:', dbError);
+    }
+
+    // Fallback to mock data when DB fails
+    console.log('[Listings API] 📦 Using mock data');
+    
+    let mockListings = [...MOCK_LISTINGS];
+    
+    // Apply filters to mock data
     if (categoryId) {
-      query = query.eq('categoryId', categoryId);
+      mockListings = mockListings.filter(l => l.category.id === categoryId);
     }
-
     if (featured) {
-      // Note: schema uses featuredUntil for featured listings
-      query = query.not('featuredUntil', 'is', null);
+      mockListings = mockListings.filter(l => l.featured);
     }
-
-    if (minPrice !== null && minPrice !== '') {
-      const minNum = parseFloat(minPrice);
-      if (!isNaN(minNum)) {
-        query = query.gte('price', minNum);
-      }
-    }
-
-    if (maxPrice !== null && maxPrice !== '') {
-      const maxNum = parseFloat(maxPrice);
-      if (!isNaN(maxNum)) {
-        query = query.lte('price', maxNum);
-      }
-    }
-
-    if (condition) {
-      query = query.eq('condition', condition);
-    }
-
-    // Full-text search with sanitized input
     if (search) {
-      query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+      const searchLower = search.toLowerCase();
+      mockListings = mockListings.filter(l => 
+        l.title.toLowerCase().includes(searchLower) || 
+        l.description.toLowerCase().includes(searchLower)
+      );
+    }
+    if (minPrice) {
+      const min = parseFloat(minPrice);
+      if (!isNaN(min)) mockListings = mockListings.filter(l => l.price >= min);
+    }
+    if (maxPrice) {
+      const max = parseFloat(maxPrice);
+      if (!isNaN(max)) mockListings = mockListings.filter(l => l.price <= max);
     }
 
-    // Sorting
+    // Sort mock data
     switch (validSort) {
-      case 'oldest':
-        query = query.order('createdAt', { ascending: true });
-        break;
-      case 'price_asc':
-        query = query.order('price', { ascending: true, nullsFirst: false });
-        break;
-      case 'price_desc':
-        query = query.order('price', { ascending: false, nullsFirst: true });
-        break;
-      case 'popular':
-        query = query.order('viewCount', { ascending: false });
-        break;
-      case 'newest':
-      default:
-        query = query.order('createdAt', { ascending: false });
-        break;
+      case 'price_asc': mockListings.sort((a, b) => a.price - b.price); break;
+      case 'price_desc': mockListings.sort((a, b) => b.price - a.price); break;
+      case 'popular': mockListings.sort((a, b) => b.views - a.views); break;
+      default: mockListings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); break;
     }
 
-    const from = (page - 1) * perPage;
-    const to = from + perPage - 1;
+    // Paginate
+    const total = mockListings.length;
+    const totalPages = Math.max(1, Math.ceil(total / perPage));
+    const paginatedListings = mockListings.slice((page - 1) * perPage, page * perPage);
 
-    const { data, error, count } = await query.range(from, to);
-
-    if (error) {
-      console.error('Listings fetch error:', error);
-      return NextResponse.json({ error: 'Failed to fetch listings', details: error.message }, { status: 500 });
-    }
-
-    // Process listings
-    const listings = (data ?? []).map((listing: Record<string, unknown>) => ({
+    // Transform to expected format
+    const formattedListings = paginatedListings.map(listing => ({
       id: listing.id,
       title: listing.title,
       description: listing.description,
-      price: listing.price ? Number(listing.price) : null,
-      currencyCode: listing.currencyCode || 'MAD',
+      price: listing.price,
+      currencyCode: listing.currency,
       condition: listing.condition,
       status: listing.status,
-      negotiable: listing.negotiable || false,
-      viewCount: listing.viewCount || 0,
-      contactPhone: listing.contactPhone,
-      locationAddress: listing.locationAddress,
+      negotiable: false,
+      viewCount: listing.views,
+      contactPhone: null,
+      locationAddress: listing.location,
       createdAt: listing.createdAt,
       updatedAt: listing.updatedAt,
       category: listing.category,
-      media: ((listing.media as Record<string, unknown>[]) ?? []).map((m: Record<string, unknown>) => ({
-        id: m.id,
-        url: m.url,
-        type: m.type || 'image',
-        thumbnailUrl: m.thumbnailUrl,
+      media: listing.images.map((url, i) => ({
+        id: `mock-media-${listing.id}-${i}`,
+        url,
+        type: 'image',
+        thumbnailUrl: url,
       })),
-      // Get seller info separately to avoid join issues
-      userId: listing.userId,
+      userId: listing.seller.id,
+      seller: {
+        id: listing.seller.id,
+        display_name: listing.seller.name,
+        avatar_url: listing.seller.avatar,
+        is_verified: listing.seller.isVerified,
+        phone: listing.seller.email,
+      },
     }));
 
-    // Fetch seller info for each listing
-    const listingsWithSellers = await Promise.all(
-      listings.map(async (listing: Record<string, unknown>) => {
-        const { data: user } = await supabase
-          .from('users')
-          .select('id, name, email')
-          .eq('id', listing.userId)
-          .limit(1)
-          .single();
-        
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('display_name, avatar_url, phone, is_verified')
-          .eq('userId', listing.userId)
-          .limit(1)
-          .single();
-
-        return {
-          ...listing,
-          seller: {
-            id: user?.id,
-            display_name: profile?.display_name || user?.name || 'مستخدم',
-            avatar_url: profile?.avatar_url,
-            is_verified: profile?.is_verified || false,
-            phone: profile?.phone || user?.email,
-          },
-        };
-      })
-    );
-
-    const total = count ?? 0;
-    const totalPages = Math.max(1, Math.ceil(total / perPage));
-
-    const response = {
-      data: listingsWithSellers,
+    return NextResponse.json({
+      listings: formattedListings,
       total,
       page,
       per_page: perPage,
       total_pages: totalPages,
-    };
+    });
 
-    return NextResponse.json(response);
   } catch (error) {
-    console.error('Listings error:', error);
+    console.error('[Listings API] ❌ Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

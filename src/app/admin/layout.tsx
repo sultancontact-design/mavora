@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuthStore } from '@/stores/auth';
 import SuperAdminDashboard from '@/components/admin/SuperAdminDashboard';
 import { useRouter } from 'next/navigation';
@@ -9,6 +9,9 @@ import type { UserRole } from '@/lib/types';
 
 // Allowed roles for admin access
 const ADMIN_ROLES: UserRole[] = ['admin', 'super_admin', 'moderator'];
+
+// Auth check timeout (5 seconds)
+const AUTH_TIMEOUT = 5000;
 
 export default function AdminLayout({
   children,
@@ -27,25 +30,50 @@ export default function AdminLayout({
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+  // Check auth status with timeout
   useEffect(() => {
-    // Wait for auth to load
-    if (!isLoading) {
-      // Check if user has admin role
-      if (!user || !ADMIN_ROLES.includes(user.role)) {
-        // Show direct login form instead of redirecting
+    let timeoutId: NodeJS.Timeout;
+    
+    const checkAuth = () => {
+      if (!isLoading) {
+        // Check if user has admin role
+        if (!user || !ADMIN_ROLES.includes(user.role)) {
+          // Show direct login form instead of redirecting
+          setShowLogin(true);
+          setIsChecking(false);
+          return;
+        }
+        setIsChecking(false);
+      }
+    };
+
+    // Set up timeout to prevent infinite loading
+    timeoutId = setTimeout(() => {
+      if (isLoading) {
+        console.warn('Auth check timed out, showing login form');
+        setLoading(false); // Force stop loading
         setShowLogin(true);
         setIsChecking(false);
-        return;
       }
-      setIsChecking(false);
-    }
-  }, [user, isLoading]);
+    }, AUTH_TIMEOUT);
+
+    // Initial check
+    checkAuth();
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [user, isLoading, setLoading]);
 
   // Handle direct login
-  const handleDirectLogin = async (e: React.FormEvent) => {
+  const handleDirectLogin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
     setIsLoggingIn(true);
+
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
     try {
       const res = await fetch('/api/auth/login', {
@@ -56,6 +84,7 @@ export default function AdminLayout({
           password: loginPassword,
           isAdminLogin: true  // Flag for admin login
         }),
+        signal: controller.signal,
       });
 
       const data = await res.json();
@@ -65,6 +94,7 @@ export default function AdminLayout({
         if (ADMIN_ROLES.includes(data.user.role)) {
           setUser(data.user);
           setShowLogin(false);
+          setLoginError('');
         } else {
           setLoginError('هذا الحساب ليس لديه صلاحية مدير');
         }
@@ -72,11 +102,16 @@ export default function AdminLayout({
         setLoginError(data.error || 'فشل تسجيل الدخول');
       }
     } catch (error) {
-      setLoginError('حدث خطأ في الاتصال');
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        setLoginError('انتهت مهلة الاتصال - يرجى المحاولة مرة أخرى');
+      } else {
+        setLoginError('حدث خطأ في الاتصال');
+      }
     } finally {
+      clearTimeout(timeoutId);
       setIsLoggingIn(false);
     }
-  };
+  }, [loginEmail, loginPassword, setUser]);
 
   // Show loading while checking auth
   if (isLoading || isChecking) {
@@ -120,6 +155,7 @@ export default function AdminLayout({
                     onChange={(e) => setLoginEmail(e.target.value)}
                     placeholder="mavora@admin.com"
                     required
+                    autoComplete="email"
                     className="w-full pr-11 pl-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
                     dir="ltr"
                   />
@@ -139,6 +175,7 @@ export default function AdminLayout({
                     onChange={(e) => setLoginPassword(e.target.value)}
                     placeholder="••••••••"
                     required
+                    autoComplete="current-password"
                     className="w-full pr-11 pl-12 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
                     dir="ltr"
                   />
@@ -146,6 +183,7 @@ export default function AdminLayout({
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                    aria-label={showPassword ? "إخفاء كلمة المرور" : "عرض كلمة المرور"}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -163,7 +201,7 @@ export default function AdminLayout({
               <button
                 type="submit"
                 disabled={isLoggingIn}
-                className="w-full py-3 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-800 text-white font-medium rounded-xl transition-colors shadow-lg shadow-violet-500/25 flex items-center justify-center gap-2"
+                className="w-full py-3 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-800 text-white font-medium rounded-xl transition-colors shadow-lg shadow-violet-500/25 flex items-center justify-center gap-2 disabled:cursor-not-allowed"
               >
                 {isLoggingIn ? (
                   <>
@@ -179,31 +217,14 @@ export default function AdminLayout({
               </button>
             </form>
 
-            {/* Quick Access Info */}
-            <div className="mt-6 pt-6 border-t border-white/10">
-              <p className="text-xs text-gray-500 text-center mb-3">
-                بيانات الدخول السريعة للحساب الجديد:
-              </p>
-              <div className="bg-black/20 rounded-xl p-4 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400 text-sm">البريد:</span>
-                  <code className="text-violet-400 text-sm" dir="ltr">mavora@admin.com</code>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400 text-sm">كلمة المرور:</span>
-                  <code className="text-violet-400 text-sm" dir="ltr">admin123</code>
-                </div>
-              </div>
-            </div>
+            {/* Back to Home */}
+            <button
+              onClick={() => router.push('/')}
+              className="mt-6 w-full py-3 text-gray-400 hover:text-white transition-colors text-sm"
+            >
+              العودة للصفحة الرئيسية
+            </button>
           </div>
-
-          {/* Back to Home */}
-          <button
-            onClick={() => router.push('/')}
-            className="mt-6 w-full py-3 text-gray-400 hover:text-white transition-colors text-sm"
-          >
-            العودة للصفحة الرئيسية
-          </button>
         </div>
       </div>
     );

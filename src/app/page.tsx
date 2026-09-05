@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -11,385 +11,238 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { useNavigationInit } from '@/hooks/useNavigationInit';
 import MavoraLogo from '@/components/common/MavoraLogo';
 import ListingCard from '@/components/listing/ListingCard';
-import { 
-  TrendingUp, 
-  Shield, 
-  Users, 
-  Globe,
-  ArrowRight,
-  Star,
-  CheckCircle2,
-  Zap,
-  Heart,
-  MapPin,
-  Loader2,
-  Search,
-  Car,
-  Home,
-  Smartphone,
-  Briefcase,
-  Wrench,
-  Shirt,
-  Gamepad2,
-  Dumbbell,
-  BookOpen,
-  PawPrint,
-  Baby,
-  Flower2
-} from 'lucide-react';
+
+// ═══════════════════════════════════════════════════════════════
+// 2026 MODERN COMPONENTS IMPORTS
+// ═══════════════════════════════════════════════════════════════
+import HeroSection from '@/components/marketplace/HeroSection';
+import StatsBar from '@/components/marketplace/StatsBar';
+import FeaturedCategories from '@/components/marketplace/FeaturedCategories';
+import HowItWorks from '@/components/marketplace/HowItWorks';
+import Testimonials from '@/components/marketplace/Testimonials';
+import AppDownloadCTA from '@/components/marketplace/AppDownloadCTA';
+import TrustBadges from '@/components/marketplace/TrustBadges';
+
 import type { Listing, Category } from '@/lib/types';
 
-// Categories with icons for the homepage - using translation keys
-const CATEGORIES_DATA = [
-  { id: 'vehicles', slug: 'vehicles', key: 'categories.vehicles', icon: Car, color: 'from-blue-500 to-blue-600', bgLight: 'bg-blue-50' },
-  { id: 'real-estate', slug: 'real-estate', key: 'categories.real_estate', icon: Home, color: 'from-emerald-500 to-emerald-600', bgLight: 'bg-emerald-50' },
-  { id: 'electronics', slug: 'electronics', key: 'categories.electronics', icon: Smartphone, color: 'from-violet-500 to-violet-600', bgLight: 'bg-violet-50' },
-  { id: 'jobs', slug: 'jobs', key: 'categories.jobs', icon: Briefcase, color: 'from-coral to-coral-dark', bgLight: 'bg-orange-50' },
-  { id: 'services', slug: 'services', key: 'categories.services', icon: Wrench, color: 'from-cyan-500 to-cyan-600', bgLight: 'bg-cyan-50' },
-  { id: 'fashion', slug: 'fashion', key: 'categories.fashion', icon: Shirt, color: 'from-pink-500 to-pink-600', bgLight: 'bg-pink-50' },
-  { id: 'sports', slug: 'sports', key: 'categories.sports', icon: Dumbbell, color: 'from-green-500 to-green-600', bgLight: 'bg-green-50' },
-  { id: 'home-garden', slug: 'home-garden', key: 'categories.home', icon: Flower2, color: 'from-lime-500 to-lime-600', bgLight: 'bg-lime-50' },
-  { id: 'education', slug: 'education', key: 'categories.education', icon: BookOpen, color: 'from-indigo-500 to-indigo-600', bgLight: 'bg-indigo-50' },
-  { id: 'animals', slug: 'animals', key: 'categories.animals', icon: PawPrint, color: 'from-amber-500 to-amber-600', bgLight: 'bg-amber-50' },
-  { id: 'kids', slug: 'kids', key: 'categories.kids', icon: Baby, color: 'from-red-400 to-red-500', bgLight: 'bg-red-50' },
-  { id: 'entertainment', slug: 'entertainment', key: 'categories.entertainment', icon: Gamepad2, color: 'from-purple-500 to-purple-600', bgLight: 'bg-purple-50' },
-];
+/* ── Homepage Component ── */
 
 export default function HomePage() {
-  const { t, locale } = useTranslation();
   const router = useRouter();
-  
-  // Initialize navigation router
-  useNavigationInit();
-  
-  const [featuredListings, setFeaturedListings] = useState<Listing[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState<{ listings: number; users: number; categories: number; cities: number } | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-
+  const { t, locale } = useTranslation();
   const isRtl = locale === 'ar';
+  
+  // Initialize navigation (important for RTL)
+  useNavigationInit();
 
-  // Fetch data on mount
+  // State for data fetching
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [categories, setCategories] = useState<Category[] | null>(null);
+  const [isLoadingListings, setIsLoadingListings] = useState(true);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+
+  // Fetch featured listings
   useEffect(() => {
-    fetchHomePageData();
+    const fetchFeaturedListings = async () => {
+      try {
+        const res = await fetch('/api/listings?limit=8&featured=true');
+        if (res.ok) {
+          const data = await res.json();
+          setListings(data.listings || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch listings:', error);
+      } finally {
+        setIsLoadingListings(false);
+      }
+    };
+
+    // Fetch categories
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch('/api/categories');
+        if (res.ok) {
+          const data = await res.json();
+          setCategories(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+
+    fetchFeaturedListings();
+    fetchCategories();
   }, []);
 
-  const fetchHomePageData = async () => {
-    try {
-      setIsLoading(true);
-      
-      // Fetch featured listings (using correct API parameters)
-      const listingsRes = await fetch('/api/listings?per_page=8&sort_by=popular');
-      if (listingsRes.ok) {
-        const listingsData = await listingsRes.json();
-        setFeaturedListings(listingsData.data || []);
-      }
+  // Search handler
+  const handleSearch = useCallback((query: string) => {
+    router.push(`/search?q=${encodeURIComponent(query)}`);
+  }, [router]);
 
-      // Fetch real categories from API
-      try {
-        const categoriesRes = await fetch('/api/categories');
-        if (categoriesRes.ok) {
-          const categoriesData = await categoriesRes.json();
-          setCategories(categoriesData || []);
-        }
-      } catch (catError) {
-        console.warn('Categories not available:', catError);
-      }
-
-      // Fetch stats from public endpoint (no auth required)
-      try {
-        const statsRes = await fetch('/api/public/stats');
-        if (statsRes.ok) {
-          const statsData = await statsRes.json();
-          setStats({
-            listings: statsData.totalListings || 0,
-            users: statsData.totalUsers || 0,
-            categories: statsData.totalCategories || 0,
-            cities: statsData.totalCities || 0,
-          });
-        }
-      } catch (statsError) {
-        console.warn('Stats not available:', statsError);
-      }
-    } catch (error) {
-      console.error('Error fetching home page data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSearch = useCallback((e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/listings?q=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  }, [searchQuery, router]);
-
-  const handleCategoryClick = (categoryId: string) => {
-    router.push(`/listings?category=${categoryId}`);
-  };
-
-  // Format number for display
-  const formatNumber = (num: number): string => {
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M+`;
-    if (num >= 1000) return `${(num / 1000).toFixed(num >= 10000 ? 0 : 1)}K+`;
-    return num.toString();
-  };
+  // Category selection handler
+  const handleCategorySelect = useCallback((categoryId: string) => {
+    router.push(`/category/${categoryId}`);
+  }, [router]);
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
-      {/* ── Hero Section ── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-teal-700 via-teal-600 to-emerald-600 px-4 py-16 sm:py-20 lg:py-28">
-        {/* Background Decorations */}
-        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-          <div className="absolute -start-32 -top-32 size-[500px] rounded-full bg-white/10 blur-3xl" />
-          <div className="absolute -end-24 top-1/4 size-[400px] rounded-full bg-emerald-400/20 blur-3xl" />
-          <div className="absolute -bottom-20 start-1/3 size-[350px] rounded-full bg-gold/15 blur-3xl" />
-          {/* Grid Pattern */}
-          <svg className="absolute inset-0 w-full h-full opacity-5" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="hero-grid" width="60" height="60" patternUnits="userSpaceOnUse">
-                <path d="M 60 0 L 0 0 0 60" fill="none" stroke="white" strokeWidth="0.5"/>
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#hero-grid)" />
-          </svg>
-        </div>
+    <main className="min-h-screen" dir={isRtl ? 'rtl' : 'ltr'}>
+      
+      {/* ════════════════════════════════════════════════════════
+          SECTION 1: HERO - Full Screen with Animations
+         ════════════════════════════════════════════════════════ */}
+      <HeroSection onSearch={handleSearch} />
 
-        <div className="relative mx-auto max-w-5xl text-center">
-          {/* Logo & Badge */}
-          <div className="mb-6 flex justify-center">
-            <div className="p-4 rounded-2xl bg-white/15 backdrop-blur-sm">
-              <MavoraLogo size="lg" className="text-white" />
+      {/* ════════════════════════════════════════════════════════
+          SECTION 2: STATS BAR - Animated Counters
+         ════════════════════════════════════════════════════════ */}
+      <Suspense fallback={
+        <section className="py-16 bg-muted/30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-32 rounded-2xl bg-muted animate-pulse" />
+              ))}
             </div>
           </div>
+        </section>
+      }>
+        <StatsBar variant="default" />
+      </Suspense>
+
+      {/* ════════════════════════════════════════════════════════
+          SECTION 3: FEATURED CATEGORIES - Bento Grid Layout
+         ════════════════════════════════════════════════════════ */}
+      <Suspense fallback={
+        <section className="py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <Skeleton className="h-6 w-40 mx-auto mb-4" />
+              <Skeleton className="h-10 w-64 mx-auto mb-3" />
+              <Skeleton className="h-5 w-96 mx-auto" />
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="aspect-[4/3] rounded-3xl bg-muted animate-pulse" />
+              ))}
+            </div>
+          </div>
+        </section>
+      }>
+        <FeaturedCategories 
+          categories={categories}
+          isLoading={isLoadingCategories}
+          onSelectCategory={handleCategorySelect}
+        />
+      </Suspense>
+
+      {/* ════════════════════════════════════════════════════════
+          SECTION 4: HOW IT WORKS - 3-Step Process
+         ════════════════════════════════════════════════════════ */}
+      <Suspense fallback={
+        <section className="py-16 bg-muted/30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-64 rounded-3xl bg-card border border-border/50 animate-pulse" />
+              ))}
+            </div>
+          </div>
+        </section>
+      }>
+        <HowItWorks variant="default" />
+      </Suspense>
+
+      {/* ════════════════════════════════════════════════════════
+          SECTION 5: FEATURED LISTINGS GRID
+         ════════════════════════════════════════════════════════ */}
+      <section id="listings" className="py-16 sm:py-20 relative overflow-hidden">
+        {/* Background */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-background to-transparent" />
+          <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-background to-transparent" />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="mb-6 flex justify-center">
-            <div className="inline-flex items-center gap-2.5 rounded-full bg-white/15 px-5 py-2 text-sm font-medium text-white/90 backdrop-blur-sm border border-white/10">
-              <SparklesIcon className="size-4 text-gold" />
-              <span>{t('home.largest_marketplace')}</span>
-              <TrendingUp className="size-4 text-emerald-300" />
-            </div>
-          </div>
-
-          {/* Main Heading */}
-          <h1 className="mb-6 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white">
-            <span className="block">{t('home.search_sell_trade')}</span>
-            <span className="block mt-2 sm:mt-3">
-              <span className="bg-gradient-to-l from-gold via-gold-light to-gold bg-clip-text text-transparent">
-                {t('home.in_one_place')}
-              </span>
-            </span>
-          </h1>
-
-          {/* Subtitle */}
-          <p className="mx-auto mb-10 max-w-2xl text-base sm:text-lg leading-relaxed text-white/80">
-            {t('hero.subtitle')}
-          </p>
-
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} className="mx-auto max-w-3xl">
-            <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-0">
-              <div className="relative flex-1">
-                <Search className={`absolute ${isRtl ? 'end-4' : 'start-4'} top-1/2 size-5 -translate-y-1/2 text-white/60`} />
-                <input
-                  type="search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t('hero.search_placeholder')}
-                  className={`h-14 w-full rounded-2xl border-0 bg-white/95 pe-36 ps-12 text-base text-gray-900 shadow-xl backdrop-blur-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:bg-white sm:rounded-r-none sm:pe-44`}
-                  dir="ltr"
-                />
-                <Button
-                  type="submit"
-                  className={`absolute ${isRtl ? 'start-2.5' : 'end-2.5'} top-1/2 h-10 -translate-y-1/2 rounded-xl bg-gradient-to-r from-coral to-coral-light px-5 text-sm font-bold text-white shadow-lg shadow-coral/30 hover:shadow-coral/40 transition-all hidden sm:inline-flex`}
-                >
-                  {t('common.search')}
-                  <ArrowRight className={`ms-2 size-4 ${isRtl ? 'rotate-180' : ''}`} />
-                </Button>
-              </div>
-              <Button
-                type="submit"
-                className="h-14 w-full rounded-2xl bg-gradient-to-r from-coral to-coral-light px-8 text-base font-bold text-white shadow-xl shadow-coral/30 hover:shadow-coral/40 transition-all sm:hidden"
-              >
-                {t('common.search')}
-                <ArrowRight className={`ms-2 size-4 ${isRtl ? 'rotate-180' : ''}`} />
-              </Button>
-            </div>
-          </form>
-
-          {/* Trust Badges */}
-          <div className="mt-12 flex flex-wrap items-center justify-center gap-6 sm:gap-8">
-            <div className="flex items-center gap-2 text-white/70">
-              <Shield className="size-5 text-emerald-300" />
-              <span className="text-sm font-medium">{t('home.secure_platform')}</span>
-            </div>
-            <div className="hidden sm:block w-px h-5 bg-white/20" />
-            <div className="flex items-center gap-2 text-white/70">
-              <Users className="size-5 text-gold" />
-              <span className="text-sm font-medium">
-                {stats ? `${formatNumber(stats.users)} ${t('admin.total_users')}` : t('home.large_community')}
-              </span>
-            </div>
-            <div className="hidden sm:block w-px h-5 bg-white/20" />
-            <div className="flex items-center gap-2 text-white/70">
-              <Zap className="size-5 text-coral-light" />
-              <span className="text-sm font-medium">100% {t('common.free')}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Wave */}
-        <div className="absolute bottom-0 start-0 w-full overflow-hidden leading-none" aria-hidden="true">
-          <svg className="relative block w-full h-12 sm:h-16 lg:h-20" viewBox="0 0 1440 100" preserveAspectRatio="none">
-            <path fill="#FAFAFA" d="M0,50 C360,100 1080,0 1440,50 L1440,100 L0,100 Z" />
-          </svg>
-        </div>
-      </section>
-
-      {/* ── Categories Section (Real Data) ── */}
-      <section id="categories" className="py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <Badge variant="secondary" className="mb-4 bg-teal-100 text-teal-700 border-teal-200 font-semibold px-4 py-1.5 rounded-full">
-              {t('home.browse_by_category')}
-            </Badge>
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4 mt-3">
-              {t('categories.title')}
-            </h2>
-            <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-              {t('categories.subtitle')}
-            </p>
-          </div>
-          
-          {/* Categories Grid - Using REAL data from API */}
-          {categories.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {categories.slice(0, 12).map((category) => {
-                // Find matching icon from CATEGORIES_DATA or use default
-                const categoryConfig = CATEGORIES_DATA.find(c => c.slug === category.slug);
-                const Icon = categoryConfig?.icon || (category.slug === 'vehicles' ? Car : category.slug === 'real-estate' ? Home : Smartphone);
-                const color = categoryConfig?.color || 'from-gray-500 to-gray-600';
-                
-                // Get localized name
-                const categoryName = locale === 'ar' 
-                  ? (category.nameAr || category.name_ar || category.name)
-                  : locale === 'fr'
-                    ? (category.nameFr || category.name_fr || category.name)
-                    : (category.name);
-                
-                return (
-                  <button
-                    key={category.id}
-                    onClick={() => handleCategoryClick(category.id)}
-                    className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-gray-100 bg-white hover:border-teal-300 hover:shadow-xl hover:shadow-teal-500/10 transition-all duration-300 hover:-translate-y-1"
-                  >
-                    <div className={`flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br ${color} text-white group-hover:scale-110 transition-transform shadow-lg`}>
-                      <Icon className="size-7" strokeWidth={1.5} />
-                    </div>
-                    <span className="text-sm font-semibold text-center text-gray-700 group-hover:text-teal-700 transition-colors">
-                      {categoryName}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            /* Fallback to static categories if API returns empty */
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {CATEGORIES_DATA.map((category) => {
-                const Icon = category.icon;
-                return (
-                  <button
-                    key={category.id}
-                    onClick={() => handleCategoryClick(category.id)}
-                    className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-gray-100 bg-white hover:border-teal-300 hover:shadow-xl hover:shadow-teal-500/10 transition-all duration-300 hover:-translate-y-1"
-                  >
-                    <div className={`flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br ${category.color} text-white group-hover:scale-110 transition-transform shadow-lg`}>
-                      <Icon className="size-7" strokeWidth={1.5} />
-                    </div>
-                    <span className="text-sm font-semibold text-center text-gray-700 group-hover:text-teal-700 transition-colors">
-                      {t(category.key)}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* ── Featured Listings Section ── */}
-      <section id="featured" className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-gray-50 to-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-12">
+          {/* Section Header */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10">
             <div>
-              <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
-                {t('home.featured_listings_title')}
+              <Badge 
+                variant="secondary" 
+                className="mb-3 px-4 py-1.5 bg-gold/10 text-gold border-0 font-semibold"
+              >
+                ⭐ {locale === 'ar' ? 'مميز' : locale === 'fr' ? 'En vedette' : 'Featured'}
+              </Badge>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground tracking-tight">
+                {locale === 'ar' ? 'أحدث الإعلانات المميزة' : locale === 'fr' ? 'Dernières annonces en vedette' : 'Latest Featured Listings'}
               </h2>
-              <p className="text-lg text-gray-500">
-                {t('home.featured_listings_subtitle')}
-              </p>
             </div>
+            
             <Link href="/listings">
-              <Button variant="outline" className="gap-2 hidden sm:flex rounded-xl border-gray-200 hover:bg-teal-50 hover:border-teal-300 hover:text-teal-700 h-11 px-5">
+              <Button 
+                variant="outline" 
+                className="group rounded-xl font-medium"
+              >
                 {t('common.view_all')}
-                <ArrowRight className={`size-4 ${isRtl ? 'rotate-180' : ''}`} />
+                <svg 
+                  className={`w-4 h-4 ms-2 transition-transform group-hover:translate-x-1 ${isRtl ? 'rotate-180 group-hover:-translate-x-1' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </Button>
             </Link>
           </div>
 
-          {isLoading ? (
-            /* Loading Skeleton */
+          {/* Listings Grid */}
+          {isLoadingListings ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {[...Array(8)].map((_, i) => (
-                <Card key={i} className="overflow-hidden rounded-2xl border-gray-100">
-                  <Skeleton className="h-48 w-full rounded-none" />
-                  <CardContent className="p-5 space-y-3">
-                    <Skeleton className="h-4 w-3/4 rounded-lg" />
-                    <Skeleton className="h-3 w-1/2 rounded-lg" />
-                    <div className="flex justify-between pt-2">
-                      <Skeleton className="h-6 w-20 rounded-lg" />
-                      <Skeleton className="h-4 w-16 rounded-lg" />
+                <Card key={i} className="overflow-hidden">
+                  <Skeleton className="h-48 w-full" />
+                  <CardContent className="p-4 space-y-3">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                    <div className="flex justify-between">
+                      <Skeleton className="h-6 w-20" />
+                      <Skeleton className="h-8 w-8 rounded-full" />
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
-          ) : featuredListings.length > 0 ? (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {featuredListings.slice(0, 8).map((listing) => (
-                  <ListingCard key={listing.id} listing={listing} />
-                ))}
-              </div>
-              
-              <div className="mt-8 text-center sm:hidden">
-                <Link href="/listings">
-                  <Button variant="outline" className="gap-2 w-full rounded-xl border-gray-200 hover:bg-teal-50 h-12">
-                    {t('common.view_all')}
-                    <ArrowRight className={`size-4 ${isRtl ? 'rotate-180' : ''}`} />
-                  </Button>
-                </Link>
-              </div>
-            </>
+          ) : listings.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {listings.map((listing) => (
+                <ListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
           ) : (
             /* Empty State */
             <div className="text-center py-16">
-              <div className="size-20 bg-gradient-to-br from-teal-100 to-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
-                <Zap className="size-9 text-teal-500" />
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-muted mb-4">
+                <svg className="w-10 h-10 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                {t('home.no_listings_yet')}
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                {locale === 'ar' ? 'لا توجد إعلانات حالياً' : locale === 'fr' ? 'Aucune annonce pour le moment' : 'No listings yet'}
               </h3>
-              <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                {t('home.be_first_to_post')}
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                {locale === 'ar' 
+                  ? 'كن أول من يضيف إعلاناً في منطقتك! سجل الآن وابدأ في البيع.'
+                  : locale === 'fr'
+                    ? 'Soyez le premier à ajouter une annonce dans votre région ! Inscrivez-vous et commencez à vendre.'
+                    : 'Be the first to add a listing in your area! Sign up and start selling.'
+                }
               </p>
               <Link href="/listings/create">
-                <Button className="bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 gap-2 shadow-lg shadow-teal-500/25 rounded-xl h-12 px-7">
-                  <Zap className="size-5" />
-                  {t('common.post_ad')}
+                <Button size="lg" className="rounded-xl">
+                  {t('listings.create_listing')}
                 </Button>
               </Link>
             </div>
@@ -397,197 +250,137 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Why Choose MAVORA Section ── */}
-      <section id="about" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <Badge variant="secondary" className="mb-4 bg-violet-100 text-violet-700 border-violet-200 font-semibold px-4 py-1.5 rounded-full">
-              {t('home.why_mavora')}
-            </Badge>
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4 mt-3">
-              {t('home.mavora_advantages')}
-            </h2>
-            <p className="text-lg text-gray-500 max-w-3xl mx-auto">
-              {t('home.mavora_description')}
-            </p>
+      {/* ════════════════════════════════════════════════════════
+          SECTION 6: TESTIMONIALS CAROUSEL
+         ════════════════════════════════════════════════════════ */}
+      <Suspense fallback={
+        <section className="py-16 bg-muted/30">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="h-72 rounded-3xl bg-card border border-border/50 animate-pulse" />
           </div>
+        </section>
+      }>
+        <Testimonials variant="default" />
+      </Suspense>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Feature 1 */}
-            <Card className="border-0 shadow-lg hover:shadow-2xl transition-all duration-300 group rounded-2xl overflow-hidden">
-              <CardContent className="p-8">
-                <div className="size-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/30">
-                  <Shield className="size-7 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">
-                  {t('home.secure_transactions')}
-                </h3>
-                <p className="text-gray-500 leading-relaxed mb-5">
-                  {t('home.secure_transactions_desc')}
-                </p>
-                <ul className="space-y-2.5">
-                  {[t('home.verified_users'), t('home.secure_payments'), t('home.buyer_protection')].map((item) => (
-                    <li key={item} className="flex items-center gap-2.5 text-sm text-gray-600">
-                      <CheckCircle2 className="size-4.5 text-teal-500 shrink-0" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* Feature 2 */}
-            <Card className="border-0 shadow-lg hover:shadow-2xl transition-all duration-300 group rounded-2xl overflow-hidden">
-              <CardContent className="p-8">
-                <div className="size-14 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-teal-500/30">
-                  <Globe className="size-7 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">
-                  {t('home.wide_reach')}
-                </h3>
-                <p className="text-gray-500 leading-relaxed mb-5">
-                  {t('home.wide_reach_desc')}
-                </p>
-                <ul className="space-y-2.5">
-                  {[t('home.morocco_north_africa'), t('home.multi_language'), t('home.mobile_optimized')].map((item) => (
-                    <li key={item} className="flex items-center gap-2.5 text-sm text-gray-600">
-                      <CheckCircle2 className="size-4.5 text-teal-500 shrink-0" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* Feature 3 */}
-            <Card className="border-0 shadow-lg hover:shadow-2xl transition-all duration-300 group rounded-2xl overflow-hidden">
-              <CardContent className="p-8">
-                <div className="size-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-violet-500/30">
-                  <Zap className="size-7 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">
-                  {t('home.easy_to_use')}
-                </h3>
-                <p className="text-gray-500 leading-relaxed mb-5">
-                  {t('home.easy_to_use_desc')}
-                </p>
-                <ul className="space-y-2.5">
-                  {[t('home.easy_posting'), t('home.smart_search'), t('home.instant_messaging')].map((item) => (
-                    <li key={item} className="flex items-center gap-2.5 text-sm text-gray-600">
-                      <CheckCircle2 className="size-4.5 text-teal-500 shrink-0" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
+      {/* ════════════════════════════════════════════════════════
+          SECTION 7: APP DOWNLOAD CTA
+         ════════════════════════════════════════════════════════ */}
+      <Suspense fallback={
+        <section className="py-16 bg-primary">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="h-48 rounded-3xl bg-white/10 animate-pulse" />
           </div>
-        </div>
-      </section>
+        </section>
+      }>
+        <AppDownloadCTA variant="compact" />
+      </Suspense>
 
-      {/* ── Stats Section (Real Data) ── */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 text-white relative overflow-hidden">
-        {/* Decorative elements */}
-        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-          <div className="absolute -start-20 top-0 size-60 rounded-full bg-white/5 blur-2xl" />
-          <div className="absolute -end-20 bottom-0 size-60 rounded-full bg-gold/10 blur-2xl" />
-        </div>
+      {/* ════════════════════════════════════════════════════════
+          SECTION 8: TRUST BADGES & SECURITY
+         ════════════════════════════════════════════════════════ */}
+      <TrustBadges variant="default" />
+
+      {/* ════════════════════════════════════════════════════════
+          FINAL CTA SECTION
+         ════════════════════════════════════════════════════════ */}
+      <section className="py-16 sm:py-20 bg-gradient-to-br from-primary via-teal-700 to-violet-900 relative overflow-hidden">
         
-        <div className="relative max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div className="p-4">
-              <div className="text-4xl lg:text-5xl font-bold mb-2">
-                {stats ? formatNumber(stats.listings) : '0'}
-              </div>
-              <div className="text-white/80 text-sm uppercase tracking-wider font-medium">
-                {t('listings.featured')}
-              </div>
-            </div>
-            <div className="p-4">
-              <div className="text-4xl lg:text-5xl font-bold mb-2">
-                {stats ? formatNumber(stats.users) : '0'}
-              </div>
-              <div className="text-white/80 text-sm uppercase tracking-wider font-medium">
-                {t('admin.total_users')}
-              </div>
-            </div>
-            <div className="p-4">
-              <div className="text-4xl lg:text-5xl font-bold mb-2">
-                {stats ? formatNumber(stats.categories) : '0'}
-              </div>
-              <div className="text-white/80 text-sm uppercase tracking-wider font-medium">
-                {t('admin.total_categories')}
-              </div>
-            </div>
-            <div className="p-4">
-              <div className="text-4xl lg:text-5xl font-bold mb-2">
-                {stats ? formatNumber(stats.cities) : '0'}
-              </div>
-              <div className="text-white/80 text-sm uppercase tracking-wider font-medium">
-                {t('admin.total_countries')}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA Section ── */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex p-4 rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 mb-6">
-            <MavoraLogo size="lg" className="text-teal-600" />
-          </div>
-          <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-            {t('home.ready_to_start')}
-          </h2>
-          <p className="text-lg text-gray-500 mb-8 max-w-2xl mx-auto">
-            {t('home.join_thousands')}
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/listings/create">
-              <Button size="lg" className="bg-gradient-to-r from-coral to-coral-light hover:from-coral-dark hover:to-coral text-white gap-2 shadow-xl shadow-coral/30 text-base px-9 h-13 rounded-xl btn-lift font-bold">
-                <Zap className="size-5" />
-                {t('home.post_free_ad')}
-              </Button>
-            </Link>
-            <Link href="/listings">
-              <Button size="lg" variant="outline" className="gap-2 text-base px-9 h-13 rounded-xl border-gray-200 hover:bg-teal-50 hover:border-teal-300 hover:text-teal-700 font-semibold">
-                {t('home.browse_listings')}
-                <ArrowRight className={`size-5 ${isRtl ? 'rotate-180' : ''}`} />
-              </Button>
-            </Link>
-          </div>
+        {/* Background Decorations */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-400/10 rounded-full blur-[100px]" />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-violet-400/10 rounded-full blur-[100px]" />
           
-          {/* Trust Badges */}
-          <div className="flex flex-wrap items-center justify-center gap-6 mt-12 pt-8 border-t border-gray-100">
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <Shield className="size-4.5 text-teal-500" />
-              {t('home.secure_platform')}
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <Users className="size-4.5 text-teal-500" />
-              {t('home.large_community')}
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <Star className="size-4.5 text-gold" />
-              {t('home.top_rated')}
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <MapPin className="size-4.5 text-teal-500" />
-              {t('home.local_focus')}
-            </div>
+          {/* Grid Pattern */}
+          <div className="absolute inset-0 opacity-[0.03]" style={{
+            backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
+            backgroundSize: '32px 32px',
+          }} />
+        </div>
+
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6 leading-tight">
+            {locale === 'ar' && (
+              <>
+                <span className="block">جاهز للبدء؟</span>
+                <span className="block mt-2 bg-gradient-to-l from-gold via-orange-300 to-gold bg-clip-text text-transparent">
+                  انضم إلى آلاف المستخدمين اليوم!
+                </span>
+              </>
+            )}
+            {locale === 'fr' && (
+              <>
+                <span className="block">Prêt à commencer ?</span>
+                <span className="block mt-2 bg-gradient-to-r from-gold via-orange-300 to-gold bg-clip-text text-transparent">
+                  Rejoignez des milliers d'utilisateurs aujourd'hui !
+                </span>
+              </>
+            )}
+            {locale === 'en' && (
+              <>
+                <span className="block">Ready to Get Started?</span>
+                <span className="block mt-2 bg-gradient-to-r from-gold via-orange-300 to-gold bg-clip-text text-transparent">
+                  Join Thousands of Users Today!
+                </span>
+              </>
+            )}
+          </h2>
+
+          <p className="text-lg text-white/80 mb-10 max-w-2xl mx-auto">
+            {locale === 'ar'
+              ? 'سجل مجاناً وابدأ في البيع والشراء في دقائق. مافورا هي بوصلتك لعالم من الفرص!'
+              : locale === 'fr'
+                ? 'Inscrivez-vous gratuitement et commencez à acheter et vendre en quelques minutes. Mavora est votre passerelle vers un monde d\'opportunités !'
+                : 'Sign up for free and start buying and selling in minutes. Mavora is your gateway to a world of opportunities!'
+            }
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link href="/auth/signup">
+              <Button 
+                size="lg" 
+                className="px-10 py-6 text-base font-semibold rounded-2xl bg-white text-primary hover:bg-gray-100 shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300"
+              >
+                {locale === 'ar' ? 'إنشاء حساب مجاني' : locale === 'fr' ? 'Créer un compte gratuit' : 'Create Free Account'}
+              </Button>
+            </Link>
+            
+            <Link href="/listings/create">
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="px-10 py-6 text-base font-semibold rounded-2xl border-2 border-white/30 text-white hover:bg-white/10 hover:border-white/50 transition-all duration-300"
+              >
+                {locale === 'ar' ? 'نشر إعلان الآن' : locale === 'fr' ? 'Publier une annonce maintenant' : 'Post a Listing Now'}
+              </Button>
+            </Link>
+          </div>
+
+          {/* Trust Indicators */}
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-6 text-white/60 text-sm">
+            <span className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              {locale === 'ar' ? 'مجاني تماماً' : locale === 'fr' ? 'Entièrement gratuit' : '100% Free'}
+            </span>
+            <span className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              {locale === 'ar' ? 'بدون بطاقة ائتمان' : locale === 'fr' ? 'Sans carte de crédit' : 'No Credit Card'}
+            </span>
+            <span className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              {locale === 'ar' ? 'إعداد في دقيقة واحدة' : locale === 'fr' ? 'Configuration en 1 minute' : 'Setup in 1 Minute'}
+            </span>
           </div>
         </div>
       </section>
-    </div>
-  );
-}
 
-// Missing icon component
-function SparklesIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3.5 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 20.5l1.912-5.813a2 2 0 0 1 1.275-1.275L20.5 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
-    </svg>
+    </main>
   );
 }

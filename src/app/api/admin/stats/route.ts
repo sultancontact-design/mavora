@@ -113,7 +113,7 @@ export async function GET(request: Request) {
     );
 
     // Generate chart data from real database records
-    const chartData = await generateChartData(30);
+    const chartData = await generateChartData(30, supabase);
 
     return NextResponse.json({
       success: true,
@@ -162,36 +162,62 @@ export async function GET(request: Request) {
 }
 
 // Generate real chart data from database
-async function generateChartData(days: number) {
+async function generateChartData(days: number, supabase: ReturnType<typeof getAdminClient>) {
   const listings: { date: string; count: number }[] = [];
   const users: { date: string; count: number }[] = [];
   
-  for (let i = days - 1; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    date.setHours(0, 0, 0, 0);
-    const nextDate = new Date(date);
-    nextDate.setDate(nextDate.getDate() + 1);
-    const dateStr = date.toISOString().split('T')[0];
-    const dateStart = date.toISOString();
-    const dateEnd = nextDate.toISOString();
-    
-    try {
-      const [listingRes, userRes] = await Promise.all([
-        supabase.from('listings').select('id', { count: 'exact', head: true })
-          .gte('createdAt', dateStart)
-          .lt('createdAt', dateEnd),
-        supabase.from('users').select('id', { count: 'exact', head: true })
-          .gte('createdAt', dateStart)
-          .lt('createdAt', dateEnd),
-      ]);
-      
-      listings.push({ date: dateStr, count: listingRes.count ?? 0 });
-      users.push({ date: dateStr, count: userRes.count ?? 0 });
-    } catch (error) {
-      console.warn(`Chart data fetch error for ${dateStr}:`, error);
+  // For performance, use aggregated queries instead of per-day queries
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  startDate.setHours(0, 0, 0, 0);
+  
+  try {
+    // Get all listings and users in the period, then aggregate in JS
+    const [allListings, allUsers] = await Promise.all([
+      supabase.from('listings').select('createdAt'),
+      supabase.from('users').select('createdAt'),
+    ]);
+
+    // Initialize all days with 0
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      const dateStr = date.toISOString().split('T')[0];
       listings.push({ date: dateStr, count: 0 });
       users.push({ date: dateStr, count: 0 });
+    }
+
+    // Aggregate listings by date
+    if (allListings.data) {
+      for (const item of allListings.data) {
+        const itemDate = new Date(item.createdAt).toISOString().split('T')[0];
+        const dayIndex = listings.findIndex(d => d.date === itemDate);
+        if (dayIndex >= 0) {
+          listings[dayIndex].count++;
+        }
+      }
+    }
+
+    // Aggregate users by date
+    if (allUsers.data) {
+      for (const item of allUsers.data) {
+        const itemDate = new Date(item.createdAt).toISOString().split('T')[0];
+        const dayIndex = users.findIndex(d => d.date === itemDate);
+        if (dayIndex >= 0) {
+          users[dayIndex].count++;
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('Chart data fetch error:', error);
+    // Return empty data on error
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      if (listings.length < days) listings.push({ date: dateStr, count: 0 });
+      if (users.length < days) users.push({ date: dateStr, count: 0 });
     }
   }
   

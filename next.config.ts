@@ -62,26 +62,27 @@ const nextConfig: NextConfig = {
     unoptimized: false,
     // Minimum cache time in seconds (1 year for immutable images)
     minimumCacheTTL: 60 * 60 * 24 * 365,
-    // Device sizes for responsive images
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
-    // Image sizes to generate
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    // Device sizes for responsive images - reduced for smaller bundles
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    // Image sizes to generate - reduced
+    imageSizes: [16, 32, 48, 64, 96, 128, 256],
+    // Limit image optimization to prevent memory issues
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 
   // ============================================================
   // Experimental Features for Performance
   // ============================================================
   experimental: {
-    // Enable React Compiler (automatic memoization)
-    // reactCompiler: true,
-    
     // Optimize package imports for smaller bundles
     optimizePackageImports: [
       'lucide-react',
       '@radix-ui/react-icons',
       'date-fns',
-      'lodash',
       'recharts',
+      'framer-motion',
+      'sonner',
     ],
     
     // Enable server actions (if needed)
@@ -91,6 +92,9 @@ const nextConfig: NextConfig = {
     
     // Enable CSS code splitting for better caching
     cssChunking: true,
+    
+    // Optimize package imports further
+    optimizeCss: true,
   },
 
   // ============================================================
@@ -183,6 +187,7 @@ const nextConfig: NextConfig = {
         ...config.optimization,
         splitChunks: {
           chunks: 'all',
+          maxSize: 244000, // ~244KB chunks for better caching
           cacheGroups: {
             vendor: {
               test: /[\\/]node_modules[\\/]/,
@@ -205,9 +210,25 @@ const nextConfig: NextConfig = {
               reuseExistingChunk: true,
               chunks: 'all',
             },
+            // Separate large libraries
+            lucide: {
+              test: /[\\/]node_modules[\\/]lucide-react[\\/]/,
+              name: 'lucide',
+              priority: 20,
+              reuseExistingChunk: true,
+              chunks: 'all',
+            },
           },
         },
       };
+      
+      // Remove unused exports from packages if possible
+      if (config.optimization?.usedExports === undefined) {
+        config.optimization = {
+          ...config.optimization,
+          usedExports: true,
+        };
+      }
     }
 
     // Support for importing .wasm files if needed

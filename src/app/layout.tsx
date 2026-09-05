@@ -5,7 +5,6 @@ import { Toaster } from "sonner";
 import AuthProvider from "@/components/auth/AuthProvider";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/footer/Footer";
-import { PerformanceMonitor } from "@/components/common/PerformanceMonitor";
 
 /* ── Font Configuration ──
  * Tajawal: Modern Arabic font, excellent for RTL content
@@ -15,13 +14,14 @@ import { PerformanceMonitor } from "@/components/common/PerformanceMonitor";
 const tajawal = Tajawal({
   variable: "--font-tajawal",
   subsets: ["arabic", "latin"],
-  weight: ["200", "300", "400", "500", "700", "800", "900"],
+  weight: ["400", "500", "700", "800"], // Reduced font weights for performance
   display: "swap",
 });
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"], // Reduced font weights
   display: "swap",
 });
 
@@ -50,7 +50,6 @@ export const metadata: Metadata = {
   },
   description: descriptionTemplates.ar,
   keywords: [
-    // English
     "MAVORA",
     "marketplace",
     "Morocco",
@@ -61,10 +60,6 @@ export const metadata: Metadata = {
     "real estate",
     "electronics",
     "North Africa",
-    "MENA",
-    "online shopping",
-    "deals",
-    // Arabic
     "مافورا",
     "سوق إلكتروني",
     "إعلانات",
@@ -72,14 +67,6 @@ export const metadata: Metadata = {
     "عقارات",
     "إلكترونيات",
     "المغرب",
-    "شمال إفريقيا",
-    // French
-    "Maroc",
-    "petites annonces",
-    "acheter",
-    "vendre",
-    "voitures",
-    "immobilier",
   ],
   authors: [{ name: "MAVORA", url: siteUrl }],
   creator: "MAVORA",
@@ -90,21 +77,12 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   metadataBase: new URL(siteUrl),
-  alternates: {
-    canonical: "/",
-    languages: {
-      "ar-MA": "/",
-      "fr-MA": "/?lang=fr",
-      "en-US": "/?lang=en",
-    },
-  },
   openGraph: {
     title: titleTemplates.ar,
     description: descriptionTemplates.ar,
     siteName: "MAVORA",
     type: "website",
     locale: "ar_MA",
-    alternateLocale: ["fr_MA", "en_US"],
     url: siteUrl,
     images: [
       {
@@ -120,7 +98,6 @@ export const metadata: Metadata = {
     title: titleTemplates.ar,
     description: descriptionTemplates.ar,
     images: ["/og-image.png"],
-    creator: "@mavora_ma",
   },
   robots: {
     index: true,
@@ -133,7 +110,6 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  category: "marketplace",
 };
 
 export const viewport: Viewport = {
@@ -161,39 +137,38 @@ export default function RootLayout({
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         
-        {/* Hreflang Tags for SEO */}
-        <link rel="alternate" hrefLang="ar" href={`${siteUrl}/`} />
-        <link rel="alternate" hrefLang="fr" href={`${siteUrl}/?lang=fr`} />
-        <link rel="alternate" hrefLang="en" href={`${siteUrl}/?lang=en`} />
-        <link rel="alternate" hrefLang="x-default" href={`${siteUrl}/`} />
-        
         {/* Preconnect to External Resources */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         
-        {/* Theme Color Meta - Teal for modern look */}
+        {/* Theme Color Meta */}
         <meta name="theme-color" content="#0D9488" />
         <meta name="application-name" content="MAVORA" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="MAVORA" />
         
-        {/* MS Tiles */}
-        <meta name="msapplication-TileColor" content="#0D9488" />
-        <meta name="msapplication-config" content="/browserconfig.xml" />
-        
         {/* PWA Manifest */}
         <link rel="manifest" href="/manifest.json" />
         
-        {/* Service Worker Registration (PWA) */}
+        {/* Service Worker Registration (Deferred) - Only register after page loads */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').catch(function() {});
-                });
-              }
+              window.addEventListener('load', function() {
+                if ('serviceWorker' in navigator) {
+                  // Use requestIdleCallback to register SW when browser is idle
+                  if ('requestIdleCallback' in window) {
+                    requestIdleCallback(function() {
+                      navigator.serviceWorker.register('/sw.js').catch(function() {});
+                    });
+                  } else {
+                    setTimeout(function() {
+                      navigator.serviceWorker.register('/sw.js').catch(function() {});
+                    }, 1000);
+                  }
+                }
+              });
             `,
           }}
         />
@@ -235,9 +210,6 @@ export default function RootLayout({
             },
           }}
         />
-        
-        {/* Performance Monitor (Development Only) */}
-        <PerformanceMonitor showBadge={process.env.NODE_ENV === 'development'} />
       </body>
     </html>
   );

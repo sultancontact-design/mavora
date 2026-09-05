@@ -248,6 +248,7 @@ export default function ContactPage() {
                     key={index}
                     href="#"
                     className="flex size-10 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-rose-500 transition-colors"
+                    onClick={(e) => { e.preventDefault(); alert('روابط التواصل الاجتماعي قريباً'); }}
                   >
                     <Social className="size-5" />
                   </a>

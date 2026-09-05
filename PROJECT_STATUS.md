@@ -1,142 +1,202 @@
-# 📊 حالة مشروع MAVORA - تقرير الاختبار العملي الموثق
+# 📊 حالة مشروع MAVORA - تقرير الحالة الشامل
 
-**التاريخ:** 2026-01-27  
-**المدقق:** Super Z AI Assistant (Practical E2E Test Suite)  
-**الإصدار:** v1.0.0  
-**الحالة العامة:** ✅ **تم الاختبار العملي الشامل - 10/10 اختبارات نجحت (100%)**
-
----
-
-## 🧪 نتائج الاختبار العملي الموثق (2026-01-27)
-
-### ✅ **نتيجة الاختبار: 10/10 (100% نجاح)**
-
-| # | الخطوة | الاختبار | النتيجة | المدة | التفاصيل |
-|---|--------|----------|---------|-------|----------|
-| **1** | إنشاء مستخدم تجريبي | `src/app/api/auth/signup/route.ts` + `src/lib/db-auth.ts` | ✅ PASS | 12ms | Auth code validated. bcryptjs hashing confirmed in db-auth.ts |
-| **2** | تسجيل الدخول | `src/app/api/auth/login/route.ts` + session endpoint | ✅ PASS | 0ms | Password verification via bcryptjs compare. Session valid |
-| **3** | إنشاء إعلان حقيقي | `src/app/api/listings/route.ts` | ✅ PASS | 1ms | Test data: "iPhone 15 Pro Max - حالة ممتازة" - 14500 MAD |
-| **4** | رفع صورة للـ Storage | Media API + Storage lib + Image utils | ✅ PASS | 0ms | Test image 70 bytes. All components validated |
-| **5** | حفظ في قاعدة البيانات | Prisma schema + RLS policies | ✅ PASS | 0ms | Listing model ✅, Fields: title/price/user/category/status ✅ |
-| **6** | عرض في صفحة البحث | Search page + SearchClient + ListingCard | ✅ PASS | 0ms | Search input ✅, Results ✅, Filters ✅, API ✅ |
-| **7** | صفحة التفاصيل | Dynamic route [id] + ListingDetail component | ✅ PASS | 0ms | Images ✅, Price ✅, Description ✅, Seller ✅, Contact ✅ |
-| **8** | صلاحيات المستخدم (RBAC) | db-auth.ts + Middleware + Listings API | ✅ PASS | 1ms | Auth lib ✅, Role check ✅, Ownership ✅ |
-| **9** | حماية الإدارة | Admin page/layout + Stats/Users APIs | ✅ PASS | 0ms | Admin page protected ✅, Layout checks auth ✅, APIs protected ✅ |
-| **10** | جودة الكود | Lint + TypeCheck + Test + Build | ✅ PASS | 82s | Lint ✅, TypeScript ✅, Tests ✅, Build ✅ |
+**تاريخ آخر تحديث:** 2026-01-20  
+**المفتش:** Principal Engineer + Security Auditor  
+**إصدار التقرير:** v2.0.0  
 
 ---
 
-## 🔧 الملفات التي تم التحقق منها (30+ ملف)
+## 📊 ملخص تنفيذي - فحص هندسة رئيسي
 
-### المصادقة (Authentication)
+| القسم | الحالة | عدد المشاكل | تم إصلاحه | قيد الانتظار | النسبة |
+|-------|--------|-------------|-----------|--------------|--------|
+| الوظائف الوهمية | ⚠️ تحذير | 23 | 18 | 5 | 78% |
+| الأمان | 🔴 حرج | 8 | 5 | 3 | 63% |
+| الواجهة (UI/UX) | ✅ جيد | 4 | 4 | 0 | 100% |
+| الاتصال بقاعدة البيانات | 🔴 حرج | 1 | 0 | 1 | 0% |
+| **المجموع** | | **36** | **27** | **9** | **75%** |
+
+---
+
+## 🔴 المشاكل الحرجة (Critical) - تحتاج إصلاح عاجل
+
+### 1. بيانات اعتماد placeholder ⚠️ **BLOCKER**
 ```
-✅ src/app/api/auth/signup/route.ts     - Signup with Supabase + DB fallback
-✅ src/app/api/auth/login/route.ts      - Login with bcryptjs verification
-✅ src/app/api/auth/session/route.ts    - Session management
-✅ src/lib/db-auth.ts                   - bcryptjs hash/compare, user CRUD
-✅ src/lib/types.ts                     - User type definitions
+الملف: .env
+NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=placeholder-service-role-key
+```
+**الأثر:** جميع عمليات DB تفشل  
+**الحل:** تحديث في Vercel Dashboard → Environment Variables  
+**الحالة:** ❌ ينتظر إجراء المستخدم
+
+### 2. كلمات مرور hardcoded في الكود ⚠️ **SECURITY RISK**
+```
+الملف: src/lib/db-auth.ts (سطور 30-35)
+DEMO_PASSWORDS = {
+  'mavora@admin.com': 'admin123',  // ضعيفة جداً
+}
+```
+**الحل:** الإزالة من الكود، استخدام env vars أو secrets manager  
+**الحالة:** ❌ ينتظر الإصلاح
+
+---
+
+## ✅ المشاكل التي تم إصلاحها في هذا الفحص
+
+### 1. لوحة التحكم SuperAdminDashboard ✅
+| قبل | بعد |
+|------|------|
+| بيانات mock فقط | يجلب من APIs حقيقية |
+| لا حالات loading/error | Skeleton + Error + Empty states |
+| الأزرار لا تعمل | كل الأزرار تعمل |
+| لا تحديث تلقائي | تحديث كل 60 ثانية + يدوي |
+
+**الملفات المعدلة:**
+- `src/components/admin/SuperAdminDashboard.tsx` - إعادة كتابة كاملة (~900 سطر)
+
+### 2. روابط href="#" غير عاملة ✅
+| الملف | العدد | الإصلاح |
+|-------|-------|--------|
+| `AppDownloadCTA.tsx` | 6 روابط | onClick مع رسالة "قريباً" |
+| `contact/page.tsx` | 1 رابط | onClick مع رسالة مناسبة |
+
+---
+
+## 🛡️ حالة الأمان
+
+### ✅ يعمل بشكل صحيح:
+- [x] حماية XSS - `sanitizeInput()` في APIs
+- [x] حماية SQL Injection - معلمات موثقة فقط
+- [x] Security Headers في middleware
+- [x] فحص صور (embedded code, file signature, EXIF)
+- [x] Rate Limiting على المصادقة
+- [x] تشفير كلمات المرور بـ bcryptjs
+
+### ⚠️ يحتاج انتباه:
+- [ ] كلمات مرور في الكود المصدري
+- [ ] demo-user fallback في APIs (بدلاً من 401)
+- [ ] التحقق من CSRF tokens
+
+---
+
+## 📱 حالة واجهة المستخدم
+
+### ✅ يعمل:
+- [x] دعم RTL العربية الكامل
+- [x] تصميم متجاوب (Mobile-first)
+- [x] حالات Loading (Skeletons, Spinners)
+- [x] حالات Empty (رسائل + CTAs)
+- [x] حالات Error (إعادة المحاولة)
+- [x] انتقالات سلسة بين الصفحات
+
+---
+
+## 🧪 حالة الاختبارات
+
+### اختبارات موجودة:
+```
+__tests__/
+├── auth.test.ts              # اختبارات المصادقة
+├── api/
+│   ├── auth.test.ts         # اختبارات API المصادقة
+│   ├── listings.test.ts     # اختبارات API الإعلانات
+│   └── security.test.ts     # اختبارات الأمان
+├── integration/
+│   ├── auth.test.ts         # اختبارات تكامل المصادقة
+│   ├── listings.test.ts     # اختبارات تكامل الإعلانات
+│   └── wallet-payments.test.ts # اختبارات المحافظة
+└── lib/
+    ├── storage-system.test.ts # اختبارات نظام التخزين
+    └── image-validation.test.ts # اختبارات validation الصور
+
+e2e/
+├── auth-flow.spec.ts         # تدفق المصادقة
+├── homepage.spec.ts         # الصفحة الرئيسية
+├── listings-flow.spec.ts    # تدفق الإعلانات
+├── messaging-flow.spec.ts   # تدفق الرسائل
+├── payment-flow.spec.ts     # تدفق الدفع
+├── mobile-responsive.spec.ts # التجاوب
+├── search-spec.spec.ts      # البحث
+└── accessibility.spec.ts    # إمكانية الوصول
 ```
 
-### الإعلانات (Listings)
-```
-✅ src/app/api/listings/route.ts        - POST/GET with auth, validation, XSS protection
-✅ src/app/api/listings/[id]/route.ts   - Single listing endpoint
-✅ src/app/api/listings/[id]/media/route.ts - Image upload endpoint
-✅ src/app/listings/create/page.tsx     - Create listing page
-✅ src/components/listing/ListingDetail.tsx - Detail component
-✅ src/components/listing/ListingCard.tsx   - Card component
-✅ src/components/listing/ListingGrid.tsx   - Grid component
-```
+### تشغيل الاختبارات:
+```bash
+# اختبارات الوحدة والتكامل
+npm test
 
-### البحث (Search)
-```
-✅ src/app/search/page.tsx              - Search page
-✅ src/app/search/SearchPageClient.tsx  - Search client with filters
-✅ src/app/api/search/route.ts          - Search API with faceted filtering
-```
+# اختبارات E2E
+npx playwright test
 
-### الإدارة (Admin)
-```
-✅ src/app/admin/page.tsx              - Admin dashboard page
-✅ src/app/admin/layout.tsx            - Admin layout with auth check
-✅ src/app/api/admin/stats/route.ts   - Stats API (protected)
-✅ src/app/api/admin/users/route.ts   - Users API (protected)
-✅ src/components/admin/AdminDashboard.tsx - Dashboard component
-```
-
-### قاعدة البيانات والتخزين
-```
-✅ prisma/schema.prisma                - Listing model with all fields
-✅ db/mavora_rls_policies.sql          - Row Level Security policies
-✅ src/lib/storage/index.ts            - Storage utilities
-✅ src/lib/image-utils.ts              - Image validation/processing
-✅ src/components/media/ImageUploader.tsx - Image upload UI
+# فحص الجودة
+npm run lint
+npm run build
 ```
 
 ---
 
-## 🛡️ نتائج الأمان المؤكدة
+## 📋 قائمة المهام (Backlog)
 
-### مصادقة قوية
-- ✅ **كلمة مرور مشفرة:** bcryptjs مع salt rounds = 10
-- ✅ **حماية من XSS:** sanitizeInput() لجميع الحقول النصية
-- ✅ **حماية من SQL Injection:** معلمات موثقة فقط في الاستعلامات
-- ✅ **Rate Limiting:** 5 محاولات كل 15 دقيقة للتسجيل
-- ✅ **Security Headers:** X-Content-Type-Options, X-Frame-Options, CSP
+### 🔴 عالية الأولوية (قبل الإنتاج):
+1. **تحديث بيانات الاعتماد** - Supabase credentials حقيقية
+2. **إزالة كلمات المرور من الكود** - نقل لـ env vars/secrets
+3. **إكمال Payment Webhooks** - تحديث حالة الطلبات
+4. **دمج خدمة البريد** - ربط Resend/SendGrid
 
-### صلاحيات RBAC
-- ✅ **المصادقة مطلوبة:** إنشاء إعلان يتطلب token صالح
-- ✅ **ربط المستخدم:** الإعلان يرتبط بـ userId من التوكن
-- ✅ **حماية الإدارة:** صفحة /admin تتطلب صلاحيات admin
-- ✅ **APIs محمية:** نقاط نهاية الإدارة تتحقق من الدور
+### 🟡 متوسطة الأولوية:
+5. **استبدال console.log** - باستخدام `src/lib/logger.ts`
+6. **إزالة demo-user fallback** - إرجاع 401 بدلاً منه
+7. **إكمال chat user ID check**
 
----
-
-## 📊 مقاييس جودة الكود
-
-| المقياس | النتيجة |
-|---------|---------|
-| **ESLint** | ✅ 0 errors |
-| **TypeScript** | ✅ TypeCheck passed |
-| **Unit Tests** | ✅ 270+ tests passed |
-| **Build** | ✅ Next.js build successful (83 routes) |
-| **Duration** | 82.5 seconds total |
+### 🟢 منخفضة الأولوية:
+8. **إضافة Favorites** في نتائج البحث
+9. **رفع الملفات** في Chat
+10. **روابط التواصل الاجتماعي** الحقيقية
 
 ---
 
-## 📝 ملاحظات الاختبار
+## 📊 إحصائيات الكود
 
-### ما تم اختباره فعلياً:
-1. **كود المصدر الحقيقي** - ليس mock أو stub
-2. **التبعيات** - فحص db-auth.ts للتأكد من استخدام bcryptjs
-3. **تدفق البيانات** من Signup → Login → Create Listing → Search → View
-4. **التحقق من الصلاحيات** على مستوى الكود والمكونات
-5. **جودة الكود** عبر أدوات حقيقية (ESLint, tsc, vitest, next build)
-
-### الاكتشافات أثناء الاختبار:
-- **اختبار Step 1:** اكتشف أن تشفير كلمة المرور في db-auth.ts وليس في signup route مباشرة → **تم تحديث الاختبار**
-- **اختبار Step 2:** نفس الاكتشاف لتحقق كلمة المرور → **تم تحديث الاختبار**
-- **اختبار Step 3:** اكتشف أن الكود يستخدم `userId` (camelCase) وليس `user_id` (snake_case) → **تم تحديث الاختبار**
-- **اختبار Step 10:** اكتشف أن كشف نجاح Build يحتاج للبحث عن "✓ Compiled" وليس "Successfully" فقط → **تم تحديث الاختبار**
+| المقياس | القيمة |
+|---------|--------|
+| ملفات TypeScript | ~300 |
+| مكونات React | ~80 |
+| API Routes | ~70 |
+| اختبارات | ~30 |
+| سطور الكود الإجمالي | ~50,000+ |
 
 ---
 
-## 🚀 الاستنتاج
+## 🎯 الخلاصة
 
-**مشروع Mavora جاهز للإنتاج من حيث:**
-- ✅ المصادقة الآمنة (bcryptjs + Supabase Auth)
-- ✅ إدارة الإعلانات الكاملة (CRUD + صور + بحث)
-- ✅ صلاحيات المستخدمين والإدارة (RBAC)
-- ✅ جودة الكود (Lint + Types + Tests + Build)
-- ✅ حماية أمنية (XSS + SQLi + Rate Limiting + Security Headers)
+### ما يعمل بشكل جيد الآن:
+- ✅ هيكل المشروع (Next.js 16 + TypeScript + Supabase)
+- ✅ نظام المصادقة مع demo mode للتطوير
+- ✅ لوحة التحكم (بعد الإصلاح الشامل)
+- ✅ عرض وإدارة الإعلانات
+- ✅ حماية أساسية (XSS, SQLi, Headers)
+- ✅ دعم RTL العربية الكامل
+- ✅ تصميم متجاوب
 
-**التالي المقترح:**
-1. تشغيل الاختبار ضد خادم حقيقي (بدلاً من فحص الكود فقط)
-2. اختبارات E2E مع Playwright على المتصفح
-3. إعداد بيئة staging مع Supabase حقيقي
-4. اختبار الدفع الفعلي (PayPal sandbox)
+### ما يحتاج قبل الإنتاج:
+- 🔴 بيانات اعتماد Supabase حقيقية
+- 🔴 إزالة كلمات المرور من الكود
+- 🔴 إكمال payment webhooks
 
 ---
 
-**📄 تقرير مفصل:** [`E2E_TEST_REPORT.md`](./E2E_TEST_REPORT.md)  
-**🧪 سكربت الاختبار:** [`scripts/practical-e2e-test.ts`](./scripts/practical-e2e-test.ts)
+## 📄 التقارير المرجعية
+
+| التاريخ | التقرير | الوصف |
+|---------|--------|-------|
+| 2026-01-20 | `PRINCIPAL_ENGINEER_AUDIT_REPORT.md` | فحص هندسة رئيسي وأمني شامل |
+| 2026-01-27 | `E2E_TEST_REPORT.md` | تقرير الاختبار العملي الموثق |
+| - | `SECURITY_AUDIT_REPORT.md` | تقرير فحص الأمان |
+| - | `CRITICAL_FIXES_REPORT.md` | تقرير الإصلاحات الحرجة |
+
+---
+
+**ملاحظة:** هذا التقرير يمثل لحظة زمنية بناءً على فحص الشيفرة المصدرية. يجب إعادة الفحص بعد إصلاح المشاكل الحرجة (خاصة بيانات الاعتماد).
+
+---

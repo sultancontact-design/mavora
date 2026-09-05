@@ -84,9 +84,10 @@ export default function AppDownloadCTA({ variant = 'default' }: AppDownloadCTAPr
             <div className="flex gap-3">
               {/* App Store Button */}
               <a
-                href="#"
+                href="/coming-soon"
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-black rounded-xl hover:bg-gray-900 transition-colors"
                 aria-label="Download on App Store"
+                onClick={(e) => { e.preventDefault(); alert('قريباً على App Store'); }}
               >
                 <Apple className="w-6 h-6" />
                 <div className="text-start">
@@ -97,9 +98,10 @@ export default function AppDownloadCTA({ variant = 'default' }: AppDownloadCTAPr
 
               {/* Google Play Button */}
               <a
-                href="#"
+                href="/coming-soon"
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-black rounded-xl hover:bg-gray-900 transition-colors"
                 aria-label="Get it on Google Play"
+                onClick={(e) => { e.preventDefault(); alert('قريباً على Google Play'); }}
               >
                 <Play className="w-5 h-5 fill-current" />
                 <div className="text-start">
@@ -168,9 +170,10 @@ export default function AppDownloadCTA({ variant = 'default' }: AppDownloadCTAPr
               {/* Store Buttons */}
               <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
                 <a
-                  href="#"
+                  href="/coming-soon"
                   className="inline-flex items-center gap-3 px-6 py-3 bg-black rounded-xl hover:bg-gray-900 transition-all duration-300 hover:scale-105 shadow-lg"
                   aria-label="Download on App Store"
+                  onClick={(e) => { e.preventDefault(); alert('قريباً على App Store'); }}
                 >
                   <Apple className="w-7 h-7" />
                   <div className="text-start">
@@ -180,9 +183,10 @@ export default function AppDownloadCTA({ variant = 'default' }: AppDownloadCTAPr
                 </a>
 
                 <a
-                  href="#"
+                  href="/coming-soon"
                   className="inline-flex items-center gap-3 px-6 py-3 bg-black rounded-xl hover:bg-gray-900 transition-all duration-300 hover:scale-105 shadow-lg"
                   aria-label="Get it on Google Play"
+                  onClick={(e) => { e.preventDefault(); alert('قريباً على Google Play'); }}
                 >
                   <Play className="w-6 h-6 fill-current" />
                   <div className="text-start">
@@ -353,9 +357,10 @@ export default function AppDownloadCTA({ variant = 'default' }: AppDownloadCTAPr
             <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
               {/* App Store */}
               <a
-                href="#"
+                href="/coming-soon"
                 className="group inline-flex items-center gap-3 px-7 py-4 bg-black rounded-2xl hover:bg-gray-900 transition-all duration-300 hover:scale-105 hover:shadow-xl shadow-lg"
                 aria-label="Download on App Store"
+                onClick={(e) => { e.preventDefault(); alert('قريباً على App Store'); }}
               >
                 <Apple className="w-8 h-8 text-white" />
                 <div className="text-start">
@@ -366,9 +371,10 @@ export default function AppDownloadCTA({ variant = 'default' }: AppDownloadCTAPr
 
               {/* Google Play */}
               <a
-                href="#"
+                href="/coming-soon"
                 className="group inline-flex items-center gap-3 px-7 py-4 bg-black rounded-2xl hover:bg-gray-900 transition-all duration-300 hover:scale-105 hover:shadow-xl shadow-lg"
                 aria-label="Get it on Google Play"
+                onClick={(e) => { e.preventDefault(); alert('قريباً على Google Play'); }}
               >
                 <Play className="w-7 h-7 text-white fill-current" />
                 <div className="text-start">

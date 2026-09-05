@@ -1,7 +1,7 @@
 # GitHub Actions - Auto Deploy to Vercel
 # ينشر المشروع تلقائياً إلى Vercel عند كل push إلى main
 
-name: Deploy to Vercel
+name: 🚀 Deploy to Vercel
 
 on:
   push:
@@ -9,38 +9,55 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    name: Deployment
+    name: 🚀 Deployment
+    environment: production
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: 📦 Install Dependencies
         run: npm ci
 
-      - name: Build project
+      - name: 🔨 Build Project
         run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
-      - name: Deploy to Vercel
+      - name: 🚀 Deploy to Vercel
         uses: amondnet/vercel-action@v25
         id: deploy
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./
+          vercel-args: '--prod'
 
-      - name: Display Deployment URL
-        if: github.event_name == 'pull_request'
-        run: echo "Deployment URL: ${{ steps.deploy.outputs.preview-url }}"
+      - name: ✅ Deployment Status
+        if: success()
+        run: |
+          echo "🎉 **DEPLOYMENT SUCCESSFUL**"
+          echo "📍 URL: https://mavora.ma"
+          echo "⏰ Time: $(date)"
+
+      - name: ❌ Deployment Failed
+        if: failure()
+        run: |
+          echo "❌ **DEPLOYMENT FAILED**"
+          echo "Check the logs above for details"
+          exit 1

@@ -50,6 +50,7 @@ import { useNavigationStore } from '@/stores/navigation';
 import { useTranslation } from '@/hooks/useTranslation';
 import AuthModal, { type AuthView } from '@/components/auth/AuthModal';
 import NotificationBell from '@/components/common/NotificationBell';
+import { ThemeToggle } from '@/components/ThemeProvider';
 import MavoraLogo from '@/components/common/MavoraLogo';
 import type { Locale } from '@/lib/types';
 
@@ -433,6 +434,7 @@ export default function Header() {
 
             {/* Notification Bell */}
             {user && <NotificationBell />}
+            <ThemeToggle variant="icon-only" />
 
             {/* Language Switcher */}
             <DropdownMenu>

@@ -2,186 +2,143 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 import {
   Heart,
   Share2,
   MapPin,
   Eye,
   Calendar,
-  Tag,
   Phone,
   MessageCircle,
   Flag,
   ChevronLeft,
   ChevronRight,
   X,
-  ZoomIn,
-  BadgeCheck,
-  Star,
-  ExternalLink,
   Loader2,
   AlertCircle,
+  ArrowRight,
+  Shield,
+  CheckCircle2,
+  ExternalLink,
+  Star,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAuthStore } from '@/stores/auth';
 import { toast } from 'sonner';
-import ReportDialog from '@/components/common/ReportDialog';
-import ReviewsSection from './ReviewsSection';
-import type { 
-  Listing, 
-  ListingMedia, 
-  ListingFieldValue, 
-  CategoryField, 
-  Locale,
-  User,
-  Category,
-  Currency
-} from '@/lib/types';
 
-// ─── Props ──────────────────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────────────
 
-interface ListingDetailProps {
-  listingId?: string;
+interface ListingMedia {
+  id: string;
+  url: string;
+  is_primary?: boolean;
+}
+
+interface Listing {
+  id: string;
+  title: string;
+  description: string;
+  price: number | null;
+  currencyCode: string;
+  condition?: string;
+  status: string;
+  negotiable?: boolean;
+  viewCount: number;
+  contactPhone?: string;
+  locationAddress?: string;
+  createdAt: string;
+  updatedAt: string;
+  category?: {
+    id: string;
+    name: string;
+    nameAr?: string;
+    slug: string;
+  };
+  media: ListingMedia[];
+  userId: string;
+  user?: {
+    id: string;
+    display_name: string;
+    avatar_url?: string;
+  };
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
-function getLocalizedName(
-  item: { name_ar?: string; name_fr?: string; name_en?: string },
-  locale: Locale
-): string {
-  switch (locale) {
-    case 'ar': return item.name_ar ?? item.name_en ?? '';
-    case 'fr': return item.name_fr ?? item.name_en ?? '';
-    default: return item.name_en ?? '';
-  }
+function formatPrice(price: number | null, currency: string): string {
+  if (price === null || price === undefined) return 'مجاني';
+  const symbols: Record<string, string> = { MAD: 'DH', USD: '$', EUR: '€' };
+  const symbol = symbols[currency] || currency;
+  return `${price.toLocaleString('ar-MA')} ${symbol}`;
 }
 
-function formatPrice(
-  price: number | null | undefined,
-  currency: Currency | null | undefined,
-  locale: Locale
-): string {
-  if (price === null || price === undefined) {
-    return locale === 'ar' ? 'مجاني' : locale === 'fr' ? 'Gratuit' : 'Free';
-  }
-  
-  const symbol = currency?.symbol ?? '';
-  const formatted = price.toLocaleString(locale);
-  
-  return locale === 'ar' ? `${formatted} ${symbol}` : `${symbol}${formatted}`;
+function formatDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString('ar-MA', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 }
 
-function formatDate(dateString: string, locale: Locale): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString(
-    locale === 'ar' ? 'ar-MA' : locale === 'fr' ? 'fr-FR' : 'en-US',
-    { year: 'numeric', month: 'long', day: 'numeric' }
-  );
-}
+// ─── Image Gallery (Lightweight) ───────────────────────────────────
 
-// ─── Types ──────────────────────────────────────────────────────────
-
-interface ExtendedListing extends Listing {
-  field_values?: (ListingFieldValue & { field?: CategoryField })[];
-}
-
-// ─── Animation Variants ─────────────────────────────────────────────
-
-const fadeIn = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit: { opacity: 0 },
-};
-
-const slideIn = {
-  initial: { opacity: 0, x: -20 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: 20 },
-};
-
-// ─── Image Gallery Component ────────────────────────────────────────
-
-function ImageGallery({ 
-  media, 
-  title 
-}: { 
-  media: ListingMedia[]; 
-  title: string;
-}) {
+function ImageGallery({ media, title }: { media: ListingMedia[]; title: string }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   const currentImage = media[currentIndex];
   const hasMultipleImages = media.length > 1;
 
-  const goToPrev = () => {
-    setCurrentIndex((prev) => (prev === 0 ? media.length - 1 : prev - 1));
-  };
-
-  const goToNext = () => {
-    setCurrentIndex((prev) => (prev === media.length - 1 ? 0 : prev + 1));
-  };
-
-  if (!currentImage) {
+  if (!currentImage || media.length === 0) {
     return (
-      <div className="flex aspect-[4/3] items-center justify-center rounded-xl bg-muted">
-        <ExternalLink className="size-12 text-muted-foreground/30" />
+      <div className="flex aspect-video items-center justify-center rounded-2xl bg-slate-800/50 border border-slate-700/50">
+        <div className="text-center p-8">
+          <ExternalLink className="h-12 w-12 text-slate-600 mx-auto mb-3" />
+          <p className="text-slate-500">لا توجد صور</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Main Image */}
-      <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted group">
-        <Image
+      <div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-800/50 border border-slate-700/50 group">
+        <img
           src={currentImage.url}
           alt={`${title} - ${currentIndex + 1}`}
-          fill
-          className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-          priority
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
         />
+        
+        {/* Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
         
         {/* Navigation Arrows */}
         {hasMultipleImages && (
           <>
             <button
-              onClick={goToPrev}
-              className="absolute start-3 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/70 group-hover:opacity-100"
-              aria-label="Previous image"
+              onClick={() => setCurrentIndex((prev) => (prev === 0 ? media.length - 1 : prev - 1))}
+              className="absolute start-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-black/70"
             >
-              <ChevronLeft className="size-5" />
+              <ChevronLeft className="h-5 w-5" />
             </button>
             <button
-              onClick={goToNext}
-              className="absolute end-3 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/70 group-hover:opacity-100"
-              aria-label="Next image"
+              onClick={() => setCurrentIndex((prev) => (prev === media.length - 1 ? 0 : prev + 1))}
+              className="absolute end-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-black/70"
             >
-              <ChevronRight className="size-5" />
+              <ChevronRight className="h-5 w-5" />
             </button>
           </>
         )}
 
-        {/* Zoom/Lightbox button */}
-        <button
-          onClick={() => setIsLightboxOpen(true)}
-          className="absolute end-3 top-3 flex size-9 items-center justify-center rounded-full bg-black/50 text-white opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/70 group-hover:opacity-100"
-          aria-label="Zoom image"
-        >
-          <ZoomIn className="size-4" />
-        </button>
-
         {/* Image Counter */}
         {hasMultipleImages && (
-          <div className="absolute start-3 bottom-3 rounded-full bg-black/60 px-3 py-1 text-xs text-white backdrop-blur-sm">
+          <div className="absolute start-4 bottom-4 rounded-full bg-black/60 px-3 py-1.5 text-sm text-white backdrop-blur-sm">
             {currentIndex + 1} / {media.length}
           </div>
         )}
@@ -189,522 +146,356 @@ function ImageGallery({
 
       {/* Thumbnails */}
       {hasMultipleImages && (
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-2">
           {media.map((m, idx) => (
             <button
               key={m.id}
               onClick={() => setCurrentIndex(idx)}
               className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
-                idx === currentIndex
-                  ? 'border-emerald ring-2 ring-emerald/20'
-                  : 'border-border hover:border-muted-foreground/30'
+                idx === currentIndex ? 'border-emerald-400 ring-2 ring-emerald-400/30' : 'border-slate-700 hover:border-slate-600'
               }`}
             >
-              <Image
-                src={m.url}
-                alt=""
-                fill
-                className="object-cover"
-              />
-              {m.is_primary && (
-                <div className="absolute start-1 top-1 flex items-center gap-0.5 rounded bg-emerald px-1 py-0.5">
-                  <Star className="size-2.5 fill-white text-white" />
-                </div>
-              )}
+              <img src={m.url} alt="" className="w-full h-full object-cover" />
             </button>
           ))}
         </div>
       )}
 
       {/* Lightbox */}
-      <AnimatePresence>
-        {isLightboxOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+      {isLightboxOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl"
+          onClick={() => setIsLightboxOpen(false)}
+        >
+          <button
             onClick={() => setIsLightboxOpen(false)}
+            className="absolute end-5 top-5 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
           >
-            <button
-              onClick={() => setIsLightboxOpen(false)}
-              className="absolute end-4 top-4 flex size-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
-              aria-label="Close lightbox"
-            >
-              <X className="size-5" />
-            </button>
+            <X className="h-6 w-6" />
+          </button>
+          <img
+            src={currentImage.url}
+            alt={title}
+            className="max-h-[85vh] max-w-[90vw] object-contain rounded-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
-            {hasMultipleImages && (
-              <button
-                onClick={(e) => { e.stopPropagation(); goToPrev(); }}
-                className="absolute start-4 top-1/2 flex size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
-              >
-                <ChevronLeft className="size-6" />
-              </button>
-            )}
+// ─── Error State Component ─────────────────────────────────────────
 
-            <motion.div
-              key={currentIndex}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative max-h-[85vh] max-w-[85vw] overflow-hidden rounded-lg"
-            >
-              <Image
-                src={currentImage.url}
-                alt={title}
-                width={1200}
-                height={900}
-                className="max-h-[85vh] w-auto object-contain"
-              />
-            </motion.div>
+function ErrorState({ message, onBack }: { message: string; onBack: () => void }) {
+  return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <div className="text-center max-w-md">
+        <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6">
+          <AlertCircle className="w-10 h-10 text-red-400" />
+        </div>
+        <h1 className="text-2xl font-bold text-white mb-3">عذراً!</h1>
+        <p className="text-slate-400 mb-8">{message}</p>
+        <div className="flex gap-4 justify-center">
+          <Button onClick={onBack} variant="outline" className="gap-2">
+            <ArrowRight className="w-4 h-4" />
+            العودة للإعلانات
+          </Button>
+          <Button onClick={() => window.location.reload()} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+            إعادة المحاولة
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-            {hasMultipleImages && (
-              <button
-                onClick={(e) => { e.stopPropagation(); goToNext(); }}
-                className="absolute end-4 top-1/2 flex size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
-              >
-                <ChevronRight className="size-6" />
-              </button>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+// ─── Loading Skeleton ───────────────────────────────────────────────
+
+function LoadingSkeleton() {
+  return (
+    <div className="min-h-screen bg-slate-950 p-4">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="h-8 w-48 bg-slate-800 rounded animate-pulse" />
+        <div className="grid lg:grid-cols-2 gap-8">
+          <div className="aspect-video bg-slate-800 rounded-2xl animate-pulse" />
+          <div className="space-y-4">
+            <div className="h-8 w-3/4 bg-slate-800 rounded animate-pulse" />
+            <div className="h-4 w-1/2 bg-slate-800 rounded animate-pulse" />
+            <div className="h-12 w-32 bg-slate-800 rounded animate-pulse mt-6" />
+            <div className="space-y-2">
+              <div className="h-4 w-full bg-slate-800 rounded animate-pulse" />
+              <div className="h-4 w-full bg-slate-800 rounded animate-pulse" />
+              <div className="h-4 w-2/3 bg-slate-800 rounded animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
 // ─── Main Component ─────────────────────────────────────────────────
 
-export default function ListingDetail({ listingId: propListingId }: ListingDetailProps) {
+export default function ListingDetail({ listingId: propListingId }: { listingId?: string }) {
   const params = useParams();
   const router = useRouter();
   const { t, locale } = useTranslation();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user } = useAuthStore();
 
-  const listingId = propListingId || (params?.id as string);
+  const listingId = propListingId || (params.id as string);
   
-  const [listing, setListing] = useState<ExtendedListing | null>(null);
+  const [listing, setListing] = useState<Listing | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isFavorited, setIsFavorited] = useState(false);
-  const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
-  const [showReportDialog, setShowReportDialog] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   // Fetch listing data
   const fetchListing = useCallback(async () => {
-    if (!listingId) return;
-
-    setIsLoading(true);
-    setError(null);
+    if (!listingId) {
+      setError('معرف الإعلان مفقود');
+      setIsLoading(false);
+      return;
+    }
 
     try {
+      setIsLoading(true);
+      setError(null);
+
       const res = await fetch(`/api/listings/${listingId}`);
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to fetch listing');
+        throw new Error(data.error || 'فشل في تحميل الإعلان');
       }
 
       setListing(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Failed to fetch listing:', err);
+      setError(err instanceof Message ? err.message : 'حدث خطأ أثناء تحميل الإعلان');
     } finally {
       setIsLoading(false);
     }
   }, [listingId]);
 
-  // Check favorite status
-  const checkFavoriteStatus = useCallback(async () => {
-    if (!listingId || !isAuthenticated || !user) return;
-
-    try {
-      const res = await fetch(`/api/favorites?listing_id=${listingId}`);
-      if (res.ok) {
-        const data = await res.json();
-        // Check if this listing is in favorites
-        const isFav = Array.isArray(data) && data.some((f: { listing_id: string }) => f.listing_id === listingId);
-        setIsFavorited(isFav);
-      }
-    } catch {
-      // Ignore errors for favorite check
-    }
-  }, [listingId, isAuthenticated, user]);
-
   useEffect(() => {
     fetchListing();
-    checkFavoriteStatus();
-  }, [fetchListing, checkFavoriteStatus]);
+  }, [fetchListing]);
 
-  // Handle favorite toggle
-  const handleFavoriteToggle = async () => {
-    if (!isAuthenticated || !user || !listingId) {
-      toast.error(t('favorites.login_required'));
-      return;
-    }
-
-    setIsFavoriteLoading(true);
-    try {
-      const res = await fetch(`/api/listings/${listingId}/favorite`, {
-        method: 'POST',
-      });
-
-      if (!res.ok) throw new Error('Failed to update favorite');
-
-      const data = await res.json();
-      setIsFavorited(data.favorited);
-      toast.success(data.favorited ? t('favorites.added') : t('favorites.removed'));
-    } catch {
-      toast.error(t('common.error'));
-    } finally {
-      setIsFavoriteLoading(false);
-    }
-  };
-
-  // Handle share
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: listing?.title,
-          text: listing?.description?.slice(0, 150),
-          url: window.location.href,
-        });
-      } catch {
-        // User cancelled or error
-      }
-    } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(window.location.href);
-      toast.success('Link copied to clipboard');
-    }
-  };
-
-  // Handle contact seller
+  // Handlers
   const handleContactSeller = () => {
-    if (!isAuthenticated) {
-      toast.error(t('auth.login_to_continue'));
+    if (!user) {
+      toast.error('يجب تسجيل الدخول أولاً');
+      router.push(`/auth/login?redirect=/listings/${listingId}`);
       return;
     }
-    // Navigate to messages or open conversation
-    router.push(`/messages?listing=${listingId}`);
+    toast.success('جاري فتح المحادثة...');
   };
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-5">
-          <div className="lg:col-span-3 space-y-4">
-            <Skeleton className="aspect-[4/3] w-full rounded-xl" />
-            <Skeleton className="h-8 w-3/4" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-5/6" />
-          </div>
-          <div className="lg:col-span-2 space-y-4">
-            <Skeleton className="h-12 w-full rounded-xl" />
-            <Skeleton className="h-32 w-full rounded-xl" />
-            <Skeleton className="h-48 w-full rounded-xl" />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleCallSeller = () => {
+    if (listing?.contactPhone) {
+      window.open(`tel:${listing.contactPhone}`, '_self');
+    }
+  };
 
-  // Error state
+  const toggleFavorite = () => {
+    setIsFavorite(!isFavorite);
+    toast.success(isFavorite ? 'تمت الإزالة من المفضلة' : 'تمت الإضافة إلى المفضلة');
+  };
+
+  // States
+  if (isLoading) return <LoadingSkeleton />;
+  
   if (error || !listing) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <AlertCircle className="mb-4 size-12 text-destructive" />
-        <h2 className="text-xl font-semibold text-foreground">{t('error.not_found')}</h2>
-        <p className="mt-2 text-muted-foreground">{error}</p>
-        <Button variant="outline" className="mt-4" onClick={() => router.back()}>
-          {t('common.back')}
-        </Button>
-      </div>
-    );
+    return <ErrorState message={error || 'الإعلان غير موجود'} onBack={() => router.push('/listings')} />;
   }
 
-  // Get localized values
-  const categoryName = getLocalizedName(listing.category ?? {}, locale);
-  const sellerName = listing.seller?.display_name ?? 'Unknown Seller';
-
   return (
-    <motion.div
-      className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8"
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      variants={fadeIn}
-    >
-      {/* Breadcrumb / Back */}
-      <button
-        onClick={() => router.back()}
-        className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ChevronLeft className="size-4" />
-        {t('listings.back_to_browse')}
-      </button>
-
-      <div className="grid gap-8 lg:grid-cols-5">
-        {/* Left Column - Images & Description */}
-        <div className="space-y-6 lg:col-span-3">
-          {/* Image Gallery */}
-          <ImageGallery media={listing.media} title={listing.title} />
-
-          {/* Title & Badges */}
-          <div>
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              {listing.is_featured && (
-                <Badge className="bg-gold text-primary border-0 gap-1">
-                  <Star className="size-3 fill-current" />
-                  {t('common.featured')}
-                </Badge>
-              )}
-              {listing.is_urgent && (
-                <Badge className="bg-destructive text-white border-0">
-                  {t('common.urgent')}
-                </Badge>
-              )}
-              <Badge variant="secondary">{categoryName}</Badge>
-            </div>
-            <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
-              {listing.title}
-            </h1>
-          </div>
-
-          {/* Price */}
-          <div className="text-3xl font-bold text-emerald">
-            {formatPrice(listing.price, listing.currency, locale)}
-          </div>
-
-          {/* Posted Date & Views */}
-          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <Calendar className="size-4" />
-              {formatDate(listing.created_at, locale)}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Eye className="size-4" />
-              {listing.view_count} {t('listings.views')}
-            </span>
-          </div>
-
-          <Separator />
-
-          {/* Description */}
-          <div>
-            <h2 className="mb-3 text-lg font-semibold text-foreground">
-              {t('listing.detail.description')}
-            </h2>
-            <div className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-              {listing.description}
-            </div>
-          </div>
-
-          {/* Dynamic Field Values */}
-          {listing.field_values && listing.field_values.length > 0 && (
-            <>
-              <Separator />
-              <div>
-                <h2 className="mb-3 text-lg font-semibold text-foreground">
-                  {t('listing.dynamic_fields')}
-                </h2>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {listing.field_values.map((fv) => (
-                    fv.field && (
-                      <div
-                        key={fv.id}
-                        className="flex items-center justify-between rounded-lg border border-border px-4 py-3"
-                      >
-                        <span className="text-sm text-muted-foreground">
-                          {getLocalizedName(fv.field, locale)}
-                        </span>
-                        <span className="text-sm font-medium text-foreground">
-                          {fv.value}
-                          {fv.field.unit_ar && (
-                            <span className="ms-1 text-muted-foreground">
-                              ({getLocalizedName(
-                                { 
-                                  name_ar: fv.field.unit_ar, 
-                                  name_fr: fv.field.unit_fr, 
-                                  name_en: fv.field.unit_en 
-                                }, 
-                                locale
-                              )})
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    )
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Video Embed */}
-          {listing.video_url && (
-            <>
-              <Separator />
-              <div>
-                <h2 className="mb-3 text-lg font-semibold text-foreground">
-                  {t('listing.video_preview')}
-                </h2>
-                <div className="aspect-video overflow-hidden rounded-xl">
-                  <iframe
-                    src={listing.video_url.replace('watch?v=', 'embed/')}
-                    title="Video"
-                    className="h-full w-full"
-                    allowFullScreen
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  />
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Reviews Section */}
-          <ReviewsSection listingId={listing.id} sellerId={listing.userId} />
-        </div>
-
-        {/* Right Column - Seller Info & Actions */}
-        <div className="lg:col-span-2">
-          <div className="sticky top-24 space-y-6">
-            {/* Price (Mobile Hidden, Desktop Show) */}
-            <Card className="lg:hidden">
-              <CardContent className="pt-6">
-                <div className="text-3xl font-bold text-emerald">
-                  {formatPrice(listing.price, listing.currency, locale)}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Seller Card */}
-            <Card className="overflow-hidden">
-              <CardHeader className="border-b border-border bg-muted/30 pb-4">
-                <CardTitle className="text-base">{t('listing.detail.seller')}</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4">
-                {listing.seller && (
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      {listing.seller.avatar_url ? (
-                        <Image
-                          src={listing.seller.avatar_url}
-                          alt={sellerName}
-                          width={56}
-                          height={56}
-                          className="rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex size-14 items-center justify-center rounded-full bg-emerald/10 text-lg font-bold text-emerald">
-                          {sellerName.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      {listing.seller.is_verified && (
-                        <BadgeCheck className="absolute -bottom-0.5 -end-0.5 size-5 rounded-full border-2 border-background text-emerald" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-foreground">{sellerName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {t('seller.member_since')} {formatDate(listing.seller.created_at, locale)}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                <Separator className="my-4" />
-
-                {/* Action Buttons */}
-                <div className="space-y-3">
-                  <Button
-                    className="w-full gap-2 bg-emerald hover:bg-emerald/90"
-                    onClick={handleContactSeller}
-                  >
-                    <MessageCircle className="size-4" />
-                    {t('listings.contact_seller')}
-                  </Button>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button
-                      variant="outline"
-                      className={`gap-2 ${isFavorited ? 'border-destructive text-destructive hover:bg-destructive/10' : ''}`}
-                      onClick={handleFavoriteToggle}
-                      disabled={isFavoriteLoading}
-                    >
-                      <Heart className={`size-4 ${isFavorited ? 'fill-current' : ''}`} />
-                      {isFavorited ? t('listing.detail.remove_from_favorites') : t('listing.detail.add_to_favorites')}
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="gap-2"
-                      onClick={handleShare}
-                    >
-                      <Share2 className="size-4" />
-                      {t('listing.detail.share')}
-                    </Button>
-                  </div>
-
-                  <Button
-                    variant="ghost"
-                    className="w-full gap-2 text-muted-foreground hover:text-destructive"
-                    onClick={() => setShowReportDialog(true)}
-                  >
-                    <Flag className="size-4" />
-                    {t('listing.detail.report')}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Safety Tips Card */}
-            <Card className="bg-amber/5 border-amber/20">
-              <CardContent className="p-4">
-                <h3 className="mb-2 text-sm font-semibold text-amber-dark">
-                  ⚠️ {locale === 'ar' ? 'نصائح الأمان' : locale === 'fr' ? "Conseils de sécurité" : 'Safety Tips'}
-                </h3>
-                <ul className="space-y-1.5 text-xs text-muted-foreground">
-                  <li>• {locale === 'ar' ? 'قابل البائع في مكان عام' : locale === 'fr' ? 'Rencontre le vendeur dans un lieu public' : 'Meet in a public place'}</li>
-                  <li>• {locale === 'ar' ? 'افحص المنتج قبل الدفع' : locale === 'fr' ? 'Inspectez l\'article avant de payer' : 'Inspect the item before payment'}</li>
-                  <li>• {locale === 'ar' ? 'ادفع فقط بعد استلام المنتج' : locale === 'fr' ? 'Payez seulement après réception' : 'Pay only after receiving the item'}</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
+    <div className="min-h-screen bg-slate-950">
+      {/* Header */}
+      <div className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 sticky top-16 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <Link 
+            href="/listings"
+            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-emerald-400 transition-colors"
+          >
+            <ArrowRight className="h-4 w-4" />
+            العودة للإعلانات
+          </Link>
         </div>
       </div>
 
-      {/* Report Dialog */}
-      <ReportDialog
-        open={showReportDialog}
-        onOpenChange={setShowReportDialog}
-        targetType="listing"
-        targetId={listing.id}
-      />
-    </motion.div>
-  );
-}
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Left Column - Images */}
+          <div>
+            <ImageGallery media={listing.media} title={listing.title} />
+            
+            {/* Quick Actions (Mobile) */}
+            <div className="lg:hidden mt-4 flex gap-2">
+              <Button onClick={handleContactSeller} className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-700">
+                <MessageCircle className="w-4 h-4" />
+                تواصل مع البائع
+              </Button>
+              {listing.contactPhone && (
+                <Button onClick={handleCallSeller} variant="outline" className="gap-2">
+                  <Phone className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          </div>
 
-// ─── Loading Skeleton ───────────────────────────────────────────────
+          {/* Right Column - Details */}
+          <div className="space-y-6">
+            {/* Title & Badges */}
+            <div>
+              <div className="flex items-start justify-between gap-4 mb-3">
+                <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
+                  {listing.title}
+                </h1>
+                <button
+                  onClick={toggleFavorite}
+                  className={`shrink-0 flex h-11 w-11 items-center justify-center rounded-xl border transition-all ${
+                    isFavorite 
+                      ? 'bg-red-500/10 border-red-500/30 text-red-400' 
+                      : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600'
+                  }`}
+                >
+                  <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
+                </button>
+              </div>
+              
+              <div className="flex flex-wrap gap-2">
+                {listing.category && (
+                  <Badge variant="secondary" className="bg-slate-800 text-slate-300 border-slate-700">
+                    {listing.category.nameAr || listing.category.name}
+                  </Badge>
+                )}
+                {listing.condition && (
+                  <Badge variant="secondary" className="bg-blue-500/10 text-blue-400 border-blue-500/30">
+                    {listing.condition === 'new' ? 'جديد' : listing.condition === 'like_new' ? 'كالجديد' : 'مستعمل'}
+                  </Badge>
+                )}
+                {listing.negotiable && (
+                  <Badge variant="secondary" className="bg-purple-500/10 text-purple-400 border-purple-500/30">
+                    قابل للتفاوض
+                  </Badge>
+                )}
+              </div>
+            </div>
 
-export function ListingDetailSkeleton() {
-  return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="grid gap-8 lg:grid-cols-5">
-        <div className="lg:col-span-3 space-y-4">
-          <Skeleton className="aspect-[4/3] w-full rounded-xl" />
-          <Skeleton className="h-8 w-3/4" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-5/6" />
-        </div>
-        <div className="lg:col-span-2 space-y-4">
-          <Skeleton className="h-12 w-full rounded-xl" />
-          <Skeleton className="h-32 w-full rounded-xl" />
-          <Skeleton className="h-48 w-full rounded-xl" />
+            {/* Price */}
+            <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-2xl p-6 border border-emerald-500/20">
+              <p className="text-sm text-emerald-400 mb-1">السعر</p>
+              <p className="text-4xl font-bold text-white">
+                {formatPrice(listing.price, listing.currencyCode)}
+              </p>
+            </div>
+
+            {/* Seller Info */}
+            {listing.user && (
+              <Card className="bg-slate-900/50 border-slate-800">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-400 flex items-center justify-center text-white font-bold text-lg">
+                      {(listing.user.display_name || '?')[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-white">{listing.user.display_name || 'بائع'}</p>
+                      <p className="text-sm text-slate-500">عضو منذ {formatDate(listing.createdAt)}</p>
+                    </div>
+                    <Shield className="w-5 h-5 text-emerald-400" />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Location & Stats */}
+            <div className="flex flex-wrap gap-4 text-sm text-slate-400">
+              {listing.locationAddress && (
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4" />
+                  {listing.locationAddress}
+                </span>
+              )}
+              <span className="flex items-center gap-1.5">
+                <Eye className="w-4 h-4" />
+                {listing.viewCount} مشاهدة
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Calendar className="w-4 h-4" />
+                {formatDate(listing.createdAt)}
+              </span>
+            </div>
+
+            <Separator className="bg-slate-800" />
+
+            {/* Description */}
+            <div>
+              <h2 className="text-lg font-semibold text-white mb-3">الوصف</h2>
+              <p className="text-slate-300 leading-relaxed whitespace-pre-wrap">
+                {listing.description || 'لا يوجد وصف'}
+              </p>
+            </div>
+
+            {/* Action Buttons (Desktop) */}
+            <div className="hidden lg:flex flex-col gap-3">
+              <Button 
+                onClick={handleContactSeller} 
+                size="lg" 
+                className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-base h-14 shadow-lg shadow-emerald-600/25"
+              >
+                <MessageCircle className="w-5 h-5" />
+                تواصل مع البائع
+              </Button>
+              
+              <div className="flex gap-3">
+                {listing.contactPhone && (
+                  <Button 
+                    onClick={handleCallSeller} 
+                    variant="outline" 
+                    size="lg" 
+                    className="flex-1 gap-2 h-12 border-slate-700 hover:bg-slate-800"
+                  >
+                    <Phone className="w-4 h-4" />
+                    اتصل
+                  </Button>
+                )}
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  className="gap-2 h-12 border-slate-700 hover:bg-slate-800"
+                >
+                  <Share2 className="w-4 h-4" />
+                  مشاركة
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  className="gap-2 h-12 border-slate-700 hover:bg-slate-800 text-red-400 hover:text-red-300"
+                >
+                  <Flag className="w-4 h-4" />
+                  إبلاغ
+                </Button>
+              </div>
+            </div>
+
+            {/* Safety Tips */}
+            <div className="bg-amber-500/10 rounded-xl p-4 border border-amber-500/20">
+              <div className="flex gap-3">
+                <Shield className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-amber-300 text-sm mb-1">نصائح للأمان</p>
+                  <ul className="text-xs text-amber-200/70 space-y-1">
+                    <li>• لا ترسل أموالاً قبل استلام المنتج</li>
+                    <li>• قابل البائع في مكان عام</li>
+                    <li>• افحص المنتج قبل الدفع</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -50,9 +50,10 @@ export default function ListingsPage() {
       const res = await fetch(`/api/listings?${params}`);
       if (res.ok) {
         const responseData = await res.json();
-        // API returns: { data: [...], total, page, per_page, total_pages }
-        const listingsData = responseData.data || [];
-        const totalPages = responseData.total_pages || 1;
+        // API returns: { listings: [...], total, page, per_page, total_pages }
+        // (was previously read as `.data` which is undefined — fixed to `.listings`)
+        const listingsData = responseData.listings || responseData.data || [];
+        const totalPages = responseData.total_pages || responseData.totalPages || 1;
         
         if (page === 1) {
           setListings(listingsData);
@@ -168,8 +169,8 @@ export default function ListingsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="newest">{t('sort.newest')}</SelectItem>
-                  <SelectItem value="price_low">{t('sort.price_low_high')}</SelectItem>
-                  <SelectItem value="price_high">{t('sort.price_high_low')}</SelectItem>
+                  <SelectItem value="price_asc">{t('sort.price_low_high')}</SelectItem>
+                  <SelectItem value="price_desc">{t('sort.price_high_low')}</SelectItem>
                   <SelectItem value="popular">{t('sort.most_popular')}</SelectItem>
                 </SelectContent>
               </Select>

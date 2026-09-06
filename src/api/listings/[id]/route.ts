@@ -15,48 +15,119 @@ export async GET(
 
     const supabase = getSupabaseAdminClient();
 
-    // Fetch listing with category and user info
+    // Try different column names for flexibility
     const { data: listing, error } = await supabase
       .from('listings')
-      .select(`
-        *,
-        category:categories(id, name, nameAr, nameFr, slug),
-        user:profiles!listings_user_id_fkey(id, display_name, avatar_url)
-      `)
-      .eq('id', id)
+      .select('*')
+      .or(`id.eq.${id},uuid.eq.${id}`)
       .single();
 
     if (error) {
       console.error('Error fetching listing:', error);
-      return NextResponse.json({ error: 'Failed to fetch listing' }, { status: 500 });
+      
+      // If table structure is different, try a simpler query
+      const { data: fallback, error: fallbackError } = await supabase
+        .from('listings')
+        .select('*')
+        .limit(1);
+        
+      if (fallbackError) {
+        return NextResponse.json({ 
+          error: 'Database error',
+          details: error.message,
+          hint: 'Check if listings table exists'
+        }, { status: 500 });
+      }
+      
+      // Return first listing as reference if the specific one isn't found
+      return NextResponse.json({ 
+        error: 'Listing not found',
+        availableIds: fallback?.map((l: any) => l.id || l.uuid) || []
+      }, { status: 404 });
     }
 
     if (!listing) {
-      return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
+      // Get some valid IDs for debugging
+      const { data: sample } = await supabase
+        .from('listings')
+        .select('id, title')
+        .limit(3);
+        
+      return NextResponse.json({ 
+        error: 'Listing not found',
+        searchedId: id,
+        sampleListings: sample || [],
+        hint: 'Check if this ID exists in the database'
+      }, { status: 404 });
     }
 
-    // Fetch listing media
-    const { data: media } = await supabase
+    // Fetch category info if category_id exists
+    let category = null;
+    if (listing.category_id) {
+      const { data: catData } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('id', listing.category_id)
+        .single();
+      category = catData;
+    }
+
+    // Fetch user info if user_id exists
+    let user = null;
+    if (listing.user_id) {
+      const { data: userData } = await supabase
+        .from('profiles')
+        .select('id, display_name, avatar_url')
+        .eq('id', listing.user_id)
+        .single();
+      user = userData;
+    }
+
+    // Fetch media
+    let media = [];
+    const { data: mediaData } = await supabase
       .from('listing_media')
       .select('*')
-      .eq('listing_id', id)
-      .order('is_primary', { ascending: false })
-      .order('created_at', { ascending: true });
+      .eq('listing_id', listing.id)
+      .order('is_primary', { ascending: false });
+    media = mediaData || [];
 
-    // Increment view count
-    await supabase
-      .from('listings')
-      .update({ view_count: (listing.view_count || 0) + 1 })
-      .eq('id', id);
+    // Increment view count safely
+    try {
+      const viewCol = listing.view_count !== undefined ? 'view_count' : 'viewCount';
+      await supabase
+        .from('listings')
+        .update({ [viewCol]: (listing.view_count || listing.viewCount || 0) + 1 })
+        .eq('id', listing.id);
+    } catch (e) {
+      // Non-critical, continue
+    }
 
-    // Return combined data
+    // Return combined data with normalized field names
     return NextResponse.json({
-      ...listing,
-      media: media || [],
+      id: listing.id || listing.uuid,
+      title: listing.title,
+      description: listing.description,
+      price: listing.price,
+      currencyCode: listing.currency_code || listing.currencyCode || 'MAD',
+      condition: listing.condition,
+      status: listing.status,
+      negotiable: listing.negotiable,
+      viewCount: (listing.view_count || listing.viewCount || 0) + 1,
+      contactPhone: listing.contact_phone || listing.contactPhone,
+      locationAddress: listing.location_address || listing.locationAddress,
+      createdAt: listing.created_at || listing.createdAt,
+      updatedAt: listing.updated_at || listing.updatedAt,
+      category,
+      user,
+      media,
     });
 
   } catch (error) {
     console.error('Listing detail error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }

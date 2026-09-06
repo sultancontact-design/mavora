@@ -182,10 +182,41 @@ export default function CategoryPageClient() {
     const fetchListings = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/listings?category=${slug}&limit=20`);
+        // Step 1: Resolve the slug to a category ID using /api/categories
+        // Step 2: Use the resolved ID to query /api/listings?category_id=<id>&per_page=20
+        // (Previously the page sent ?category=<slug>&limit=20 — both params are invalid for the API.)
+        const catRes = await fetch('/api/categories');
+        if (!catRes.ok) {
+          setListings([]);
+          return;
+        }
+        const catData = await catRes.json();
+        const allCategories: Array<{ id: string; slug: string; children?: Array<{ id: string; slug: string }> }> =
+          Array.isArray(catData) ? catData : (catData.categories || []);
+
+        // Find the category by slug, including its children
+        let matchedId: string | null = null;
+        for (const cat of allCategories) {
+          if (cat.slug === slug) {
+            matchedId = cat.id;
+            break;
+          }
+          const child = cat.children?.find((c) => c.slug === slug);
+          if (child) {
+            matchedId = child.id;
+            break;
+          }
+        }
+
+        if (!matchedId) {
+          setListings([]);
+          return;
+        }
+
+        const res = await fetch(`/api/listings?category_id=${encodeURIComponent(matchedId)}&per_page=20`);
         if (res.ok) {
           const data = await res.json();
-          setListings(data.data || []);
+          setListings(data.listings || data.data || []);
         }
       } catch (error) {
         console.error('Error fetching listings:', error);

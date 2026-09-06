@@ -66,7 +66,8 @@ export default function CreateListingPage() {
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push('/auth/login');
+      const redirectUrl = `/auth/login?redirect=${encodeURIComponent('/listings/create')}`;
+      router.push(redirectUrl);
     }
   }, [user, authLoading, router]);
 
@@ -158,18 +159,45 @@ export default function CreateListingPage() {
     }
   };
 
-  // Show loading while checking auth
+  // Show loading while checking auth, OR a friendly "redirecting" UI if no user.
+  // Previously this returned `null`, which made SSR ship an empty page (only the
+  // header/footer chrome) before the client-side redirect kicked in — users saw
+  // a blank page and reported the site as broken.
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="size-8 animate-spin text-emerald" />
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <Loader2 className="size-8 animate-spin text-emerald" />
+          <p className="text-sm">{t('common.loading') || 'Loading...'}</p>
+        </div>
       </div>
     );
   }
 
-  // Don't render if no user
+  // Don't render the form if no user — show a "redirecting to login" message instead.
   if (!user) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 px-4">
+        <div className="text-center max-w-md">
+          <div className="size-16 rounded-full bg-emerald/10 flex items-center justify-center mx-auto mb-4">
+            <Loader2 className="size-8 animate-spin text-emerald" />
+          </div>
+          <h2 className="text-xl font-semibold text-primary mb-2">
+            {t('auth.login_required') || 'Login required'}
+          </h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            {t('auth.redirecting_to_login') || 'Redirecting you to the login page...'}
+          </p>
+          <a
+            href={`/auth/login?redirect=${encodeURIComponent('/listings/create')}`}
+            className="inline-flex items-center gap-2 text-emerald hover:underline"
+          >
+            {t('common.login') || 'Login'}
+            <ArrowRight className="size-4" />
+          </a>
+        </div>
+      </div>
+    );
   }
 
   return (

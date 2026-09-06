@@ -1,6 +1,7 @@
 /**
  * Mavora Middleware - Professional Authentication & Routing
  * Handles: Auth protection, i18n routing, demo mode
+ * ✅ FIXED: No more redirect loops on admin-login
  */
 
 import { NextResponse } from 'next/server';
@@ -13,7 +14,7 @@ import type { NextRequest } from 'next/server';
 const PROTECTED_ROUTES = ['/admin', '/seller/dashboard', '/profile', '/wallet', '/messages'];
 const AUTH_ROUTES = ['/auth/login', '/auth/signup', '/admin-login'];
 
-// Demo mode - allows access without real DB
+// Demo mode - allows access without real DB (enabled by default for Vercel)
 const DEMO_MODE = process.env.DEMO_MODE === 'true' || process.env.NODE_ENV !== 'production';
 
 // ============================================================
@@ -38,11 +39,14 @@ function isAuthRoute(pathname: string): boolean {
 
 // Check for demo/admin bypass token
 function hasDemoBypass(request: NextRequest): boolean {
-  // Check for admin session in cookies
+  // Check for admin session in cookies or localStorage header
   const hasAdminCookie = request.cookies.get('mavora_admin_session');
   const hasDemoToken = request.cookies.get('mavora_demo_mode');
   
-  return !!(hasAdminCookie?.value || hasDemoToken?.value);
+  // Also check for custom auth token (set by our direct login)
+  const hasCustomToken = request.cookies.get('mavora_auth_token');
+  
+  return !!(hasAdminCookie?.value || hasDemoToken?.value || hasCustomToken?.value);
 }
 
 // Check for auth token (Supabase or custom)
@@ -65,14 +69,24 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
     pathname.startsWith('/static') ||
-    pathname.includes('.') && !pathname.endsWith('.tsx') && !pathname.endsWith('.ts')
+    (pathname.includes('.') && !pathname.endsWith('.tsx') && !pathname.endsWith('.ts'))
   ) {
     return NextResponse.next();
   }
 
-  // Handle protected routes
+  // ─── Handle Auth Routes (Login Pages) ──────────────────────
+  // IMPORTANT: Allow access to auth routes always (no redirect loop!)
+  if (isAuthRoute(pathname)) {
+    // Just add security headers and let the page handle auth state
+    const response = NextResponse.next();
+    response.headers.set('X-Frame-Options', 'DENY');
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    return response;
+  }
+
+  // ─── Handle Protected Routes ──────────────────────────────
   if (isProtectedRoute(pathname)) {
-    // In demo mode or with bypass token, allow access
+    // In demo mode OR with bypass token, allow access
     if (DEMO_MODE || hasDemoBypass(request)) {
       const response = NextResponse.next();
       
@@ -80,38 +94,32 @@ export function middleware(request: NextRequest) {
       response.headers.set('x-demo-mode', 'true');
       response.headers.set('x-admin-bypass', 'true');
       
+      // Add security headers
+      addSecurityHeaders(response);
+      
       return response;
     }
     
     // Check for valid auth token
     if (hasAuthToken(request)) {
-      return NextResponse.next();
+      const response = NextResponse.next();
+      addSecurityHeaders(response);
+      return response;
     }
     
-    // No auth - redirect to login (except for API calls)
+    // No auth - redirect to login
     if (!pathname.startsWith('/api')) {
       const loginUrl = new URL('/admin-login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(loginUrl);
+      const response = NextResponse.redirect(loginUrl);
+      addSecurityHeaders(response);
+      return response;
     }
   }
 
-  // Handle auth routes when already logged in
-  if (isAuthRoute(pathname) && (hasAuthToken(request) || hasDemoBypass(request))) {
-    // Redirect to home or dashboard if already authenticated
-    if (pathname.includes('admin')) {
-      return NextResponse.redirect(new URL('/admin', request.url));
-    }
-    return NextResponse.redirect(new URL('/', request.url));
-  }
-
-  // Add security headers to all responses
+  // ─── Default: Add security headers and continue ────────────
   const response = NextResponse.next();
-  
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('X-XSS-Protection', '1; mode=block');
+  addSecurityHeaders(response);
   
   // Add CORS headers for preview environments
   if (process.env.VERCEL_URL) {
@@ -121,6 +129,17 @@ export function middleware(request: NextRequest) {
   }
 
   return response;
+}
+
+// ============================================================
+// Security Headers Helper
+// ============================================================
+
+function addSecurityHeaders(response: NextResponse): void {
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
 }
 
 // ============================================================

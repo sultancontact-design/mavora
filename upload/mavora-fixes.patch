@@ -1,0 +1,166 @@
+diff --git a/package.json b/package.json
+index 85b1ec2..39181dd 100755
+--- a/package.json
++++ b/package.json
+@@ -4,8 +4,9 @@
+   "private": true,
+   "scripts": {
+     "dev": "next dev -p 3000 2>&1 | tee dev.log",
+-    "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
+-    "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
++    "build": "next build",
++    "build:docker": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
++    "start": "NODE_ENV=production node .next/standalone/server.js 2>&1 | tee server.log",
+     "lint": "eslint .",
+     "test": "vitest run",
+     "test:watch": "vitest",
+diff --git a/src/app/category/[slug]/CategoryPageClient.tsx b/src/app/category/[slug]/CategoryPageClient.tsx
+index 433f594..664a46e 100755
+--- a/src/app/category/[slug]/CategoryPageClient.tsx
++++ b/src/app/category/[slug]/CategoryPageClient.tsx
+@@ -182,10 +182,41 @@ export default function CategoryPageClient() {
+     const fetchListings = async () => {
+       try {
+         setLoading(true);
+-        const res = await fetch(`/api/listings?category=${slug}&limit=20`);
++        // Step 1: Resolve the slug to a category ID using /api/categories
++        // Step 2: Use the resolved ID to query /api/listings?category_id=<id>&per_page=20
++        // (Previously the page sent ?category=<slug>&limit=20 — both params are invalid for the API.)
++        const catRes = await fetch('/api/categories');
++        if (!catRes.ok) {
++          setListings([]);
++          return;
++        }
++        const catData = await catRes.json();
++        const allCategories: Array<{ id: string; slug: string; children?: Array<{ id: string; slug: string }> }> =
++          Array.isArray(catData) ? catData : (catData.categories || []);
++
++        // Find the category by slug, including its children
++        let matchedId: string | null = null;
++        for (const cat of allCategories) {
++          if (cat.slug === slug) {
++            matchedId = cat.id;
++            break;
++          }
++          const child = cat.children?.find((c) => c.slug === slug);
++          if (child) {
++            matchedId = child.id;
++            break;
++          }
++        }
++
++        if (!matchedId) {
++          setListings([]);
++          return;
++        }
++
++        const res = await fetch(`/api/listings?category_id=${encodeURIComponent(matchedId)}&per_page=20`);
+         if (res.ok) {
+           const data = await res.json();
+-          setListings(data.data || []);
++          setListings(data.listings || data.data || []);
+         }
+       } catch (error) {
+         console.error('Error fetching listings:', error);
+diff --git a/src/app/listings/create/page.tsx b/src/app/listings/create/page.tsx
+index 47f3111..f1edb62 100755
+--- a/src/app/listings/create/page.tsx
++++ b/src/app/listings/create/page.tsx
+@@ -66,7 +66,8 @@ export default function CreateListingPage() {
+   // Redirect if not authenticated
+   useEffect(() => {
+     if (!authLoading && !user) {
+-      router.push('/auth/login');
++      const redirectUrl = `/auth/login?redirect=${encodeURIComponent('/listings/create')}`;
++      router.push(redirectUrl);
+     }
+   }, [user, authLoading, router]);
+ 
+@@ -158,18 +159,45 @@ export default function CreateListingPage() {
+     }
+   };
+ 
+-  // Show loading while checking auth
++  // Show loading while checking auth, OR a friendly "redirecting" UI if no user.
++  // Previously this returned `null`, which made SSR ship an empty page (only the
++  // header/footer chrome) before the client-side redirect kicked in — users saw
++  // a blank page and reported the site as broken.
+   if (authLoading) {
+     return (
+       <div className="min-h-screen flex items-center justify-center">
+-        <Loader2 className="size-8 animate-spin text-emerald" />
++        <div className="flex flex-col items-center gap-3 text-muted-foreground">
++          <Loader2 className="size-8 animate-spin text-emerald" />
++          <p className="text-sm">{t('common.loading') || 'Loading...'}</p>
++        </div>
+       </div>
+     );
+   }
+ 
+-  // Don't render if no user
++  // Don't render the form if no user — show a "redirecting to login" message instead.
+   if (!user) {
+-    return null;
++    return (
++      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 px-4">
++        <div className="text-center max-w-md">
++          <div className="size-16 rounded-full bg-emerald/10 flex items-center justify-center mx-auto mb-4">
++            <Loader2 className="size-8 animate-spin text-emerald" />
++          </div>
++          <h2 className="text-xl font-semibold text-primary mb-2">
++            {t('auth.login_required') || 'Login required'}
++          </h2>
++          <p className="text-sm text-muted-foreground mb-4">
++            {t('auth.redirecting_to_login') || 'Redirecting you to the login page...'}
++          </p>
++          <a
++            href={`/auth/login?redirect=${encodeURIComponent('/listings/create')}`}
++            className="inline-flex items-center gap-2 text-emerald hover:underline"
++          >
++            {t('common.login') || 'Login'}
++            <ArrowRight className="size-4" />
++          </a>
++        </div>
++      </div>
++    );
+   }
+ 
+   return (
+diff --git a/src/app/listings/page.tsx b/src/app/listings/page.tsx
+index eb2b2b8..046df4e 100755
+--- a/src/app/listings/page.tsx
++++ b/src/app/listings/page.tsx
+@@ -50,9 +50,10 @@ export default function ListingsPage() {
+       const res = await fetch(`/api/listings?${params}`);
+       if (res.ok) {
+         const responseData = await res.json();
+-        // API returns: { data: [...], total, page, per_page, total_pages }
+-        const listingsData = responseData.data || [];
+-        const totalPages = responseData.total_pages || 1;
++        // API returns: { listings: [...], total, page, per_page, total_pages }
++        // (was previously read as `.data` which is undefined — fixed to `.listings`)
++        const listingsData = responseData.listings || responseData.data || [];
++        const totalPages = responseData.total_pages || responseData.totalPages || 1;
+         
+         if (page === 1) {
+           setListings(listingsData);
+@@ -168,8 +169,8 @@ export default function ListingsPage() {
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="newest">{t('sort.newest')}</SelectItem>
+-                  <SelectItem value="price_low">{t('sort.price_low_high')}</SelectItem>
+-                  <SelectItem value="price_high">{t('sort.price_high_low')}</SelectItem>
++                  <SelectItem value="price_asc">{t('sort.price_low_high')}</SelectItem>
++                  <SelectItem value="price_desc">{t('sort.price_high_low')}</SelectItem>
+                   <SelectItem value="popular">{t('sort.most_popular')}</SelectItem>
+                 </SelectContent>
+               </Select>
+diff --git a/vercel.json b/vercel.json
+index df7936f..9278c55 100755
+--- a/vercel.json
++++ b/vercel.json
+@@ -1 +1 @@
+-{"$schema": "https://openapi.vercel.sh/vercel.json", "version": 2, "name": "mavora", "buildCommand": "npm run build", "outputDirectory": ".next", "framework": "nextjs", "regions": ["fra1"], "env": {"NEXT_PUBLIC_APP_NAME": "Mavora", "NEXT_PUBLIC_APP_LOCALE": "ar-MA", "NEXT_PUBLIC_APP_CURRENCY": "MAD"}, "build": {"env": {"NEXT_TELEMETRY_DISABLED": "1"}}, "headers": [{"source": "/(.*)", "headers": [{"key": "X-Content-Type-Options", "value": "nosniff"}, {"key": "X-Frame-Options", "value": "SAMEORIGIN"}, {"key": "X-XSS-Protection", "value": "1; mode=block"}, {"key": "Referrer-Policy", "value": "strict-origin-when-cross-origin"}, {"key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(self)"}]}, {"source": "/api/(.*)", "headers": [{"key": "Cache-Control", "value": "no-store, must-revalidate"}]}, {"source": "/_next/static/(.*)", "headers": [{"key": "Cache-Control", "value": "public, max-age=31536000, immutable"}]}, {"source": "/sw.js", "headers": [{"key": "Cache-Control", "value": "public, max-age=0, must-revalidate"}]}, {"source": "/manifest.json", "headers": [{"key": "Cache-Control", "value": "public, max-age=3600"}]}, {"source": "/(.*)\\.(ico|png|jpg|jpeg|gif|svg|webp|avif)", "headers": [{"key": "Cache-Control", "value": "public, max-age=86400"}]}], "rewrites": [{"source": "/api/health", "destination": "/api/health"}, {"source": "/api/ready", "destination": "/api/ready"}], "functions": {"src/app/api/**/*.ts": {"maxDuration": 30}}, "trailingSlash": false, "cleanUrls": true}
+\ No newline at end of file
++{"$schema": "https://openapi.vercel.sh/vercel.json", "version": 2, "name": "mavora", "buildCommand": "next build", "framework": "nextjs", "regions": ["fra1"], "env": {"NEXT_PUBLIC_APP_NAME": "Mavora", "NEXT_PUBLIC_APP_LOCALE": "ar-MA", "NEXT_PUBLIC_APP_CURRENCY": "MAD"}, "build": {"env": {"NEXT_TELEMETRY_DISABLED": "1"}}, "headers": [{"source": "/(.*)", "headers": [{"key": "X-Content-Type-Options", "value": "nosniff"}, {"key": "X-Frame-Options", "value": "SAMEORIGIN"}, {"key": "X-XSS-Protection", "value": "1; mode=block"}, {"key": "Referrer-Policy", "value": "strict-origin-when-cross-origin"}, {"key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(self)"}]}, {"source": "/api/(.*)", "headers": [{"key": "Cache-Control", "value": "no-store, must-revalidate"}]}, {"source": "/_next/static/(.*)", "headers": [{"key": "Cache-Control", "value": "public, max-age=31536000, immutable"}]}, {"source": "/sw.js", "headers": [{"key": "Cache-Control", "value": "public, max-age=0, must-revalidate"}]}, {"source": "/manifest.json", "headers": [{"key": "Cache-Control", "value": "public, max-age=3600"}]}, {"source": "/(.*)\\.(ico|png|jpg|jpeg|gif|svg|webp|avif)", "headers": [{"key": "Cache-Control", "value": "public, max-age=86400"}]}], "rewrites": [{"source": "/api/health", "destination": "/api/health"}, {"source": "/api/ready", "destination": "/api/ready"}], "functions": {"src/app/api/**/*.ts": {"maxDuration": 30}}, "trailingSlash": false, "cleanUrls": true}
+\ No newline at end of file

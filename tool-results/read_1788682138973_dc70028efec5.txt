@@ -1,0 +1,1041 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState } from 'react';
+     4→import { useRouter } from 'next/navigation';
+     5→import { Button } from '@/components/ui/button';
+     6→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+     7→import { Input } from '@/components/ui/input';
+     8→import { Textarea } from '@/components/ui/textarea';
+     9→import { Label } from '@/components/ui/label';
+    10→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+    11→import { Badge } from '@/components/ui/badge';
+    12→import { useTranslation } from '@/hooks/useTranslation';
+    13→import { useAuthStore } from '@/stores/auth';
+    14→import MavoraLogo from '@/components/common/MavoraLogo';
+    15→import ImageUploader from '@/components/media/ImageUploader';
+    16→import DynamicFieldsForm from '@/components/listing/DynamicFieldsForm';
+    17→import { 
+    18→  Loader2, 
+    19→  ArrowLeft, 
+    20→  ArrowRight,
+    21→  Upload,
+    22→  CheckCircle2,
+    23→  Package,
+    24→  MapPin,
+    25→  DollarSign,
+    26→  FileText,
+    27→  Eye,
+    28→  Sparkles,
+    29→  Camera,
+    30→  Tag,
+    31→  Navigation,
+    32→  Coins,
+    33→  Zap,
+    34→  AlertCircle,
+    35→  Image as ImageIcon,
+    36→  ChevronDown,
+    37→  X
+    38→} from 'lucide-react';
+    39→
+    40→type Step = 'category' | 'details' | 'media' | 'location' | 'price' | 'preview' | 'submit';
+    41→
+    42→export default function CreateListingPage() {
+    43→  const router = useRouter();
+    44→  const { t } = useTranslation();
+    45→  const { user, isLoading: authLoading } = useAuthStore();
+    46→  
+    47→  const [currentStep, setCurrentStep] = useState<Step>('category');
+    48→  const [isLoading, setIsLoading] = useState(false);
+    49→  const [error, setError] = useState('');
+    50→  const [isTransitioning, setIsTransitioning] = useState(false);
+    51→  
+    52→  const [formData, setFormData] = useState({
+    53→    category_id: '',
+    54→    title: '',
+    55→    description: '',
+    56→    price: '',
+    57→    currency: 'MAD',
+    58→    location: '',
+    59→    city_id: '',
+    60→    condition: 'new',
+    61→    dynamic_fields: {} as Record<string, any>,
+    62→  });
+    63→
+    64→  const [images, setImages] = useState<string[]>([]);
+    65→  
+    66→  // Fetch real categories from API
+    67→  const [categories, setCategories] = useState<Array<{
+    68→    id: string;
+    69→    name: string;
+    70→    nameAr?: string;
+    71→    nameFr?: string;
+    72→    slug: string;
+    73→    children?: Array<{ id: string; name: string; nameAr?: string; nameFr?: string; slug: string }>;
+    74→  }>>([]);
+    75→  const [categoriesLoading, setCategoriesLoading] = useState(true);
+    76→
+    77→  // Redirect if not authenticated
+    78→  useEffect(() => {
+    79→    if (!authLoading && !user) {
+    80→      const redirectUrl = `/auth/login?redirect=${encodeURIComponent('/listings/create')}`;
+    81→      router.push(redirectUrl);
+    82→    }
+    83→  }, [user, authLoading, router]);
+    84→
+    85→  // Fetch categories on mount
+    86→  useEffect(() => {
+    87→    async function fetchCategories() {
+    88→      try {
+    89→        const res = await fetch('/api/categories');
+    90→        if (res.ok) {
+    91→          const data = await res.json();
+    92→          setCategories(data || []);
+    93→        }
+    94→      } catch (err) {
+    95→        console.error('Failed to fetch categories:', err);
+    96→      } finally {
+    97→        setCategoriesLoading(false);
+    98→      }
+    99→    }
+   100→    fetchCategories();
+   101→  }, []);
+   102→
+   103→  const steps: { id: Step; title: string; icon: React.ReactNode; description: string; gradient: string }[] = [
+   104→    { id: 'category', title: t('create_listing.category'), icon: <Tag className="size-5" />, description: t('create_listing.choose_category'), gradient: 'from-violet-500 to-purple-600' },
+   105→    { id: 'details', title: t('create_listing.details'), icon: <FileText className="size-5" />, description: t('create_listing.enter_details'), gradient: 'from-blue-500 to-cyan-500' },
+   106→    { id: 'media', title: t('create_listing.photos'), icon: <Camera className="size-5" />, description: t('create_listing.upload_photos'), gradient: 'from-pink-500 to-rose-500' },
+   107→    { id: 'location', title: t('create_listing.location'), icon: <Navigation className="size-5" />, description: t('create_listing.specify_location'), gradient: 'from-amber-500 to-orange-500' },
+   108→    { id: 'price', title: t('create_listing.price'), icon: <Coins className="size-5" />, description: t('create_listing.set_price'), gradient: 'from-emerald-500 to-green-500' },
+   109→    { id: 'preview', title: t('create_listing.preview'), icon: <Eye className="size-5" />, description: t('create_listing.review_listing'), gradient: 'from-indigo-500 to-purple-600' },
+   110→  ];
+   111→
+   112→  const currentStepIndex = steps.findIndex(s => s.id === currentStep);
+   113→
+   114→  const canProceed = () => {
+   115→    switch (currentStep) {
+   116→      case 'category': return !!formData.category_id;
+   117→      case 'details': return !!formData.title && !!formData.description;
+   118→      case 'media': return true; // Images are optional
+   119→      case 'location': return !!formData.location;
+   120→      case 'price': return formData.price !== '' && parseFloat(formData.price) >= 0;
+   121→      default: return true;
+   122→    }
+   123→  };
+   124→
+   125→  const nextStep = () => {
+   126→    if (currentStepIndex < steps.length - 1) {
+   127→      setIsTransitioning(true);
+   128→      setTimeout(() => {
+   129→        setCurrentStep(steps[currentStepIndex + 1].id);
+   130→        setError('');
+   131→        setIsTransitioning(false);
+   132→      }, 150);
+   133→    }
+   134→  };
+   135→
+   136→  const prevStep = () => {
+   137→    if (currentStepIndex > 0) {
+   138→      setIsTransitioning(true);
+   139→      setTimeout(() => {
+   140→        setCurrentStep(steps[currentStepIndex - 1].id);
+   141→        setError('');
+   142→        setIsTransitioning(false);
+   143→      }, 150);
+   144→    }
+   145→  };
+   146→
+   147→  const handleSubmit = async () => {
+   148→    setIsLoading(true);
+   149→    setError('');
+   150→
+   151→    try {
+   152→      const res = await fetch('/api/listings', {
+   153→        method: 'POST',
+   154→        headers: { 'Content-Type': 'application/json' },
+   155→        body: JSON.stringify({
+   156→          ...formData,
+   157→          price: parseFloat(formData.price),
+   158→          images,
+   159→          user_id: user?.id,
+   160→        }),
+   161→      });
+   162→
+   163→      const data = await res.json();
+   164→
+   165→      if (!res.ok) {
+   166→        setError(data.error || t('common.error'));
+   167→        return;
+   168→      }
+   169→
+   170→      // Redirect to the listing or listings page
+   171→      router.push(`/listings/${data.id || ''}`);
+   172→      router.refresh();
+   173→    } catch (err) {
+   174→      setError(t('auth.error_occurred'));
+   175→      console.error('Create listing error:', err);
+   176→    } finally {
+   177→      setIsLoading(false);
+   178→    }
+   179→  };
+   180→
+   181→  // Show loading while checking auth, OR a friendly "redirecting" UI if no user.
+   182→  if (authLoading) {
+   183→    return (
+   184→      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f]">
+   185→        <div className="flex flex-col items-center gap-4">
+   186→          <div className="relative">
+   187→            <div className="size-16 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 p-[2px]">
+   188→              <div className="w-full h-full rounded-full bg-[#0a0a0f] flex items-center justify-center">
+   189→                <Loader2 className="size-8 animate-spin text-emerald-400" />
+   190→              </div>
+   191→            </div>
+   192→            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 opacity-20 blur-xl" />
+   193→          </div>
+   194→          <p className="text-sm text-zinc-400">{t('common.loading') || 'Loading...'}</p>
+   195→        </div>
+   196→      </div>
+   197→    );
+   198→  }
+   199→
+   200→  // Don't render the form if no user — show a "redirecting to login" message instead.
+   201→  if (!user) {
+   202→    return (
+   203→      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f] px-4">
+   204→        <div className="text-center max-w-md">
+   205→          <div className="relative inline-flex mb-6">
+   206→            <div className="size-20 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-cyan-500/20 p-[1px]">
+   207→              <div className="w-full h-full rounded-2xl bg-[#12121a] flex items-center justify-center">
+   208→                <Loader2 className="size-10 animate-spin text-emerald-400" />
+   209→              </div>
+   210→            </div>
+   211→            <div className="absolute inset-0 -z-10 rounded-2xl bg-gradient-to-br from-emerald-400/30 to-cyan-500/30 blur-2xl" />
+   212→          </div>
+   213→          <h2 className="text-2xl font-bold text-white mb-3">
+   214→            {t('auth.login_required') || 'Login required'}
+   215→          </h2>
+   216→          <p className="text-sm text-zinc-400 mb-6 leading-relaxed">
+   217→            {t('auth.redirecting_to_login') || 'Redirecting you to the login page...'}
+   218→          </p>
+   219→          <a
+   220→            href={`/auth/login?redirect=${encodeURIComponent('/listings/create')}`}
+   221→            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-medium hover:shadow-lg hover:shadow-emerald-500/25 transition-all duration-300 hover:-translate-y-0.5"
+   222→          >
+   223→            {t('common.login') || 'Login'}
+   224→            <ArrowRight className="size-4" />
+   225→          </a>
+   226→        </div>
+   227→      </div>
+   228→    );
+   229→  }
+   230→
+   231→  return (
+   232→    <div className="min-h-screen bg-[#0a0a0f] py-8 px-4 relative overflow-hidden">
+   233→      {/* Background Effects */}
+   234→      <div className="fixed inset-0 pointer-events-none">
+   235→        <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl" />
+   236→        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
+   237→        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-500/3 rounded-full blur-3xl" />
+   238→      </div>
+   239→
+   240→      {/* Grid Pattern Overlay */}
+   241→      <div 
+   242→        className="fixed inset-0 pointer-events-none opacity-[0.02]"
+   243→        style={{
+   244→          backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
+   245→          backgroundSize: '50px 50px'
+   246→        }}
+   247→      />
+   248→
+   249→      <div className="max-w-4xl mx-auto relative z-10">
+   250→        {/* Header */}
+   251→        <div className="flex items-center gap-4 mb-8">
+   252→          <button
+   253→            onClick={() => router.back()}
+   254→            className="size-11 rounded-xl bg-zinc-800/50 border border-zinc-700/50 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-700/50 hover:border-zinc-600/50 transition-all duration-300"
+   255→          >
+   256→            <ArrowLeft className="size-5" />
+   257→          </button>
+   258→          <div className="flex items-center gap-3">
+   259→            <div className="relative">
+   260→              <MavoraLogo size="md" />
+   261→              <div className="absolute inset-0 bg-gradient-to-br from-emerald-400 to-cyan-500 opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-100" />
+   262→            </div>
+   263→            <div>
+   264→              <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-2">
+   265→                <Sparkles className="size-6 text-emerald-400" />
+   266→                {t('create_listing.post_ad')}
+   267→              </h1>
+   268→              <p className="text-zinc-500 text-sm mt-0.5">{t('create_listing.follow_steps')}</p>
+   269→            </div>
+   270→          </div>
+   271→        </div>
+   272→
+   273→        {/* Progress Steps - Premium Design */}
+   274→        <div className="mb-8">
+   275→          <div className="bg-zinc-900/40 backdrop-blur-xl rounded-2xl border border-zinc-800/50 p-6 shadow-2xl shadow-black/20">
+   276→            {/* Progress Bar */}
+   277→            <div className="relative mb-6">
+   278→              <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+   279→                <div 
+   280→                  className="h-full bg-gradient-to-r from-emerald-500 via-cyan-500 to-purple-500 rounded-full transition-all duration-500 ease-out"
+   281→                  style={{ width: `${((currentStepIndex + 1) / steps.length) * 100}%` }}
+   282→                />
+   283→              </div>
+   284→            </div>
+   285→
+   286→            {/* Step Indicators */}
+   287→            <div className="flex items-start justify-between gap-2">
+   288→              {steps.map((step, index) => (
+   289→                <div key={step.id} className="flex flex-col items-center flex-1 max-w-[80px]">
+   290→                  <button
+   291→                    onClick={() => index <= currentStepIndex && setCurrentStep(step.id)}
+   292→                    disabled={index > currentStepIndex}
+   293→                    className={`group relative flex flex-col items-center w-full transition-all duration-300 ${
+   294→                      index <= currentStepIndex ? 'cursor-pointer' : 'cursor-not-allowed opacity-40'
+   295→                    }`}
+   296→                  >
+   297→                    {/* Icon Container */}
+   298→                    <div className={`relative mb-3 transition-all duration-500 ${
+   299→                      index === currentStepIndex ? 'scale-110' : ''
+   300→                    }`}>
+   301→                      {/* Glow Effect for Active */}
+   302→                      {index === currentStepIndex && (
+   303→                        <>
+   304→                          <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${step.gradient} opacity-30 blur-lg group-hover:opacity-50 transition-opacity`} />
+   305→                          <div className={`absolute -inset-1 rounded-2xl bg-gradient-to-br ${step.gradient} opacity-20 animate-pulse`} />
+   306→                        </>
+   307→                      )}
+   308→                      
+   309→                      {/* Main Circle */}
+   310→                      <div className={`relative size-12 rounded-2xl flex items-center justify-center border-2 transition-all duration-300 ${
+   311→                        index === currentStepIndex
+   312→                          ? `bg-gradient-to-br ${step.gradient} border-transparent shadow-lg`
+   313→                          : index < currentStepIndex
+   314→                          ? `bg-gradient-to-br ${step.gradient} border-transparent`
+   315→                          : 'bg-zinc-800 border-zinc-700'
+   316→                      }`}>
+   317→                        {index < currentStepIndex ? (
+   318→                          <CheckCircle2 className="size-5 text-white" />
+   319→                        ) : (
+   320→                          <span className={index === currentStepIndex ? 'text-white' : 'text-zinc-500'}>
+   321→                            {step.icon}
+   322→                          </span>
+   323→                        )}
+   324→                      </div>
+   325→
+   326→                      {/* Step Number Badge */}
+   327→                      <div className={`absolute -top-1 -right-1 size-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+   328→                        index === currentStepIndex
+   329→                          ? 'bg-white text-zinc-900'
+   330→                          : index < currentStepIndex
+   331→                          ? 'bg-emerald-400 text-zinc-900'
+   332→                          : 'bg-zinc-700 text-zinc-400'
+   333→                      }`}>
+   334→                        {index + 1}
+   335→                      </div>
+   336→                    </div>
+   337→
+   338→                    {/* Label */}
+   339→                    <span className={`text-xs font-medium text-center leading-tight transition-colors duration-300 ${
+   340→                      index === currentStepIndex 
+   341→                        ? 'text-white' 
+   342→                        : index < currentStepIndex 
+   343→                        ? 'text-emerald-400' 
+   344→                        : 'text-zinc-500'
+   345→                    }`}>
+   346→                      {step.title}
+   347→                    </span>
+   348→                  </button>
+   349→                </div>
+   350→              ))}
+   351→            </div>
+   352→          </div>
+   353→        </div>
+   354→
+   355→        {/* Main Content Card */}
+   356→        <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-50 scale-[0.99]' : 'opacity-100 scale-100'}`}>
+   357→          <Card className="bg-zinc-900/40 backdrop-blur-xl border-zinc-800/50 shadow-2xl shadow-black/30 overflow-hidden">
+   358→            {/* Card Header with Gradient Accent */}
+   359→            <div className={`h-1 bg-gradient-to-r ${steps[currentStepIndex].gradient}`} />
+   360→            
+   361→            <CardHeader className="pb-4">
+   362→              <div className="flex items-center gap-3">
+   363→                <div className={`size-10 rounded-xl bg-gradient-to-br ${steps[currentStepIndex].gradient} p-[1px]`}>
+   364→                  <div className="w-full h-full rounded-xl bg-zinc-900 flex items-center justify-center text-white">
+   365→                    {steps[currentStepIndex].icon}
+   366→                  </div>
+   367→                </div>
+   368→                <div>
+   369→                  <CardTitle className="text-xl text-white flex items-center gap-2">
+   370→                    {steps[currentStepIndex].title}
+   371→                    <span className="text-xs font-normal text-zinc-500">Step {currentStepIndex + 1} of {steps.length}</span>
+   372→                  </CardTitle>
+   373→                  <CardDescription className="text-zinc-400 mt-1">
+   374→                    {steps[currentStepIndex].description}
+   375→                  </CardDescription>
+   376→                </div>
+   377→              </div>
+   378→            </CardHeader>
+   379→
+   380→            <CardContent className="pt-2">
+   381→              {/* Error Message - Enhanced */}
+   382→              {error && (
+   383→                <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 backdrop-blur-sm animate-pulse">
+   384→                  <div className="flex items-start gap-3">
+   385→                    <div className="size-8 rounded-lg bg-red-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+   386→                      <AlertCircle className="size-4 text-red-400" />
+   387→                    </div>
+   388→                    <div className="flex-1">
+   389→                      <p className="text-sm font-medium text-red-300">Something went wrong</p>
+   390→                      <p className="text-sm text-red-400/80 mt-1">{error}</p>
+   391→                    </div>
+   392→                    <button 
+   393→                      onClick={() => setError('')}
+   394→                      className="text-red-400/60 hover:text-red-300 transition-colors"
+   395→                    >
+   396→                      <X className="size-4" />
+   397→                    </button>
+   398→                  </div>
+   399→                </div>
+   400→              )}
+   401→
+   402→              {/* Category Step - Enhanced */}
+   403→              {currentStep === 'category' && (
+   404→                <div className="space-y-6">
+   405→                  <div className="flex items-center gap-2 text-zinc-400 mb-2">
+   406→                    <Tag className="size-4 text-violet-400" />
+   407→                    <Label className="text-sm font-medium text-zinc-300">{t('create_listing.select_category')}</Label>
+   408→                  </div>
+   409→                  
+   410→                  {categoriesLoading ? (
+   411→                    <div className="flex flex-col items-center justify-center py-12 gap-4">
+   412→                      <div className="relative">
+   413→                        <Loader2 className="size-8 animate-spin text-violet-400" />
+   414→                        <div className="absolute inset-0 bg-violet-400/20 rounded-full blur-lg" />
+   415→                      </div>
+   416→                      <p className="text-sm text-zinc-500">{t('common.loading')}...</p>
+   417→                    </div>
+   418→                  ) : (
+   419→                    <div className="space-y-3">
+   420→                      <Select value={formData.category_id} onValueChange={(value) => setFormData(prev => ({ ...prev, category_id: value }))}>
+   421→                        <SelectTrigger className="h-14 bg-zinc-800/50 border-zinc-700/50 text-white placeholder:text-zinc-500 focus:border-violet-500 focus:ring-violet-500/20 rounded-xl text-base transition-all duration-300 hover:bg-zinc-800 hover:border-zinc-600">
+   422→                          <SelectValue placeholder={t('create_listing.choose_category_placeholder')} />
+   423→                        </SelectTrigger>
+   424→                        <SelectContent className="bg-zinc-900 border-zinc-800 rounded-xl">
+   425→                          {categories.map((category) => (
+   426→                            <SelectItem 
+   427→                              key={category.id} 
+   428→                              value={category.id}
+   429→                              className="text-zinc-300 focus:bg-violet-500/20 focus:text-white rounded-lg py-2.5"
+   430→                            >
+   431→                              <div className="flex items-center gap-2">
+   432→                                <Package className="size-4 text-violet-400" />
+   433→                                {category.nameAr || category.name}
+   434→                              </div>
+   435→                            </SelectItem>
+   436→                          ))}
+   437→                        </SelectContent>
+   438→                      </Select>
+   439→
+   440→                      {/* Category Cards Grid Alternative */}
+   441→                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
+   442→                        {categories.slice(0, 6).map((category) => (
+   443→                          <button
+   444→                            key={category.id}
+   445→                            onClick={() => setFormData(prev => ({ ...prev, category_id: category.id }))}
+   446→                            className={`p-4 rounded-xl border transition-all duration-300 text-left group ${
+   447→                              formData.category_id === category.id
+   448→                                ? 'bg-violet-500/10 border-violet-500/50 shadow-lg shadow-violet-500/10'
+   449→                                : 'bg-zinc-800/30 border-zinc-700/30 hover:border-zinc-600 hover:bg-zinc-800/50'
+   450→                            }`}
+   451→                          >
+   452→                            <div className={`size-10 rounded-lg flex items-center justify-center mb-2 transition-colors ${
+   453→                              formData.category_id === category.id ? 'bg-violet-500/20' : 'bg-zinc-700/50 group-hover:bg-zinc-700'
+   454→                            }`}>
+   455→                              <Package className={`size-5 transition-colors ${
+   456→                                formData.category_id === category.id ? 'text-violet-400' : 'text-zinc-500 group-hover:text-zinc-400'
+   457→                              }`} />
+   458→                            </div>
+   459→                            <p className={`text-sm font-medium truncate transition-colors ${
+   460→                              formData.category_id === category.id ? 'text-violet-300' : 'text-zinc-400 group-hover:text-zinc-300'
+   461→                            }`}>
+   462→                              {category.nameAr || category.name}
+   463→                            </p>
+   464→                          </button>
+   465→                        ))}
+   466→                      </div>
+   467→                    </div>
+   468→                  )}
+   469→                  
+   470→                  {categories.length === 0 && !categoriesLoading && (
+   471→                    <div className="text-center py-8 px-4 rounded-xl bg-zinc-800/30 border border-zinc-700/30">
+   472→                      <Package className="size-10 text-zinc-600 mx-auto mb-3" />
+   473→                      <p className="text-sm text-zinc-500">
+   474→                        No categories available. Please try refreshing the page.
+   475→                      </p>
+   476→                    </div>
+   477→                  )}
+   478→                </div>
+   479→              )}
+   480→
+   481→              {/* Details Step - Enhanced */}
+   482→              {currentStep === 'details' && (
+   483→                <div className="space-y-6">
+   484→                  {/* Title Field */}
+   485→                  <div className="space-y-2">
+   486→                    <div className="flex items-center justify-between">
+   487→                      <Label htmlFor="title" className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+   488→                        <FileText className="size-4 text-blue-400" />
+   489→                        {t('create_listing.title')} <span className="text-red-400">*</span>
+   490→                      </Label>
+   491→                      <span className={`text-xs font-mono transition-colors ${
+   492→                        formData.title.length > 180 ? 'text-amber-400' : 'text-zinc-500'
+   493→                      }`}>
+   494→                        {formData.title.length}/200
+   495→                      </span>
+   496→                    </div>
+   497→                    <div className="relative">
+   498→                      <Input
+   499→                        id="title"
+   500→                        placeholder={t('create_listing.title_placeholder')}
+   501→                        value={formData.title}
+   502→                        onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+   503→                        className="h-14 bg-zinc-800/50 border-zinc-700/50 text-white placeholder:text-zinc-500 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl text-base pr-12 transition-all duration-300"
+   504→                        maxLength={200}
+   505→                      />
+   506→                      {formData.title && (
+   507→                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+   508→                          <CheckCircle2 className={`size-5 ${formData.title.length >= 5 ? 'text-emerald-400' : 'text-zinc-500'}`} />
+   509→                        </div>
+   510→                      )}
+   511→                    </div>
+   512→                    {/* Character Progress Bar */}
+   513→                    <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
+   514→                      <div 
+   515→                        className={`h-full rounded-full transition-all duration-300 ${
+   516→                          formData.title.length > 180 ? 'bg-amber-500' : 'bg-blue-500'
+   517→                        }`}
+   518→                        style={{ width: `${(formData.title.length / 200) * 100}%` }}
+   519→                      />
+   520→                    </div>
+   521→                  </div>
+   522→
+   523→                  {/* Description Field */}
+   524→                  <div className="space-y-2">
+   525→                    <div className="flex items-center justify-between">
+   526→                      <Label htmlFor="description" className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+   527→                        <FileText className="size-4 text-cyan-400" />
+   528→                        {t('create_listing.description')} <span className="text-red-400">*</span>
+   529→                      </Label>
+   530→                      <span className="text-xs font-mono text-zinc-500">
+   531→                        {formData.description.length}/5000
+   532→                      </span>
+   533→                    </div>
+   534→                    <Textarea
+   535→                      id="description"
+   536→                      placeholder={t('create_listing.description_placeholder')}
+   537→                      value={formData.description}
+   538→                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+   539→                      rows={6}
+   540→                      maxLength={5000}
+   541→                      className="bg-zinc-800/50 border-zinc-700/50 text-white placeholder:text-zinc-500 focus:border-cyan-500 focus:ring-cyan-500/20 rounded-xl text-base resize-none transition-all duration-300"
+   542→                    />
+   543→                  </div>
+   544→
+   545→                  {/* Condition Selector - Enhanced */}
+   546→                  <div className="space-y-3">
+   547→                    <Label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+   548→                      <Sparkles className="size-4 text-amber-400" />
+   549→                      {t('create_listing.condition')}
+   550→                    </Label>
+   551→                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+   552→                      {[
+   553→                        { value: 'new', label: t('condition.new'), emoji: '✨' },
+   554→                        { value: 'like_new', label: t('condition.like_new'), emoji: '🌟' },
+   555→                        { value: 'excellent', label: t('condition.excellent'), emoji: '💎' },
+   556→                        { value: 'good', label: t('condition.good'), emoji: '👍' },
+   557→                        { value: 'fair', label: t('condition.fair'), emoji: '👌' },
+   558→                      ].map((item) => (
+   559→                        <button
+   560→                          key={item.value}
+   561→                          type="button"
+   562→                          onClick={() => setFormData(prev => ({ ...prev, condition: item.value }))}
+   563→                          className={`p-3 rounded-xl border transition-all duration-300 text-center group ${
+   564→                            formData.condition === item.value
+   565→                              ? 'bg-amber-500/10 border-amber-500/50 shadow-lg shadow-amber-500/10'
+   566→                              : 'bg-zinc-800/30 border-zinc-700/30 hover:border-zinc-600 hover:bg-zinc-800/50'
+   567→                          }`}
+   568→                        >
+   569→                          <span className="text-lg block mb-1">{item.emoji}</span>
+   570→                          <span className={`text-xs font-medium transition-colors ${
+   571→                            formData.condition === item.value ? 'text-amber-300' : 'text-zinc-400 group-hover:text-zinc-300'
+   572→                          }`}>
+   573→                            {item.label}
+   574→                          </span>
+   575→                        </button>
+   576→                      ))}
+   577→                    </div>
+   578→                  </div>
+   579→
+   580→                  {/* Dynamic Fields based on category */}
+   581→                  {formData.category_id && (
+   582→                    <div className="pt-4 border-t border-zinc-800/50">
+   583→                      <DynamicFieldsForm
+   584→                        categoryId={formData.category_id}
+   585→                        values={formData.dynamic_fields}
+   586→                        onChange={(fields) => setFormData(prev => ({ ...prev, dynamic_fields: fields }))}
+   587→                      />
+   588→                    </div>
+   589→                  )}
+   590→                </div>
+   591→              )}
+   592→
+   593→              {/* Media Step - Enhanced */}
+   594→              {currentStep === 'media' && (
+   595→                <div className="space-y-6">
+   596→                  <div className="flex items-center gap-2 text-zinc-400 mb-2">
+   597→                    <ImageIcon className="size-4 text-pink-400" />
+   598→                    <Label className="text-sm font-medium text-zinc-300">{t('create_listing.upload_images')}</Label>
+   599→                    <Badge variant="secondary" className="bg-pink-500/10 text-pink-400 border-pink-500/20 text-xs">
+   600→                      Optional
+   601→                    </Badge>
+   602→                  </div>
+   603→                  
+   604→                  {/* Custom Drag & Drop Zone Enhancement */}
+   605→                  <div className="relative">
+   606→                    <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 to-rose-500/10 rounded-2xl blur-xl" />
+   607→                    <div className="relative bg-zinc-800/30 border-2 border-dashed border-zinc-700/50 rounded-2xl p-8 transition-all duration-300 hover:border-pink-500/50 hover:bg-zinc-800/50">
+   608→                      <ImageUploader
+   609→                        images={images}
+   610→                        onImagesChange={setImages}
+   611→                        maxImages={10}
+   612→                      />
+   613→                    </div>
+   614→                  </div>
+   615→
+   616→                  {/* Image Guidelines */}
+   617→                  <div className="flex items-start gap-3 p-4 rounded-xl bg-zinc-800/30 border border-zinc-700/30">
+   618→                    <div className="size-8 rounded-lg bg-pink-500/10 flex items-center justify-center flex-shrink-0">
+   619→                      <Camera className="size-4 text-pink-400" />
+   620→                    </div>
+   621→                    <div>
+   622→                      <p className="text-sm font-medium text-zinc-300 mb-1">Photo Tips</p>
+   623→                      <p className="text-xs text-zinc-500 leading-relaxed">
+   624→                        {t('create_listing.image_guidelines')}
+   625→                      </p>
+   626→                      <div className="flex flex-wrap gap-2 mt-3">
+   627→                        {['High Quality', 'Good Lighting', 'Multiple Angles', 'No Watermarks'].map((tip) => (
+   628→                          <span key={tip} className="px-2 py-1 rounded-md bg-zinc-700/50 text-xs text-zinc-400">
+   629→                            {tip}
+   630→                          </span>
+   631→                        ))}
+   632→                      </div>
+   633→                    </div>
+   634→                  </div>
+   635→
+   636→                  {/* Images Preview Grid */}
+   637→                  {images.length > 0 && (
+   638→                    <div className="space-y-3">
+   639→                      <div className="flex items-center justify-between">
+   640→                        <span className="text-sm text-zinc-400">Uploaded Photos</span>
+   641→                        <Badge variant="outline" className="border-zinc-700 text-zinc-400 text-xs">
+   642→                          {images.length}/10
+   643→                        </Badge>
+   644→                      </div>
+   645→                      <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+   646→                        {images.map((img, i) => (
+   647→                          <div key={i} className="aspect-square rounded-xl overflow-hidden bg-zinc-800 border border-zinc-700/50 group relative">
+   648→                            <img src={img} alt={`Upload ${i + 1}`} className="w-full h-full object-cover" />
+   649→                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+   650→                              <span className="text-white text-sm font-medium">{i + 1}</span>
+   651→                            </div>
+   652→                            {i === 0 && (
+   653→                              <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-emerald-500 text-white text-[10px] font-bold">
+   654→                                MAIN
+   655→                              </div>
+   656→                            )}
+   657→                          </div>
+   658→                        ))}
+   659→                      </div>
+   660→                    </div>
+   661→                  )}
+   662→                </div>
+   663→              )}
+   664→
+   665→              {/* Location Step - Enhanced */}
+   666→              {currentStep === 'location' && (
+   667→                <div className="space-y-6">
+   668→                  {/* Location Input */}
+   669→                  <div className="space-y-2">
+   670→                    <Label htmlFor="location" className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+   671→                      <MapPin className="size-4 text-amber-400" />
+   672→                      {t('create_listing.location')} <span className="text-red-400">*</span>
+   673→                    </Label>
+   674→                    <div className="relative">
+   675→                      <MapPin className="absolute right-4 top-1/2 -translate-y-1/2 size-5 text-zinc-500" />
+   676→                      <Input
+   677→                        id="location"
+   678→                        placeholder={t('create_listing.location_placeholder')}
+   679→                        value={formData.location}
+   680→                        onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+   681→                        className="h-14 bg-zinc-800/50 border-zinc-700/50 text-white placeholder:text-zinc-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl text-base pr-12 transition-all duration-300"
+   682→                      />
+   683→                    </div>
+   684→                  </div>
+   685→
+   686→                  {/* City Selection - Enhanced Cards */}
+   687→                  <div className="space-y-3">
+   688→                    <Label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+   689→                      <Navigation className="size-4 text-orange-400" />
+   690→                      {t('create_listing.city')}
+   691→                    </Label>
+   692→                    
+   693→                    <Select value={formData.city_id} onValueChange={(value) => setFormData(prev => ({ ...prev, city_id: value }))}>
+   694→                      <SelectTrigger className="h-14 bg-zinc-800/50 border-zinc-700/50 text-white placeholder:text-zinc-500 focus:border-orange-500 focus:ring-orange-500/20 rounded-xl text-base transition-all duration-300 hover:bg-zinc-800 hover:border-zinc-600">
+   695→                        <SelectValue placeholder={t('create_listing.select_city')} />
+   696→                      </SelectTrigger>
+   697→                      <SelectContent className="bg-zinc-900 border-zinc-800 rounded-xl">
+   698→                        {[
+   699→                          { value: 'casablanca', label: 'Casablanca', icon: '🏙️' },
+   700→                          { value: 'rabat', label: 'Rabat', icon: '🏛️' },
+   701→                          { value: 'marrakech', label: 'Marrakech', icon: '🕌' },
+   702→                          { value: 'fes', label: 'Fès', icon: '📿' },
+   703→                          { value: 'tangier', label: 'Tanger', icon: '⚓' },
+   704→                          { value: 'agadir', label: 'Agadir', icon: '🏖️' },
+   705→                          { value: 'meknes', label: 'Meknès', icon: '🏰' },
+   706→                          { value: 'oujda', label: 'Oujda', icon: '🌵' },
+   707→                          { value: 'kenitra', label: 'Kénitra', icon: '🌊' },
+   708→                          { value: 'tetouan', label: 'Tétouan', icon: '🎨' },
+   709→                        ].map((city) => (
+   710→                          <SelectItem 
+   711→                            key={city.value} 
+   712→                            value={city.value}
+   713→                            className="text-zinc-300 focus:bg-orange-500/20 focus:text-white rounded-lg py-3"
+   714→                          >
+   715→                            <div className="flex items-center gap-2">
+   716→                              <span>{city.icon}</span>
+   717→                              {city.label}
+   718→                            </div>
+   719→                          </SelectItem>
+   720→                        ))}
+   721→                      </SelectContent>
+   722→                    </Select>
+   723→
+   724→                    {/* City Quick Select Grid */}
+   725→                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-4">
+   726→                      {['Casablanca', 'Rabat', 'Marrakech', 'Fès', 'Tanger'].map((city) => (
+   727→                        <button
+   728→                          key={city}
+   729→                          type="button"
+   730→                          onClick={() => setFormData(prev => ({ ...prev, city_id: city.toLowerCase() }))}
+   731→                          className={`p-3 rounded-xl border transition-all duration-300 text-center ${
+   732→                            formData.city_id === city.toLowerCase()
+   733→                              ? 'bg-orange-500/10 border-orange-500/50'
+   734→                              : 'bg-zinc-800/30 border-zinc-700/30 hover:border-zinc-600'
+   735→                          }`}
+   736→                        >
+   737→                          <span className={`text-sm font-medium transition-colors ${
+   738→                            formData.city_id === city.toLowerCase() ? 'text-orange-300' : 'text-zinc-400'
+   739→                          }`}>
+   740→                            {city}
+   741→                          </span>
+   742→                        </button>
+   743→                      ))}
+   744→                    </div>
+   745→                  </div>
+   746→
+   747→                  {/* Map Placeholder */}
+   748→                  <div className="rounded-xl bg-zinc-800/30 border border-zinc-700/30 p-6 text-center">
+   749→                    <MapPin className="size-10 text-zinc-600 mx-auto mb-3" />
+   750→                    <p className="text-sm text-zinc-500">Location will be displayed on map</p>
+   751→                  </div>
+   752→                </div>
+   753→              )}
+   754→
+   755→              {/* Price Step - Enhanced */}
+   756→              {currentStep === 'price' && (
+   757→                <div className="space-y-6">
+   758→                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   759→                    {/* Price Input */}
+   760→                    <div className="space-y-2">
+   761→                      <Label htmlFor="price" className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+   762→                        <Coins className="size-4 text-emerald-400" />
+   763→                        {t('create_listing.price')} ({formData.currency}) <span className="text-red-400">*</span>
+   764→                      </Label>
+   765→                      <div className="relative">
+   766→                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-medium">{formData.currency === 'MAD' ? 'DH' : formData.currency}</span>
+   767→                        <Input
+   768→                          id="price"
+   769→                          type="number"
+   770→                          placeholder="0.00"
+   771→                          value={formData.price}
+   772→                          onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+   773→                          className="h-14 bg-zinc-800/50 border-zinc-700/50 text-white placeholder:text-zinc-500 focus:border-emerald-500 focus:ring-emerald-500/20 rounded-xl text-base pl-16 transition-all duration-300"
+   774→                          min="0"
+   775→                          step="0.01"
+   776→                          dir="ltr"
+   777→                        />
+   778→                      </div>
+   779→                    </div>
+   780→
+   781→                    {/* Currency Selector */}
+   782→                    <div className="space-y-2">
+   783→                      <Label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+   784→                        <DollarSign className="size-4 text-green-400" />
+   785→                        {t('create_listing.currency')}
+   786→                      </Label>
+   787→                      <Select value={formData.currency} onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}>
+   788→                        <SelectTrigger className="h-14 bg-zinc-800/50 border-zinc-700/50 text-white focus:border-green-500 focus:ring-green-500/20 rounded-xl text-base transition-all duration-300">
+   789→                          <SelectValue />
+   790→                        </SelectTrigger>
+   791→                        <SelectContent className="bg-zinc-900 border-zinc-800 rounded-xl">
+   792→                          <SelectItem value="MAD" className="py-3">
+   793→                            <div className="flex items-center gap-2">
+   794→                              <span>🇲🇦</span> MAD (Dirham)
+   795→                            </div>
+   796→                          </SelectItem>
+   797→                          <SelectItem value="USD" className="py-3">
+   798→                            <div className="flex items-center gap-2">
+   799→                              <span>🇺🇸</span> USD (Dollar)
+   800→                            </div>
+   801→                          </SelectItem>
+   802→                          <SelectItem value="EUR" className="py-3">
+   803→                            <div className="flex items-center gap-2">
+   804→                              <span>🇪🇺</span> EUR (Euro)
+   805→                            </div>
+   806→                          </SelectItem>
+   807→                        </SelectContent>
+   808→                      </Select>
+   809→                    </div>
+   810→                  </div>
+   811→
+   812→                  {/* Price Quick Select - Enhanced */}
+   813→                  <div className="space-y-3">
+   814→                    <Label className="text-sm font-medium text-zinc-400">Quick Select</Label>
+   815→                    <div className="flex flex-wrap gap-2">
+   816→                      {[
+   817→                        { label: t('create_listing.free'), value: '0', icon: '🆓' },
+   818→                        { label: '100 MAD', value: '100', icon: '💰' },
+   819→                        { label: '500 MAD', value: '500', icon: '💵' },
+   820→                        { label: '1,000 MAD', value: '1000', icon: '💎' },
+   821→                        { label: '5,000 MAD', value: '5000', icon: '🏆' },
+   822→                        { label: 'Negotiable', value: '', icon: '🤝' },
+   823→                      ].map((item) => (
+   824→                        <button
+   825→                          key={item.label}
+   826→                          type="button"
+   827→                          onClick={() => item.value !== '' && setFormData(prev => ({ ...prev, price: item.value }))}
+   828→                          className={`px-4 py-2.5 rounded-xl border transition-all duration-300 flex items-center gap-2 text-sm font-medium ${
+   829→                            formData.price === item.value
+   830→                              ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-300 shadow-lg shadow-emerald-500/10'
+   831→                              : 'bg-zinc-800/30 border-zinc-700/30 text-zinc-400 hover:border-zinc-600 hover:text-zinc-300'
+   832→                          }`}
+   833→                        >
+   834→                          <span>{item.icon}</span>
+   835→                          {item.label}
+   836→                        </button>
+   837→                      ))}
+   838→                    </div>
+   839→                  </div>
+   840→
+   841→                  {/* Price Display Preview */}
+   842→                  {formData.price && parseFloat(formData.price) > 0 && (
+   843→                    <div className="p-6 rounded-xl bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/20 text-center">
+   844→                      <p className="text-sm text-zinc-400 mb-2">Your Listing Price</p>
+   845→                      <p className="text-4xl font-bold text-white">
+   846→                        {formData.currency === 'MAD' ? 'DH' : formData.currency} {parseFloat(formData.price).toLocaleString()}
+   847→                      </p>
+   848→                    </div>
+   849→                  )}
+   850→                </div>
+   851→              )}
+   852→
+   853→              {/* Preview Step - Enhanced Professional Preview */}
+   854→              {currentStep === 'preview' && (
+   855→                <div className="space-y-6">
+   856→                  {/* Main Preview Card */}
+   857→                  <div className="rounded-2xl bg-zinc-800/30 border border-zinc-700/30 overflow-hidden">
+   858→                    {/* Preview Header */}
+   859→                    <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 p-4 border-b border-zinc-700/30">
+   860→                      <div className="flex items-center gap-2">
+   861→                        <Eye className="size-4 text-indigo-400" />
+   862→                        <span className="font-medium text-white">{t('create_listing.listing_preview')}</span>
+   863→                        <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-400 border-indigo-500/20 text-xs ml-auto">
+   864→                          Preview Mode
+   865→                        </Badge>
+   866→                      </div>
+   867→                    </div>
+   868→
+   869→                    <div className="p-6">
+   870→                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+   871→                        {/* Left Column - Details */}
+   872→                        <div className="space-y-4">
+   873→                          {/* Title */}
+   874→                          <div>
+   875→                            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Title</p>
+   876→                            <h3 className="text-xl font-bold text-white">
+   877→                              {formData.title || <span className="text-zinc-500 italic">{t('create_listing.no_title')}</span>}
+   878→                            </h3>
+   879→                          </div>
+   880→
+   881→                          {/* Description */}
+   882→                          <div>
+   883→                            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Description</p>
+   884→                            <p className="text-sm text-zinc-300 line-clamp-4 leading-relaxed">
+   885→                              {formData.description || <span className="italic text-zinc-500">{t('create_listing.no_description')}</span>}
+   886→                            </p>
+   887→                          </div>
+   888→
+   889→                          {/* Meta Info */}
+   890→                          <div className="flex flex-wrap gap-2 pt-2">
+   891→                            <Badge className="bg-amber-500/10 text-amber-300 border-amber-500/20 capitalize">
+   892→                              {formData.condition}
+   893→                            </Badge>
+   894→                            <Badge variant="outline" className="border-emerald-500/30 text-emerald-400">
+   895→                              <Coins className="size-3 mr-1" />
+   896→                              {formData.currency} {formData.price || '0'}
+   897→                            </Badge>
+   898→                            <Badge variant="outline" className="border-zinc-700 text-zinc-400">
+   899→                              <MapPin className="size-3 mr-1" />
+   900→                              {formData.location || t('create_listing.no_location')}
+   901→                            </Badge>
+   902→                          </div>
+   903→                        </div>
+   904→
+   905→                        {/* Right Column - Images */}
+   906→                        <div>
+   907→                          <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Photos</p>
+   908→                          {images.length > 0 ? (
+   909→                            <div className="grid grid-cols-3 gap-2">
+   910→                              {images.slice(0, 6).map((img, i) => (
+   911→                                <div key={i} className={`aspect-square rounded-xl overflow-hidden bg-zinc-700/50 border border-zinc-700/50 ${i === 0 ? 'col-span-2 row-span-2' : ''}`}>
+   912→                                  <img src={img} alt={`Preview ${i + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+   913→                                </div>
+   914→                              ))}
+   915→                            </div>
+   916→                          ) : (
+   917→                            <div className="aspect-video rounded-xl bg-zinc-800/50 border border-dashed border-zinc-700/50 flex flex-col items-center justify-center text-zinc-500">
+   918→                              <ImageIcon className="size-10 mb-2 opacity-50" />
+   919→                              <p className="text-sm">{t('create_listing.no_images')}</p>
+   920→                            </div>
+   921→                          )}
+   922→                        </div>
+   923→                      </div>
+   924→                    </div>
+   925→                  </div>
+   926→
+   927→                  {/* Summary Stats */}
+   928→                  <div className="grid grid-cols-3 gap-3">
+   929→                    <div className="p-4 rounded-xl bg-zinc-800/30 border border-zinc-700/30 text-center">
+   930→                      <p className="text-2xl font-bold text-white">{images.length}</p>
+   931→                      <p className="text-xs text-zinc-500 mt-1">Photos</p>
+   932→                    </div>
+   933→                    <div className="p-4 rounded-xl bg-zinc-800/30 border border-zinc-700/30 text-center">
+   934→                      <p className="text-2xl font-bold text-white">{formData.title.length}</p>
+   935→                      <p className="text-xs text-zinc-500 mt-1">Characters</p>
+   936→                    </div>
+   937→                    <div className="p-4 rounded-xl bg-zinc-800/30 border border-zinc-700/30 text-center">
+   938→                      <p className="text-2xl font-bold text-emerald-400">Ready</p>
+   939→                      <p className="text-xs text-zinc-500 mt-1">Status</p>
+   940→                    </div>
+   941→                  </div>
+   942→
+   943→                  {/* Review Note */}
+   944→                  <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+   945→                    <div className="flex items-start gap-3">
+   946→                      <div className="size-8 rounded-lg bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+   947→                        <Zap className="size-4 text-indigo-400" />
+   948→                      </div>
+   949→                      <div>
+   950→                        <p className="text-sm font-medium text-indigo-300">Ready to publish!</p>
+   951→                        <p className="text-xs text-indigo-400/70 mt-1">
+   952→                          {t('create_listing.review_note')}
+   953→                        </p>
+   954→                      </div>
+   955→                    </div>
+   956→                  </div>
+   957→                </div>
+   958→              )}
+   959→
+   960→              {/* Navigation Buttons - Enhanced */}
+   961→              <div className="flex justify-between items-center mt-8 pt-6 border-t border-zinc-800/50">
+   962→                <Button
+   963→                  variant="outline"
+   964→                  onClick={prevStep}
+   965→                  disabled={currentStepIndex === 0}
+   966→                  className="gap-2 h-12 px-6 bg-zinc-800/50 border-zinc-700/50 text-zinc-300 hover:bg-zinc-700/50 hover:text-white hover:border-zinc-600 rounded-xl transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed"
+   967→                >
+   968→                  <ArrowLeft className="size-4" />
+   969→                  {t('common.previous')}
+   970→                </Button>
+   971→
+   972→                <div className="flex items-center gap-2">
+   973→                  {/* Step Indicator Dots */}
+   974→                  <div className="hidden sm:flex items-center gap-1.5 mr-4">
+   975→                    {steps.map((_, i) => (
+   976→                      <div
+   977→                        key={i}
+   978→                        className={`size-2 rounded-full transition-all duration-300 ${
+   979→                          i === currentStepIndex
+   980→                            ? 'bg-emerald-400 w-6'
+   981→                            : i < currentStepIndex
+   982→                            ? 'bg-emerald-400/50'
+   983→                            : 'bg-zinc-700'
+   984→                        }`}
+   985→                      />
+   986→                    ))}
+   987→                  </div>
+   988→
+   989→                  {currentStepIndex === steps.length - 2 ? (
+   990→                    <Button
+   991→                      onClick={nextStep}
+   992→                      disabled={!canProceed()}
+   993→                      className="gap-2 h-12 px-8 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-xl shadow-lg shadow-blue-500/25 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+   994→                    >
+   995→                      <Eye className="size-4" />
+   996→                      {t('create_listing.review')}
+   997→                      <ArrowRight className="size-4" />
+   998→                    </Button>
+   999→                  ) : currentStepIndex === steps.length - 1 ? (
+  1000→                    <Button
+  1001→                      onClick={handleSubmit}
+  1002→                      disabled={isLoading || !canProceed()}
+  1003→                      className="gap-2 h-12 px-8 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white rounded-xl shadow-lg shadow-emerald-500/25 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+  1004→                    >
+  1005→                      {isLoading ? (
+  1006→                        <>
+  1007→                          <Loader2 className="size-4 animate-spin" />
+  1008→                          {t('common.submitting')}
+  1009→                        </>
+  1010→                      ) : (
+  1011→                        <>
+  1012→                          <Zap className="size-4" />
+  1013→                          {t('create_listing.publish_ad')}
+  1014→                        </>
+  1015→                      )}
+  1016→                    </Button>
+  1017→                  ) : (
+  1018→                    <Button
+  1019→                      onClick={nextStep}
+  1020→                      disabled={!canProceed()}
+  1021→                      className="gap-2 h-12 px-8 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white rounded-xl shadow-lg shadow-emerald-500/25 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+  1022→                    >
+  1023→                      {t('common.next')}
+  1024→                      <ArrowRight className="size-4" />
+  1025→                    </Button>
+  1026→                  )}
+  1027→                </div>
+  1028→              </div>
+  1029→            </CardContent>
+  1030→          </Card>
+  1031→        </div>
+  1032→
+  1033→        {/* Footer Note */}
+  1034→        <p className="text-center text-xs text-zinc-600 mt-6">
+  1035→          Your information is secure and will never be shared with third parties.
+  1036→        </p>
+  1037→      </div>
+  1038→    </div>
+  1039→  );
+  1040→}
+  1041→

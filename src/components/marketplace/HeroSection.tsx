@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Search, ArrowRight, Sparkles, TrendingUp, Shield, ChevronDown, Zap, Globe, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/hooks/useTranslation';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface HeroSectionProps {
   onSearch: (query: string) => void;

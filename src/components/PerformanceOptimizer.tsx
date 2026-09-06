@@ -12,7 +12,7 @@
  */
 
 import React, { useEffect, useState, useRef } from 'react';
-import { motion, useInView } from 'motion/react';
+import { motion, useInView } from 'framer-motion';
 
 // ─── Types ───────────────────────────────────────────────
 

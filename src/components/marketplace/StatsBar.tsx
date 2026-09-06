@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Users, Package, ArrowLeftRight, MapPin, Star, TrendingUp, Zap } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
-import { motion, useInView } from 'motion/react';
+import { motion, useInView } from 'framer-motion';
 
 /* ── Animated Counter Hook with Motion ── */
 function useAnimatedCounter(

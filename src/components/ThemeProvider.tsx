@@ -7,7 +7,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 

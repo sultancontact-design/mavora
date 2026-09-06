@@ -1,0 +1,502 @@
+   501→  const handleRefresh = () => {
+   502→    fetchDashboardData(true);
+   503→  };
+   504→
+   505→  // Navigate to listing detail
+   506→  const handleListingClick = (listingId: string) => {
+   507→    router.push(`/listings/${listingId}`);
+   508→  };
+   509→
+   510→  // Navigate to user profile
+   511→  const handleUserClick = (userId: string) => {
+   512→    window.open(`/profile?id=${userId}`, '_blank');
+   513→  };
+   514→
+   515→  // Filter data based on search
+   516→  const filteredListings = listings.filter(l => 
+   517→    l.title.includes(searchQuery) || l.category.includes(searchQuery) || l.seller.includes(searchQuery)
+   518→  );
+   519→
+   520→  const filteredUsers = users.filter(u =>
+   521→    u.name.includes(searchQuery) || u.email.includes(searchQuery)
+   522→  );
+   523→
+   524→  // ============================================================
+   525→  // Render
+   526→  // ============================================================
+   527→
+   528→  return (
+   529→    <div className="min-h-screen bg-gray-50 dark:bg-gray-900" dir="rtl">
+   530→      {/* Sidebar */}
+   531→      <aside className="fixed right-0 top-0 h-full w-64 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 z-40">
+   532→        {/* Logo - Clickable to go home */}
+   533→        <Link href="/" className="block p-6 border-b border-gray-200 dark:border-gray-700 hover:opacity-80 transition-opacity">
+   534→          <h1 className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-emerald-500 bg-clip-text text-transparent">
+   535→            مافورا
+   536→          </h1>
+   537→          <p className="text-sm text-gray-500 dark:text-gray-400">لوحة التحكم</p>
+   538→        </Link>
+   539→
+   540→        {/* Navigation */}
+   541→        <nav className="p-4 space-y-2">
+   542→          <SidebarItem 
+   543→            icon={LayoutDashboard} 
+   544→            label="لوحة التحكم" 
+   545→            active={activeTab === 'dashboard'} 
+   546→            onClick={() => setActiveTab('dashboard')} 
+   547→            isLoading={isRefreshing}
+   548→          />
+   549→          <SidebarItem 
+   550→            icon={Users} 
+   551→            label="المستخدمون" 
+   552→            active={activeTab === 'users'} 
+   553→            onClick={() => setActiveTab('users')} 
+   554→            badge={stats.totalUsers} 
+   555→          />
+   556→          <SidebarItem 
+   557→            icon={Package} 
+   558→            label="الإعلانات" 
+   559→            active={activeTab === 'listings'} 
+   560→            onClick={() => setActiveTab('listings')} 
+   561→            badge={stats.activeListings} 
+   562→          />
+   563→          <SidebarItem 
+   564→            icon={ShoppingCart} 
+   565→            label="الطلبات" 
+   566→            active={activeTab === 'orders'} 
+   567→            onClick={() => setActiveTab('orders')} 
+   568→            badge={stats.pendingOrders} 
+   569→          />
+   570→          <SidebarItem 
+   571→            icon={MessageSquare} 
+   572→            label="الرسائل" 
+   573→            active={activeTab === 'messages'} 
+   574→            onClick={() => setActiveTab('messages')} 
+   575→          />
+   576→          <SidebarItem 
+   577→            icon={CreditCard} 
+   578→            label="المدفوعات" 
+   579→            active={activeTab === 'payments'} 
+   580→            onClick={() => setActiveTab('payments')} 
+   581→          />
+   582→          <SidebarItem 
+   583→            icon={BarChart3} 
+   584→            label="التقارير" 
+   585→            active={activeTab === 'reports'} 
+   586→            onClick={() => setActiveTab('reports')} 
+   587→          />
+   588→          <SidebarItem 
+   589→            icon={Settings} 
+   590→            label="الإعدادات" 
+   591→            active={activeTab === 'settings'} 
+   592→            onClick={() => setActiveTab('settings')} 
+   593→          />
+   594→        </nav>
+   595→
+   596→        {/* Data Source Indicator */}
+   597→        {usingMockData && !isLoading && (
+   598→          <div className="mx-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+   599→            <p className="text-xs text-yellow-700 dark:text-yellow-400 flex items-center gap-2">
+   600→              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+   601→              وضع العرض التجريبي (API غير متاح)
+   602→            </p>
+   603→          </div>
+   604→        )}
+   605→
+   606→        {/* User Info & Logout */}
+   607→        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700">
+   608→          <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+   609→            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 flex items-center justify-center text-white font-bold">
+   610→              م
+   611→            </div>
+   612→            <div className="flex-1 min-w-0">
+   613→              <p className="font-medium text-gray-900 dark:text-white truncate">مدير النظام</p>
+   614→              <p className="text-xs text-gray-500 dark:text-gray-400">Super Admin</p>
+   615→            </div>
+   616→          </div>
+   617→          <button
+   618→            onClick={handleLogout}
+   619→            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+   620→          >
+   621→            <LogOut className="w-4 h-4" />
+   622→            <span>تسجيل الخروج</span>
+   623→          </button>
+   624→        </div>
+   625→      </aside>
+   626→
+   627→      {/* Main Content */}
+   628→      <main className="mr-64 min-h-screen">
+   629→        {/* Top Header */}
+   630→        <header className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-8 py-4">
+   631→          <div className="flex items-center justify-between">
+   632→            <div className="flex items-center gap-4 flex-1">
+   633→              <div className="relative flex-1 max-w-md">
+   634→                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+   635→                <input
+   636→                  type="text"
+   637→                  placeholder="بحث..."
+   638→                  value={searchQuery}
+   639→                  onChange={(e) => setSearchQuery(e.target.value)}
+   640→                  className="w-full pr-10 pl-4 py-2.5 bg-gray-100 dark:bg-gray-700 border-0 rounded-xl focus:ring-2 focus:ring-teal-500 text-gray-900 dark:text-white placeholder-gray-500"
+   641→                  disabled={isLoading}
+   642→                />
+   643→              </div>
+   644→            </div>
+   645→            <div className="flex items-center gap-4">
+   646→              {/* Refresh Button */}
+   647→              <button
+   648→                onClick={handleRefresh}
+   649→                disabled={isRefreshing}
+   650→                className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
+   651→                title="تحديث البيانات"
+   652→              >
+   653→                <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+   654→              </button>
+   655→              
+   656→              {/* Notifications */}
+   657→              <button className="relative p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+   658→                <Bell className="w-5 h-5" />
+   659→                <span className="absolute top-1 left-1 w-2 h-2 bg-red-500 rounded-full"></span>
+   660→              </button>
+   661→              
+   662→              {/* Home Link */}
+   663→              <Link
+   664→                href="/"
+   665→                className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+   666→                title="الذهاب للموقع"
+   667→              >
+   668→                <Home className="w-5 h-5" />
+   669→              </Link>
+   670→            </div>
+   671→          </div>
+   672→        </header>
+   673→
+   674→        {/* Content Area */}
+   675→        <div className="p-8">
+   676→          {/* Loading State */}
+   677→          {isLoading && (
+   678→            <div className="flex items-center justify-center py-20">
+   679→              <div className="text-center">
+   680→                <LoadingSpinner size="lg" />
+   681→                <p className="mt-4 text-gray-500 dark:text-gray-400">جاري تحميل البيانات...</p>
+   682→              </div>
+   683→            </div>
+   684→          )}
+   685→
+   686→          {/* Error State */}
+   687→          {error && !isLoading && (
+   688→            <ErrorState message={error} onRetry={handleRefresh} />
+   689→          )}
+   690→
+   691→          {/* Content Tabs */}
+   692→          {!isLoading && (
+   693→            <>
+   694→              {/* Dashboard Tab */}
+   695→              {activeTab === 'dashboard' && (
+   696→                <div className="space-y-8">
+   697→                  <div>
+   698→                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">لوحة التحكم</h2>
+   699→                    <p className="text-gray-500 dark:text-gray-400">نظرة عامة على المنصة</p>
+   700→                  </div>
+   701→
+   702→                  {/* Stats Grid */}
+   703→                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+   704→                    <StatCard
+   705→                      title="إجمالي المستخدمين"
+   706→                      value={stats.totalUsers.toLocaleString('ar-MA')}
+   707→                      icon={Users}
+   708→                      trend="up"
+   709→                      trendValue="+12%"
+   710→                      color="blue"
+   711→                    />
+   712→                    <StatCard
+   713→                      title="الإعلانات النشطة"
+   714→                      value={stats.activeListings.toLocaleString('ar-MA')}
+   715→                      icon={Package}
+   716→                      trend="up"
+   717→                      trendValue="+8%"
+   718→                      color="green"
+   719→                    />
+   720→                    <StatCard
+   721→                      title="إجمالي الإيرادات"
+   722→                      value={`${stats.totalRevenue.toLocaleString('ar-MA')} د.م`}
+   723→                      icon={DollarSign}
+   724→                      trend="up"
+   725→                      trendValue="+15.5%"
+   726→                      color="purple"
+   727→                    />
+   728→                    <StatCard
+   729→                      title="طلبات معلقة"
+   730→                      value={stats.pendingOrders}
+   731→                      icon={Clock}
+   732→                      trend="down"
+   733→                      trendValue="-5%"
+   734→                      color="orange"
+   735→                    />
+   736→                  </div>
+   737→
+   738→                  {/* Quick Actions */}
+   739→                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+   740→                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">إجراءات سريعة</h3>
+   741→                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+   742→                      <Link href="/listings/create" className="flex flex-col items-center p-4 bg-teal-50 dark:bg-teal-900/20 rounded-xl hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-colors">
+   743→                        <Plus className="w-8 h-8 text-teal-600 mb-2" />
+   744→                        <span className="text-sm font-medium text-teal-700 dark:text-teal-400">إضافة إعلان</span>
+   745→                      </Link>
+   746→                      <Link href="/admin?tab=users" className="flex flex-col items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
+   747→                        <Users className="w-8 h-8 text-blue-600 mb-2" />
+   748→                        <span className="text-sm font-medium text-blue-700 dark:text-blue-400">المستخدمون</span>
+   749→                      </Link>
+   750→                      <Link href="/admin?tab=orders" className="flex flex-col items-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
+   751→                        <ShoppingCart className="w-8 h-8 text-purple-600 mb-2" />
+   752→                        <span className="text-sm font-medium text-purple-700 dark:text-purple-400">الطلبات</span>
+   753→                      </Link>
+   754→                      <Link href="/" className="flex flex-col items-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors">
+   755→                        <Home className="w-8 h-8 text-orange-600 mb-2" />
+   756→                        <span className="text-sm font-medium text-orange-700 dark:text-orange-400">الموقع الرئيسي</span>
+   757→                      </Link>
+   758→                    </div>
+   759→                  </div>
+   760→
+   761→                  {/* Recent Activity */}
+   762→                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+   763→                    {/* Recent Listings */}
+   764→                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+   765→                      <div className="flex items-center justify-between mb-4">
+   766→                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">آخر الإعلانات</h3>
+   767→                        <button 
+   768→                          onClick={() => setActiveTab('listings')}
+   769→                          className="text-sm text-teal-600 hover:text-teal-700"
+   770→                        >
+   771→                          عرض الكل
+   772→                        </button>
+   773→                      </div>
+   774→                      <div className="space-y-3">
+   775→                        {listings.slice(0, 5).map((listing) => (
+   776→                          <div 
+   777→                            key={listing.id} 
+   778→                            onClick={() => handleListingClick(listing.id)}
+   779→                            className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+   780→                          >
+   781→                            <span className="text-2xl">{listing.image || '📦'}</span>
+   782→                            <div className="flex-1 min-w-0">
+   783→                              <p className="font-medium text-gray-900 dark:text-white truncate">{listing.title}</p>
+   784→                              <p className="text-sm text-gray-500 dark:text-gray-400">{listing.seller}</p>
+   785→                            </div>
+   786→                            <div className="text-left">
+   787→                              <p className="font-semibold text-gray-900 dark:text-white">{listing.price.toLocaleString()} د.م</p>
+   788→                              <StatusBadge status={listing.status} />
+   789→                            </div>
+   790→                          </div>
+   791→                        ))}
+   792→                      </div>
+   793→                    </div>
+   794→
+   795→                    {/* Recent Users */}
+   796→                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+   797→                      <div className="flex items-center justify-between mb-4">
+   798→                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">آخر المستخدمين</h3>
+   799→                        <button 
+   800→                          onClick={() => setActiveTab('users')}
+   801→                          className="text-sm text-teal-600 hover:text-teal-700"
+   802→                        >
+   803→                          عرض الكل
+   804→                        </button>
+   805→                      </div>
+   806→                      <div className="space-y-3">
+   807→                        {users.slice(0, 5).map((user) => (
+   808→                          <div 
+   809→                            key={user.id} 
+   810→                            onClick={() => handleUserClick(user.id)}
+   811→                            className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+   812→                          >
+   813→                            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 flex items-center justify-center text-white font-bold">
+   814→                              {user.name.charAt(0)}
+   815→                            </div>
+   816→                            <div className="flex-1 min-w-0">
+   817→                              <p className="font-medium text-gray-900 dark:text-white truncate">{user.name}</p>
+   818→                              <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+   819→                            </div>
+   820→                            <div className="text-left">
+   821→                              <StatusBadge status={user.status} />
+   822→                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{user.role}</p>
+   823→                            </div>
+   824→                          </div>
+   825→                        ))}
+   826→                      </div>
+   827→                    </div>
+   828→                  </div>
+   829→                </div>
+   830→              )}
+   831→
+   832→              {/* Users Tab */}
+   833→              {activeTab === 'users' && (
+   834→                <div className="space-y-6">
+   835→                  <div className="flex items-center justify-between">
+   836→                    <div>
+   837→                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">المستخدمون</h2>
+   838→                      <p className="text-gray-500 dark:text-gray-400">إدارة حسابات المستخدمين ({users.length})</p>
+   839→                    </div>
+   840→                    <button className="flex items-center gap-2 px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors">
+   841→                      <Plus className="w-4 h-4" />
+   842→                      إضافة مستخدم
+   843→                    </button>
+   844→                  </div>
+   845→
+   846→                  {filteredUsers.length === 0 ? (
+   847→                    <EmptyState 
+   848→                      message="لا يوجد مستخدمون مطابقون لبحثك" 
+   849→                      actionLabel="مسح البحث"
+   850→                      onAction={() => setSearchQuery('')}
+   851→                    />
+   852→                  ) : (
+   853→                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+   854→                      <table className="w-full">
+   855→                        <thead className="bg-gray-50 dark:bg-gray-700/50">
+   856→                          <tr>
+   857→                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">المستخدم</th>
+   858→                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">الدور</th>
+   859→                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">الحالة</th>
+   860→                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">الإعلانات</th>
+   861→                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">آخر تسجيل</th>
+   862→                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">إجراءات</th>
+   863→                          </tr>
+   864→                        </thead>
+   865→                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+   866→                          {filteredUsers.map((user) => (
+   867→                            <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+   868→                              <td className="px-6 py-4 whitespace-nowrap">
+   869→                                <div className="flex items-center gap-3">
+   870→                                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 flex items-center justify-center text-white font-bold">
+   871→                                    {user.name.charAt(0)}
+   872→                                  </div>
+   873→                                  <div>
+   874→                                    <p className="font-medium text-gray-900 dark:text-white">{user.name}</p>
+   875→                                    <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
+   876→                                  </div>
+   877→                                </div>
+   878→                              </td>
+   879→                              <td className="px-6 py-4 whitespace-nowrap">
+   880→                                <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+   881→                                  {user.role}
+   882→                                </span>
+   883→                              </td>
+   884→                              <td className="px-6 py-4 whitespace-nowrap">
+   885→                                <StatusBadge status={user.status} />
+   886→                              </td>
+   887→                              <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-white">
+   888→                                {user.listingsCount}
+   889→                              </td>
+   890→                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+   891→                                {user.lastLogin}
+   892→                              </td>
+   893→                              <td className="px-6 py-4 whitespace-nowrap text-left">
+   894→                                <div className="flex items-center gap-2">
+   895→                                  <button className="p-1 text-gray-500 hover:text-blue-600">
+   896→                                    <Eye className="w-4 h-4" />
+   897→                                  </button>
+   898→                                  <button className="p-1 text-gray-500 hover:text-green-600">
+   899→                                    <Edit className="w-4 h-4" />
+   900→                                  </button>
+   901→                                  <button className="p-1 text-gray-500 hover:text-red-600">
+   902→                                    <Trash2 className="w-4 h-4" />
+   903→                                  </button>
+   904→                                </div>
+   905→                              </td>
+   906→                            </tr>
+   907→                          ))}
+   908→                        </tbody>
+   909→                      </table>
+   910→                    </div>
+   911→                  )}
+   912→                </div>
+   913→              )}
+   914→
+   915→              {/* Listings Tab */}
+   916→              {activeTab === 'listings' && (
+   917→                <div className="space-y-6">
+   918→                  <div className="flex items-center justify-between">
+   919→                    <div>
+   920→                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">الإعلانات</h2>
+   921→                      <p className="text-gray-500 dark:text-gray-400">إدارة جميع الإعلانات ({listings.length})</p>
+   922→                    </div>
+   923→                    <Link href="/listings/create" className="flex items-center gap-2 px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors">
+   924→                      <Plus className="w-4 h-4" />
+   925→                      إضافة إعلان
+   926→                    </Link>
+   927→                  </div>
+   928→
+   929→                  {filteredListings.length === 0 ? (
+   930→                    <EmptyState 
+   931→                      message="لا توجد إعلانات مطابقة لبحثك" 
+   932→                      actionLabel="مسح البحث"
+   933→                      onAction={() => setSearchQuery('')}
+   934→                    />
+   935→                  ) : (
+   936→                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+   937→                      {filteredListings.map((listing) => (
+   938→                        <div 
+   939→                          key={listing.id}
+   940→                          onClick={() => handleListingClick(listing.id)}
+   941→                          className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 cursor-pointer hover:shadow-md transition-shadow"
+   942→                        >
+   943→                          <div className="aspect-video bg-gray-100 dark:bg-gray-700 rounded-lg mb-4 flex items-center justify-center text-4xl">
+   944→                            {listing.image || '📦'}
+   945→                          </div>
+   946→                          <h3 className="font-semibold text-gray-900 dark:text-white mb-1 line-clamp-1">{listing.title}</h3>
+   947→                          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{listing.category} • {listing.seller}</p>
+   948→                          <div className="flex items-center justify-between">
+   949→                            <p className="text-lg font-bold text-teal-600">{listing.price.toLocaleString()} د.م</p>
+   950→                            <StatusBadge status={listing.status} />
+   951→                          </div>
+   952→                          <div className="flex items-center justify-between mt-2 text-sm text-gray-500 dark:text-gray-400">
+   953→                            <span className="flex items-center gap-1">
+   954→                              <Eye className="w-4 h-4" />
+   955→                              {listing.views}
+   956→                            </span>
+   957→                            <span>{listing.createdAt}</span>
+   958→                          </div>
+   959→                        </div>
+   960→                      ))}
+   961→                    </div>
+   962→                  )}
+   963→                </div>
+   964→              )}
+   965→
+   966→              {/* Orders Tab */}
+   967→              {activeTab === 'orders' && (
+   968→                <div className="space-y-6">
+   969→                  <div>
+   970→                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">الطلبات</h2>
+   971→                    <p className="text-gray-500 dark:text-gray-400">تتبع وإدارة الطلبات ({orders.length})</p>
+   972→                  </div>
+   973→
+   974→                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+   975→                    <table className="w-full">
+   976→                      <thead className="bg-gray-50 dark:bg-gray-700/50">
+   977→                        <tr>
+   978→                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">رقم الطلب</th>
+   979→                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">المشتري</th>
+   980→                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">المنتج</th>
+   981→                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">المبلغ</th>
+   982→                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">الحالة</th>
+   983→                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">التاريخ</th>
+   984→                        </tr>
+   985→                      </thead>
+   986→                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+   987→                        {orders.map((order) => (
+   988→                          <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+   989→                            <td className="px-6 py-4 whitespace-nowrap font-mono text-sm text-gray-900 dark:text-white">{order.id}</td>
+   990→                            <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-white">{order.buyer}</td>
+   991→                            <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-white">{order.item}</td>
+   992→                            <td className="px-6 py-4 whitespace-nowrap font-semibold text-gray-900 dark:text-white">{order.amount.toLocaleString()} د.م</td>
+   993→                            <td className="px-6 py-4 whitespace-nowrap">
+   994→                              <StatusBadge status={order.status} />
+   995→                            </td>
+   996→                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{order.date}</td>
+   997→                          </tr>
+   998→                        ))}
+   999→                      </tbody>
+  1000→                    </table>
+
+[showing lines 501-1000 of 1116; use offset=1001 with limit to continue reading]

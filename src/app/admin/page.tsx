@@ -1,8 +1,11 @@
-// Admin Dashboard Page
-// This page is wrapped by the admin layout which handles authentication and renders the full dashboard
+import SuperAdminDashboard from '@/components/admin/SuperAdminDashboard';
+
+export const metadata = {
+  title: 'لوحة تحكم المسؤول - مافورا',
+  description: 'Mavora Admin Dashboard - Manage users, listings, orders and more',
+  robots: { index: false, follow: false },
+};
 
 export default function AdminPage() {
-  // The actual content is rendered by the layout (AdminDashboard component)
-  // This file exists to define the /admin route
-  return null;
+  return <SuperAdminDashboard />;
 }

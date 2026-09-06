@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8fafc"/>
+      <stop offset="100%" style="stop-color:#e2e8f0"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1080" height="1920" fill="url(#bg2)"/>
+  
+  <!-- Status Bar -->
+  <rect width="1080" height="60" fill="#2563eb"/>
+  <text x="540" y="40" font-family="Arial" font-size="24" fill="white" text-anchor="middle">9:41</text>
+  
+  <!-- Header with back button -->
+  <rect x="0" y="60" width="1080" height="100" fill="#2563eb"/>
+  <text x="60" y="120" font-family="Arial" font-size="32" fill="white">←</text>
+  <text x="540" y="120" font-family="Arial" font-size="28" fill="white" text-anchor="middle">تفاصيل الإعلان</text>
+  <text x="1020" y="120" font-family="Arial" font-size="32" fill="white" text-anchor="end">❤️</text>
+  
+  <!-- Main Image -->
+  <rect x="0" y="160" width="1080" height="700" fill="#cbd5e1"/>
+  <text x="540" y="520" font-family="Arial" font-size="96" text-anchor="middle">📸</text>
+  <text x="540" y="600" font-family="Arial" font-size="24" fill="#6b7280" text-anchor="middle">صورة المنتج</text>
+  
+  <!-- Image Indicators -->
+  <g transform="translate(460, 830)">
+    <circle cx="30" cy="15" r="12" fill="#2563eb"/>
+    <circle cx="80" cy="15" r="12" fill="#d1d5db"/>
+    <circle cx="130" cy="15" r="12" fill="#d1d5db"/>
+    <circle cx="180" cy="15" r="12" fill="#d1d5db"/>
+  </g>
+  
+  <!-- Content Card -->
+  <rect x="20" y="870" width="1040" rx="20" fill="white"/>
+  
+  <!-- Title and Price -->
+  <text x="50" y="930" font-family="Arial" font-size="36" font-weight="bold" fill="#1f2937">iPhone 15 Pro Max - 256GB</text>
+  <text x="50" y="980" font-family="Arial" font-size="42" font-weight="bold" fill="#16a34a">12,500 درهم</text>
+  
+  <!-- Location and Date -->
+  <g transform="translate(50, 1020)" font-family="Arial" font-size="22" fill="#6b7280">
+    <text x="0" y="0">📍 الدار البيضاء، المغرب</text>
+    <text x="400" y="0">🕐 منذ ساعتين</text>
+  </g>
+  
+  <!-- Seller Info -->
+  <rect x="20" y="1070" width="1040" height="140" rx="16" fill="#f8fafc" stroke="#e5e7eb"/>
+  <circle cx="100" cy="1140" r="40" fill="#dbeafe"/>
+  <text x="100" y="1155" font-family="Arial" font-size="32" text-anchor="middle">👤</text>
+  <text x="170" y="1120" font-family="Arial" font-size="26" font-weight="bold" fill="#1f2937">أحمد محمد</text>
+  <g transform="translate(170, 1150)" font-family="Arial" font-size="20">
+    <text x="0" y="0" fill="#16a34a">✓ حساب موثق</text>
+    <text x="200" y="0" fill="#6b7280">⭐ 4.8 (125 تقييم)</text>
+  </g>
+  <rect x="850" y="1100" width="180" height="70" rx="14" fill="#2563eb"/>
+  <text x="940" y="1145" font-family="Arial" font-size="22" fill="white" text-anchor="middle">تواصل</text>
+  
+  <!-- Description -->
+  <rect x="20" y="1230" width="1040" height="280" rx="16" fill="white"/>
+  <text x="50" y="1280" font-family="Arial" font-size="28" font-weight="bold" fill="#1f2937">الوصف</text>
+  <text x="50" y="1330" font-family="Arial" font-size="22" fill="#4b5563">
+    <tspan x="50" dy="0">iPhone 15 Pro Max بحالة ممتازة، لون تيتانيوم طبيعي.</tspan>
+    <tspan x="50" dy="35">- سعة تخزين: 256 جيجابايت</tspan>
+    <tspan x="50" dy="35">- اللون: Natural Titanium</tspan>
+    <tspan x="50" dy="35">- الحالة: مستعمل مثل الجديد (أسبوعين فقط)</tspan>
+    <tspan x="50" dy="35">- يأتي مع الصندوق والشاحن والكابل</tspan>
+  </text>
+  
+  <!-- Action Buttons -->
+  <rect x="20" y="1540" width="500" height="90" rx="20" stroke="#2563eb" stroke-width="3" fill="white"/>
+  <text x="270" y="1598" font-family="Arial" font-size="26" fill="#2563eb" text-anchor="middle">❤️ أضف للمفضلة</text>
+  
+  <rect x="560" y="1540" width="500" height="90" rx="20" fill="#2563eb"/>
+  <text x="810" y="1598" font-family="Arial" font-size="26" fill="white" text-anchor="middle">💬 ارسل رسالة</text>
+  
+  <!-- Safety Tips -->
+  <rect x="20" y="1660" width="1040" height="200" rx="16" fill="#fef3c7"/>
+  <text x="50" y="1710" font-family="Arial" font-size="24" font-weight="bold" fill="#92400e">⚠️ نصائح الأمان</text>
+  <g font-family="Arial" font-size="20" fill="#92400e">
+    <text x="50" y="1750">• لا تحول أموالاً قبل استلام المنتج</text>
+    <text x="50" y="1785">• قم باللقاء في مكان عام</text>
+    <text x="50" y="1820">• افحص المنتج قبل الدفع</text>
+  </g>
+  
+  <!-- Bottom spacing for home indicator -->
+  <rect x="450" y="1880" width="180" height="6" rx="3" fill="#000000"/>
+</svg>

@@ -154,8 +154,8 @@ describe('Password Reset - Confirm Validation', () => {
     it('should reject very long password', () => {
       const result = resetPasswordConfirmSchema.safeParse({
         ...validData,
-        password: `${'a'.repeat(129}`,
-        confirmPassword: `${'a'.copyWithin(0, 0, 129)}`,
+        password: 'a'.repeat(129),
+        confirmPassword: 'a'.repeat(129),
       });
       
       expect(result.success).toBe(false);
@@ -219,10 +219,11 @@ describe('Password Reset - Security Considerations', () => {
         { email: '', shouldSucceed: false }, // Validation error
       ];
 
-      responses.forEach(({ email, shouldSucceed }) {
+      for (const response of responses) {
+        const { email, shouldSucceed } = response;
         const result = resetPasswordRequestSchema.safeParse({ email });
         expect(result.success).toBe(shouldSucceed);
-      });
+      }
     });
   });
 

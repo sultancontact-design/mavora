@@ -1,0 +1,60 @@
+# ===========================================
+# Mavora - Prettier Ignore
+# Files and directories to ignore
+# ===========================================
+
+# Dependencies
+node_modules
+
+# Build outputs
+.next
+out
+build
+dist
+coverage
+
+# Generated files
+*.min.js
+*.min.css
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Config files (keep their formatting)
+*.config.js
+*.config.ts
+.prettierrc*
+.eslintrc*
+
+# Markdown files with special formatting
+CHANGELOG.md
+LICENSE
+
+# Logs
+*.log
+
+# Environment
+.env*
+!.env.example
+
+# Version control
+.git
+.gitignore
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+tmp/
+temp/
+.cache/
+
+# Database
+*.db
+*.sqlite

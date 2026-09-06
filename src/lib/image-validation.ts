@@ -56,7 +56,7 @@ export function validateImage(file: Partial<ImageFile>): ImageValidationResult {
   // Validate MIME type
   if (file.type && !ALLOWED_IMAGE_TYPES.includes(file.type as typeof ALLOWED_IMAGE_TYPES[number])) {
     errors.push(
-      `نوع الملف غير مدعوم: ${file类型}. الأنواع المسموحة: ${ALLOWED_IMAGE_TYPES.join(', ')}`
+      `نوع الملف غير مدعوم: ${file.type}. الأنواع المسموحة: ${ALLOWED_IMAGE_TYPES.join(', ')}`
     );
   }
 

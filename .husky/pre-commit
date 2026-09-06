@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+# ===========================================
+# Mavora - Pre-commit Hook
+# Runs before each commit
+# ===========================================
+
+echo "🔍 Running pre-commit checks..."
+
+# Run lint-staged
+npx lint-staged
+
+# Check if there are any staged changes after linting
+if git diff --cached --quiet; then
+  echo "✅ Pre-commit checks passed!"
+  exit 0
+else
+  echo "⚠️ Linting made changes. Please review and stage them."
+  exit 1
+fi

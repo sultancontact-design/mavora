@@ -1,95 +1,129 @@
+/**
+ * API الإشعارات
+ * Notifications API
+ * 
+ * @endpoints
+ * GET /api/notifications - جلب إشعارات المستخدم
+ * POST /api/notifications - إنشاء إشعار جديد (admin)
+ * PUT /api/notifications/read-all - تحديد الكل كمقروء
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseServerClient } from '@/lib/supabase';
-import type { PaginatedResponse } from '@/lib/types';
+import { supabase } from '@/lib/supabase';
+import {
+  getUserNotifications,
+  markAllNotificationsAsRead,
+  getUnreadNotificationCount,
+  deleteReadNotifications,
+} from '@/lib/notification-service';
+
+// ==================== GET - جلب الإشعارات ====================
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
-    const {
-      data: { session },
-      error: authError,
-    } = await supabase.auth.getSession();
-
-    if (authError || !session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const userId = session.user.id;
-    const { searchParams } = new URL(request.url);
-    const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10));
-    const per_page = Math.min(50, Math.max(1, parseInt(searchParams.get('per_page') ?? '20', 10)));
-
-    // Mark all as read when fetching
-    await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('user_id', userId)
-      .eq('is_read', false);
-
-    const from = (page - 1) * per_page;
-    const to = from + per_page - 1;
-
-    const { data, error, count } = await supabase
-      .from('notifications')
-      .select('*', { count: 'exact' })
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .range(from, to);
-
-    if (error) {
-      console.error('Notifications fetch error:', error);
-      return NextResponse.json({ error: 'Failed to fetch notifications' }, { status: 500 });
-    }
-
-    const total = count ?? 0;
-    const total_pages = Math.max(1, Math.ceil(total / per_page));
-
-    const response: PaginatedResponse<Record<string, unknown>> = {
-      data: (data ?? []).map((n) => ({
-        ...n,
-        data: typeof n.data === 'string' ? JSON.parse(n.data) : (n.data ?? {}),
-      })),
-      total,
-      page,
-      per_page,
-      total_pages,
+    const userId = request.headers.get('x-user-id') || 'demo-user';
+    const searchParams = request.nextUrl.searchParams;
+    
+    const options = {
+      limit: parseInt(searchParams.get('limit') || '20', 10),
+      offset: parseInt(searchParams.get('offset') || '0', 10),
+      unreadOnly: searchParams.get('unread_only') === 'true',
+      type: searchParams.get('type') as any || undefined,
     };
-
-    return NextResponse.json(response);
+    
+    const { notifications, total } = await getUserNotifications(userId, options);
+    const unreadCount = await getUnreadNotificationCount(userId);
+    
+    return NextResponse.json({
+      notifications,
+      total,
+      unread_count: unreadCount,
+    });
   } catch (error) {
-    console.error('Notifications error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('خطأ في جلب الإشعارات:', error);
+    return NextResponse.json(
+      { error: 'حدث خطأ أثناء جلب الإشعارات' },
+      { status: 500 }
+    );
   }
 }
 
-export async function PATCH(request: NextRequest) {
+// ==================== POST - إنشاء إشعار ====================
+
+export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
-    const {
-      data: { session },
-      error: authError,
-    } = await supabase.auth.getSession();
-
-    if (authError || !session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const requestBody = await request.json();
+    const { user_id, type, title, body, ...rest } = requestBody;
+    
+    if (!user_id || !type || !title || !body) {
+      return NextResponse.json(
+        { error: 'الحقول المطلوبة: user_id, type, title, body' },
+        { status: 400 }
+      );
     }
-
-    const userId = session.user.id;
-
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('user_id', userId)
-      .eq('is_read', false);
-
-    if (error) {
-      console.error('Mark all read error:', error);
-      return NextResponse.json({ error: 'Failed to mark notifications as read' }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true });
+    
+    // التحقق من الصلاحيات (في الإنتاج)
+    // const isAdmin = await checkAdminRole(request);
+    // if (!isAdmin) {
+    //   return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+    // }
+    
+    const { createNotification } = await import('@/lib/notification-service');
+    const notification = await createNotification({
+      userId: user_id,
+      type,
+      title,
+      body,
+      ...rest,
+    });
+    
+    return NextResponse.json({ 
+      notification, 
+      success: true 
+    }, { status: 201 });
   } catch (error) {
-    console.error('Notifications mark read error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('خطأ في إنشاء الإشعار:', error);
+    return NextResponse.json(
+      { error: 'حدث خطأ أثناء إنشاء الإشعار' },
+      { status: 500 }
+    );
+  }
+}
+
+// ==================== PUT - تحديث الإشعارات ====================
+
+export async function PUT(request: NextRequest) {
+  try {
+    const userId = request.headers.get('x-user-id') || 'demo-user';
+    const body = await request.json();
+    const { action } = body;
+    
+    switch (action) {
+      case 'mark_all_read':
+        await markAllNotificationsAsRead(userId);
+        return NextResponse.json({ 
+          success: true, 
+          message: 'تم تحديد جميع الإشعارات كمقروءة' 
+        });
+        
+      case 'delete_read':
+        await deleteReadNotifications(userId);
+        return NextResponse.json({ 
+          success: true, 
+          message: 'تم حذف الإشعارات المقروءة' 
+        });
+        
+      default:
+        return NextResponse.json(
+          { error: 'إجراء غير معروف' },
+          { status: 400 }
+        );
+    }
+  } catch (error) {
+    console.error('خطأ في تحديث الإشعارات:', error);
+    return NextResponse.json(
+      { error: 'حدث خطأ أثناء التحديث' },
+      { status: 500 }
+    );
   }
 }

@@ -1,0 +1,594 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import { useEffect, useState, useCallback } from 'react';
+     4→     4→import Link from 'next/link';
+     5→     5→import { useRouter } from 'next/navigation';
+     6→     6→import { Button } from '@/components/ui/button';
+     7→     7→import { Card, CardContent } from '@/components/ui/card';
+     8→     8→import { Badge } from '@/components/ui/badge';
+     9→     9→import { Skeleton } from '@/components/ui/skeleton';
+    10→    10→import { useTranslation } from '@/hooks/useTranslation';
+    11→    11→import { useNavigationInit } from '@/hooks/useNavigationInit';
+    12→    12→import MavoraLogo from '@/components/common/MavoraLogo';
+    13→    13→import ListingCard from '@/components/listing/ListingCard';
+    14→    14→import { 
+    15→    15→  TrendingUp, 
+    16→    16→  Shield, 
+    17→    17→  Users, 
+    18→    18→  Globe,
+    19→    19→  ArrowRight,
+    20→    20→  Star,
+    21→    21→  CheckCircle2,
+    22→    22→  Zap,
+    23→    23→  Heart,
+    24→    24→  MapPin,
+    25→    25→  Loader2,
+    26→    26→  Search,
+    27→    27→  Car,
+    28→    28→  Home,
+    29→    29→  Smartphone,
+    30→    30→  Briefcase,
+    31→    31→  Wrench,
+    32→    32→  Shirt,
+    33→    33→  Gamepad2,
+    34→    34→  Dumbbell,
+    35→    35→  BookOpen,
+    36→    36→  PawPrint,
+    37→    37→  Baby,
+    38→    38→  Flower2
+    39→    39→} from 'lucide-react';
+    40→    40→import type { Listing, Category } from '@/lib/types';
+    41→    41→
+    42→    42→// Categories with icons for the homepage - using translation keys
+    43→    43→const CATEGORIES_DATA = [
+    44→    44→  { id: 'vehicles', slug: 'vehicles', key: 'categories.vehicles', icon: Car, color: 'from-blue-500 to-blue-600', bgLight: 'bg-blue-50' },
+    45→    45→  { id: 'real-estate', slug: 'real-estate', key: 'categories.real_estate', icon: Home, color: 'from-emerald-500 to-emerald-600', bgLight: 'bg-emerald-50' },
+    46→    46→  { id: 'electronics', slug: 'electronics', key: 'categories.electronics', icon: Smartphone, color: 'from-violet-500 to-violet-600', bgLight: 'bg-violet-50' },
+    47→    47→  { id: 'jobs', slug: 'jobs', key: 'categories.jobs', icon: Briefcase, color: 'from-coral to-coral-dark', bgLight: 'bg-orange-50' },
+    48→    48→  { id: 'services', slug: 'services', key: 'categories.services', icon: Wrench, color: 'from-cyan-500 to-cyan-600', bgLight: 'bg-cyan-50' },
+    49→    49→  { id: 'fashion', slug: 'fashion', key: 'categories.fashion', icon: Shirt, color: 'from-pink-500 to-pink-600', bgLight: 'bg-pink-50' },
+    50→    50→  { id: 'sports', slug: 'sports', key: 'categories.sports', icon: Dumbbell, color: 'from-green-500 to-green-600', bgLight: 'bg-green-50' },
+    51→    51→  { id: 'home-garden', slug: 'home-garden', key: 'categories.home', icon: Flower2, color: 'from-lime-500 to-lime-600', bgLight: 'bg-lime-50' },
+    52→    52→  { id: 'education', slug: 'education', key: 'categories.education', icon: BookOpen, color: 'from-indigo-500 to-indigo-600', bgLight: 'bg-indigo-50' },
+    53→    53→  { id: 'animals', slug: 'animals', key: 'categories.animals', icon: PawPrint, color: 'from-amber-500 to-amber-600', bgLight: 'bg-amber-50' },
+    54→    54→  { id: 'kids', slug: 'kids', key: 'categories.kids', icon: Baby, color: 'from-red-400 to-red-500', bgLight: 'bg-red-50' },
+    55→    55→  { id: 'entertainment', slug: 'entertainment', key: 'categories.entertainment', icon: Gamepad2, color: 'from-purple-500 to-purple-600', bgLight: 'bg-purple-50' },
+    56→    56→];
+    57→    57→
+    58→    58→export default function HomePage() {
+    59→    59→  const { t, locale } = useTranslation();
+    60→    60→  const router = useRouter();
+    61→    61→  
+    62→    62→  // Initialize navigation router
+    63→    63→  useNavigationInit();
+    64→    64→  
+    65→    65→  const [featuredListings, setFeaturedListings] = useState<Listing[]>([]);
+    66→    66→  const [categories, setCategories] = useState<Category[]>([]);
+    67→    67→  const [isLoading, setIsLoading] = useState(true);
+    68→    68→  const [stats, setStats] = useState<{ listings: number; users: number; categories: number; cities: number } | null>(null);
+    69→    69→  const [searchQuery, setSearchQuery] = useState('');
+    70→    70→
+    71→    71→  const isRtl = locale === 'ar';
+    72→    72→
+    73→    73→  // Fetch data on mount
+    74→    74→  useEffect(() => {
+    75→    75→    fetchHomePageData();
+    76→    76→  }, []);
+    77→    77→
+    78→    78→  const fetchHomePageData = async () => {
+    79→    79→    try {
+    80→    80→      setIsLoading(true);
+    81→    81→      
+    82→    82→      // Fetch featured listings (using correct API parameters)
+    83→    83→      const listingsRes = await fetch('/api/listings?per_page=8&sort_by=popular');
+    84→    84→      if (listingsRes.ok) {
+    85→    85→        const listingsData = await listingsRes.json();
+    86→    86→        setFeaturedListings(listingsData.data || []);
+    87→    87→      }
+    88→    88→
+    89→    89→      // Fetch real categories from API
+    90→    90→      try {
+    91→    91→        const categoriesRes = await fetch('/api/categories');
+    92→    92→        if (categoriesRes.ok) {
+    93→    93→          const categoriesData = await categoriesRes.json();
+    94→    94→          setCategories(categoriesData || []);
+    95→    95→        }
+    96→    96→      } catch (catError) {
+    97→    97→        console.warn('Categories not available:', catError);
+    98→    98→      }
+    99→    99→
+   100→   100→      // Fetch stats from public endpoint (no auth required)
+   101→   101→      try {
+   102→   102→        const statsRes = await fetch('/api/public/stats');
+   103→   103→        if (statsRes.ok) {
+   104→   104→          const statsData = await statsRes.json();
+   105→   105→          setStats({
+   106→   106→            listings: statsData.totalListings || 0,
+   107→   107→            users: statsData.totalUsers || 0,
+   108→   108→            categories: statsData.totalCategories || 0,
+   109→   109→            cities: statsData.totalCities || 0,
+   110→   110→          });
+   111→   111→        }
+   112→   112→      } catch (statsError) {
+   113→   113→        console.warn('Stats not available:', statsError);
+   114→   114→      }
+   115→   115→    } catch (error) {
+   116→   116→      console.error('Error fetching home page data:', error);
+   117→   117→    } finally {
+   118→   118→      setIsLoading(false);
+   119→   119→    }
+   120→   120→  };
+   121→   121→
+   122→   122→  const handleSearch = useCallback((e?: React.FormEvent) => {
+   123→   123→    if (e) e.preventDefault();
+   124→   124→    if (searchQuery.trim()) {
+   125→   125→      router.push(`/listings?q=${encodeURIComponent(searchQuery.trim())}`);
+   126→   126→    }
+   127→   127→  }, [searchQuery, router]);
+   128→   128→
+   129→   129→  const handleCategoryClick = (categoryId: string) => {
+   130→   130→    router.push(`/listings?category=${categoryId}`);
+   131→   131→  };
+   132→   132→
+   133→   133→  // Format number for display
+   134→   134→  const formatNumber = (num: number): string => {
+   135→   135→    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M+`;
+   136→   136→    if (num >= 1000) return `${(num / 1000).toFixed(num >= 10000 ? 0 : 1)}K+`;
+   137→   137→    return num.toString();
+   138→   138→  };
+   139→   139→
+   140→   140→  return (
+   141→   141→    <div className="min-h-screen bg-[#FAFAFA]">
+   142→   142→      {/* ── Hero Section ── */}
+   143→   143→      <section className="relative overflow-hidden bg-gradient-to-br from-teal-700 via-teal-600 to-emerald-600 px-4 py-16 sm:py-20 lg:py-28">
+   144→   144→        {/* Background Decorations */}
+   145→   145→        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+   146→   146→          <div className="absolute -start-32 -top-32 size-[500px] rounded-full bg-white/10 blur-3xl" />
+   147→   147→          <div className="absolute -end-24 top-1/4 size-[400px] rounded-full bg-emerald-400/20 blur-3xl" />
+   148→   148→          <div className="absolute -bottom-20 start-1/3 size-[350px] rounded-full bg-gold/15 blur-3xl" />
+   149→   149→          {/* Grid Pattern */}
+   150→   150→          <svg className="absolute inset-0 w-full h-full opacity-5" xmlns="http://www.w3.org/2000/svg">
+   151→   151→            <defs>
+   152→   152→              <pattern id="hero-grid" width="60" height="60" patternUnits="userSpaceOnUse">
+   153→   153→                <path d="M 60 0 L 0 0 0 60" fill="none" stroke="white" strokeWidth="0.5"/>
+   154→   154→              </pattern>
+   155→   155→            </defs>
+   156→   156→            <rect width="100%" height="100%" fill="url(#hero-grid)" />
+   157→   157→          </svg>
+   158→   158→        </div>
+   159→   159→
+   160→   160→        <div className="relative mx-auto max-w-5xl text-center">
+   161→   161→          {/* Logo & Badge */}
+   162→   162→          <div className="mb-6 flex justify-center">
+   163→   163→            <div className="p-4 rounded-2xl bg-white/15 backdrop-blur-sm">
+   164→   164→              <MavoraLogo size="lg" className="text-white" />
+   165→   165→            </div>
+   166→   166→          </div>
+   167→   167→          
+   168→   168→          <div className="mb-6 flex justify-center">
+   169→   169→            <div className="inline-flex items-center gap-2.5 rounded-full bg-white/15 px-5 py-2 text-sm font-medium text-white/90 backdrop-blur-sm border border-white/10">
+   170→   170→              <SparklesIcon className="size-4 text-gold" />
+   171→   171→              <span>{t('home.largest_marketplace')}</span>
+   172→   172→              <TrendingUp className="size-4 text-emerald-300" />
+   173→   173→            </div>
+   174→   174→          </div>
+   175→   175→
+   176→   176→          {/* Main Heading */}
+   177→   177→          <h1 className="mb-6 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white">
+   178→   178→            <span className="block">{t('home.search_sell_trade')}</span>
+   179→   179→            <span className="block mt-2 sm:mt-3">
+   180→   180→              <span className="bg-gradient-to-l from-gold via-gold-light to-gold bg-clip-text text-transparent">
+   181→   181→                {t('home.in_one_place')}
+   182→   182→              </span>
+   183→   183→            </span>
+   184→   184→          </h1>
+   185→   185→
+   186→   186→          {/* Subtitle */}
+   187→   187→          <p className="mx-auto mb-10 max-w-2xl text-base sm:text-lg leading-relaxed text-white/80">
+   188→   188→            {t('hero.subtitle')}
+   189→   189→          </p>
+   190→   190→
+   191→   191→          {/* Search Bar */}
+   192→   192→          <form onSubmit={handleSearch} className="mx-auto max-w-3xl">
+   193→   193→            <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-0">
+   194→   194→              <div className="relative flex-1">
+   195→   195→                <Search className={`absolute ${isRtl ? 'end-4' : 'start-4'} top-1/2 size-5 -translate-y-1/2 text-white/60`} />
+   196→   196→                <input
+   197→   197→                  type="search"
+   198→   198→                  value={searchQuery}
+   199→   199→                  onChange={(e) => setSearchQuery(e.target.value)}
+   200→   200→                  placeholder={t('hero.search_placeholder')}
+   201→   201→                  className={`h-14 w-full rounded-2xl border-0 bg-white/95 pe-36 ps-12 text-base text-gray-900 shadow-xl backdrop-blur-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:bg-white sm:rounded-r-none sm:pe-44`}
+   202→   202→                  dir="ltr"
+   203→   203→                />
+   204→   204→                <Button
+   205→   205→                  type="submit"
+   206→   206→                  className={`absolute ${isRtl ? 'start-2.5' : 'end-2.5'} top-1/2 h-10 -translate-y-1/2 rounded-xl bg-gradient-to-r from-coral to-coral-light px-5 text-sm font-bold text-white shadow-lg shadow-coral/30 hover:shadow-coral/40 transition-all hidden sm:inline-flex`}
+   207→   207→                >
+   208→   208→                  {t('common.search')}
+   209→   209→                  <ArrowRight className={`ms-2 size-4 ${isRtl ? 'rotate-180' : ''}`} />
+   210→   210→                </Button>
+   211→   211→              </div>
+   212→   212→              <Button
+   213→   213→                type="submit"
+   214→   214→                className="h-14 w-full rounded-2xl bg-gradient-to-r from-coral to-coral-light px-8 text-base font-bold text-white shadow-xl shadow-coral/30 hover:shadow-coral/40 transition-all sm:hidden"
+   215→   215→              >
+   216→   216→                {t('common.search')}
+   217→   217→                <ArrowRight className={`ms-2 size-4 ${isRtl ? 'rotate-180' : ''}`} />
+   218→   218→              </Button>
+   219→   219→            </div>
+   220→   220→          </form>
+   221→   221→
+   222→   222→          {/* Trust Badges */}
+   223→   223→          <div className="mt-12 flex flex-wrap items-center justify-center gap-6 sm:gap-8">
+   224→   224→            <div className="flex items-center gap-2 text-white/70">
+   225→   225→              <Shield className="size-5 text-emerald-300" />
+   226→   226→              <span className="text-sm font-medium">{t('home.secure_platform')}</span>
+   227→   227→            </div>
+   228→   228→            <div className="hidden sm:block w-px h-5 bg-white/20" />
+   229→   229→            <div className="flex items-center gap-2 text-white/70">
+   230→   230→              <Users className="size-5 text-gold" />
+   231→   231→              <span className="text-sm font-medium">
+   232→   232→                {stats ? `${formatNumber(stats.users)} ${t('admin.total_users')}` : t('home.large_community')}
+   233→   233→              </span>
+   234→   234→            </div>
+   235→   235→            <div className="hidden sm:block w-px h-5 bg-white/20" />
+   236→   236→            <div className="flex items-center gap-2 text-white/70">
+   237→   237→              <Zap className="size-5 text-coral-light" />
+   238→   238→              <span className="text-sm font-medium">100% {t('common.free')}</span>
+   239→   239→            </div>
+   240→   240→          </div>
+   241→   241→        </div>
+   242→   242→
+   243→   243→        {/* Bottom Wave */}
+   244→   244→        <div className="absolute bottom-0 start-0 w-full overflow-hidden leading-none" aria-hidden="true">
+   245→   245→          <svg className="relative block w-full h-12 sm:h-16 lg:h-20" viewBox="0 0 1440 100" preserveAspectRatio="none">
+   246→   246→            <path fill="#FAFAFA" d="M0,50 C360,100 1080,0 1440,50 L1440,100 L0,100 Z" />
+   247→   247→          </svg>
+   248→   248→        </div>
+   249→   249→      </section>
+   250→   250→
+   251→   251→      {/* ── Categories Section (Real Data) ── */}
+   252→   252→      <section id="categories" className="py-16 px-4 sm:px-6 lg:px-8">
+   253→   253→        <div className="max-w-7xl mx-auto">
+   254→   254→          <div className="text-center mb-12">
+   255→   255→            <Badge variant="secondary" className="mb-4 bg-teal-100 text-teal-700 border-teal-200 font-semibold px-4 py-1.5 rounded-full">
+   256→   256→              {t('home.browse_by_category')}
+   257→   257→            </Badge>
+   258→   258→            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4 mt-3">
+   259→   259→              {t('categories.title')}
+   260→   260→            </h2>
+   261→   261→            <p className="text-lg text-gray-500 max-w-2xl mx-auto">
+   262→   262→              {t('categories.subtitle')}
+   263→   263→            </p>
+   264→   264→          </div>
+   265→   265→          
+   266→   266→          {/* Categories Grid - Using REAL data from API */}
+   267→   267→          {categories.length > 0 ? (
+   268→   268→            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+   269→   269→              {categories.slice(0, 12).map((category) => {
+   270→   270→                // Find matching icon from CATEGORIES_DATA or use default
+   271→   271→                const categoryConfig = CATEGORIES_DATA.find(c => c.slug === category.slug);
+   272→   272→                const Icon = categoryConfig?.icon || (category.slug === 'vehicles' ? Car : category.slug === 'real-estate' ? Home : Smartphone);
+   273→   273→                const color = categoryConfig?.color || 'from-gray-500 to-gray-600';
+   274→   274→                
+   275→   275→                // Get localized name
+   276→   276→                const categoryName = locale === 'ar' 
+   277→   277→                  ? (category.nameAr || category.name_ar || category.name)
+   278→   278→                  : locale === 'fr'
+   279→   279→                    ? (category.nameFr || category.name_fr || category.name)
+   280→   280→                    : (category.name);
+   281→   281→                
+   282→   282→                return (
+   283→   283→                  <button
+   284→   284→                    key={category.id}
+   285→   285→                    onClick={() => handleCategoryClick(category.id)}
+   286→   286→                    className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-gray-100 bg-white hover:border-teal-300 hover:shadow-xl hover:shadow-teal-500/10 transition-all duration-300 hover:-translate-y-1"
+   287→   287→                  >
+   288→   288→                    <div className={`flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br ${color} text-white group-hover:scale-110 transition-transform shadow-lg`}>
+   289→   289→                      <Icon className="size-7" strokeWidth={1.5} />
+   290→   290→                    </div>
+   291→   291→                    <span className="text-sm font-semibold text-center text-gray-700 group-hover:text-teal-700 transition-colors">
+   292→   292→                      {categoryName}
+   293→   293→                    </span>
+   294→   294→                  </button>
+   295→   295→                );
+   296→   296→              })}
+   297→   297→            </div>
+   298→   298→          ) : (
+   299→   299→            /* Fallback to static categories if API returns empty */
+   300→   300→            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+   301→   301→              {CATEGORIES_DATA.map((category) => {
+   302→   302→                const Icon = category.icon;
+   303→   303→                return (
+   304→   304→                  <button
+   305→   305→                    key={category.id}
+   306→   306→                    onClick={() => handleCategoryClick(category.id)}
+   307→   307→                    className="group flex flex-col items-center gap-3 p-5 rounded-2xl border border-gray-100 bg-white hover:border-teal-300 hover:shadow-xl hover:shadow-teal-500/10 transition-all duration-300 hover:-translate-y-1"
+   308→   308→                  >
+   309→   309→                    <div className={`flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br ${category.color} text-white group-hover:scale-110 transition-transform shadow-lg`}>
+   310→   310→                      <Icon className="size-7" strokeWidth={1.5} />
+   311→   311→                    </div>
+   312→   312→                    <span className="text-sm font-semibold text-center text-gray-700 group-hover:text-teal-700 transition-colors">
+   313→   313→                      {t(category.key)}
+   314→   314→                    </span>
+   315→   315→                  </button>
+   316→   316→                );
+   317→   317→              })}
+   318→   318→            </div>
+   319→   319→          )}
+   320→   320→        </div>
+   321→   321→      </section>
+   322→   322→
+   323→   323→      {/* ── Featured Listings Section ── */}
+   324→   324→      <section id="featured" className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-gray-50 to-white">
+   325→   325→        <div className="max-w-7xl mx-auto">
+   326→   326→          <div className="flex items-center justify-between mb-12">
+   327→   327→            <div>
+   328→   328→              <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+   329→   329→                {t('home.featured_listings_title')}
+   330→   330→              </h2>
+   331→   331→              <p className="text-lg text-gray-500">
+   332→   332→                {t('home.featured_listings_subtitle')}
+   333→   333→              </p>
+   334→   334→            </div>
+   335→   335→            <Link href="/listings">
+   336→   336→              <Button variant="outline" className="gap-2 hidden sm:flex rounded-xl border-gray-200 hover:bg-teal-50 hover:border-teal-300 hover:text-teal-700 h-11 px-5">
+   337→   337→                {t('common.view_all')}
+   338→   338→                <ArrowRight className={`size-4 ${isRtl ? 'rotate-180' : ''}`} />
+   339→   339→              </Button>
+   340→   340→            </Link>
+   341→   341→          </div>
+   342→   342→
+   343→   343→          {isLoading ? (
+   344→   344→            /* Loading Skeleton */
+   345→   345→            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+   346→   346→              {[...Array(8)].map((_, i) => (
+   347→   347→                <Card key={i} className="overflow-hidden rounded-2xl border-gray-100">
+   348→   348→                  <Skeleton className="h-48 w-full rounded-none" />
+   349→   349→                  <CardContent className="p-5 space-y-3">
+   350→   350→                    <Skeleton className="h-4 w-3/4 rounded-lg" />
+   351→   351→                    <Skeleton className="h-3 w-1/2 rounded-lg" />
+   352→   352→                    <div className="flex justify-between pt-2">
+   353→   353→                      <Skeleton className="h-6 w-20 rounded-lg" />
+   354→   354→                      <Skeleton className="h-4 w-16 rounded-lg" />
+   355→   355→                    </div>
+   356→   356→                  </CardContent>
+   357→   357→                </Card>
+   358→   358→              ))}
+   359→   359→            </div>
+   360→   360→          ) : featuredListings.length > 0 ? (
+   361→   361→            <>
+   362→   362→              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+   363→   363→                {featuredListings.slice(0, 8).map((listing) => (
+   364→   364→                  <ListingCard key={listing.id} listing={listing} />
+   365→   365→                ))}
+   366→   366→              </div>
+   367→   367→              
+   368→   368→              <div className="mt-8 text-center sm:hidden">
+   369→   369→                <Link href="/listings">
+   370→   370→                  <Button variant="outline" className="gap-2 w-full rounded-xl border-gray-200 hover:bg-teal-50 h-12">
+   371→   371→                    {t('common.view_all')}
+   372→   372→                    <ArrowRight className={`size-4 ${isRtl ? 'rotate-180' : ''}`} />
+   373→   373→                  </Button>
+   374→   374→                </Link>
+   375→   375→              </div>
+   376→   376→            </>
+   377→   377→          ) : (
+   378→   378→            /* Empty State */
+   379→   379→            <div className="text-center py-16">
+   380→   380→              <div className="size-20 bg-gradient-to-br from-teal-100 to-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
+   381→   381→                <Zap className="size-9 text-teal-500" />
+   382→   382→              </div>
+   383→   383→              <h3 className="text-xl font-bold text-gray-900 mb-2">
+   384→   384→                {t('home.no_listings_yet')}
+   385→   385→              </h3>
+   386→   386→              <p className="text-gray-500 mb-6 max-w-md mx-auto">
+   387→   387→                {t('home.be_first_to_post')}
+   388→   388→              </p>
+   389→   389→              <Link href="/listings/create">
+   390→   390→                <Button className="bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 gap-2 shadow-lg shadow-teal-500/25 rounded-xl h-12 px-7">
+   391→   391→                  <Zap className="size-5" />
+   392→   392→                  {t('common.post_ad')}
+   393→   393→                </Button>
+   394→   394→              </Link>
+   395→   395→            </div>
+   396→   396→          )}
+   397→   397→        </div>
+   398→   398→      </section>
+   399→   399→
+   400→   400→      {/* ── Why Choose MAVORA Section ── */}
+   401→   401→      <section id="about" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+   402→   402→        <div className="max-w-7xl mx-auto">
+   403→   403→          <div className="text-center mb-16">
+   404→   404→            <Badge variant="secondary" className="mb-4 bg-violet-100 text-violet-700 border-violet-200 font-semibold px-4 py-1.5 rounded-full">
+   405→   405→              {t('home.why_mavora')}
+   406→   406→            </Badge>
+   407→   407→            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4 mt-3">
+   408→   408→              {t('home.mavora_advantages')}
+   409→   409→            </h2>
+   410→   410→            <p className="text-lg text-gray-500 max-w-3xl mx-auto">
+   411→   411→              {t('home.mavora_description')}
+   412→   412→            </p>
+   413→   413→          </div>
+   414→   414→
+   415→   415→          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+   416→   416→            {/* Feature 1 */}
+   417→   417→            <Card className="border-0 shadow-lg hover:shadow-2xl transition-all duration-300 group rounded-2xl overflow-hidden">
+   418→   418→              <CardContent className="p-8">
+   419→   419→                <div className="size-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/30">
+   420→   420→                  <Shield className="size-7 text-white" />
+   421→   421→                </div>
+   422→   422→                <h3 className="text-xl font-bold text-gray-900 mb-3">
+   423→   423→                  {t('home.secure_transactions')}
+   424→   424→                </h3>
+   425→   425→                <p className="text-gray-500 leading-relaxed mb-5">
+   426→   426→                  {t('home.secure_transactions_desc')}
+   427→   427→                </p>
+   428→   428→                <ul className="space-y-2.5">
+   429→   429→                  {[t('home.verified_users'), t('home.secure_payments'), t('home.buyer_protection')].map((item) => (
+   430→   430→                    <li key={item} className="flex items-center gap-2.5 text-sm text-gray-600">
+   431→   431→                      <CheckCircle2 className="size-4.5 text-teal-500 shrink-0" />
+   432→   432→                      {item}
+   433→   433→                    </li>
+   434→   434→                  ))}
+   435→   435→                </ul>
+   436→   436→              </CardContent>
+   437→   437→            </Card>
+   438→   438→
+   439→   439→            {/* Feature 2 */}
+   440→   440→            <Card className="border-0 shadow-lg hover:shadow-2xl transition-all duration-300 group rounded-2xl overflow-hidden">
+   441→   441→              <CardContent className="p-8">
+   442→   442→                <div className="size-14 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-teal-500/30">
+   443→   443→                  <Globe className="size-7 text-white" />
+   444→   444→                </div>
+   445→   445→                <h3 className="text-xl font-bold text-gray-900 mb-3">
+   446→   446→                  {t('home.wide_reach')}
+   447→   447→                </h3>
+   448→   448→                <p className="text-gray-500 leading-relaxed mb-5">
+   449→   449→                  {t('home.wide_reach_desc')}
+   450→   450→                </p>
+   451→   451→                <ul className="space-y-2.5">
+   452→   452→                  {[t('home.morocco_north_africa'), t('home.multi_language'), t('home.mobile_optimized')].map((item) => (
+   453→   453→                    <li key={item} className="flex items-center gap-2.5 text-sm text-gray-600">
+   454→   454→                      <CheckCircle2 className="size-4.5 text-teal-500 shrink-0" />
+   455→   455→                      {item}
+   456→   456→                    </li>
+   457→   457→                  ))}
+   458→   458→                </ul>
+   459→   459→              </CardContent>
+   460→   460→            </Card>
+   461→   461→
+   462→   462→            {/* Feature 3 */}
+   463→   463→            <Card className="border-0 shadow-lg hover:shadow-2xl transition-all duration-300 group rounded-2xl overflow-hidden">
+   464→   464→              <CardContent className="p-8">
+   465→   465→                <div className="size-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-violet-500/30">
+   466→   466→                  <Zap className="size-7 text-white" />
+   467→   467→                </div>
+   468→   468→                <h3 className="text-xl font-bold text-gray-900 mb-3">
+   469→   469→                  {t('home.easy_to_use')}
+   470→   470→                </h3>
+   471→   471→                <p className="text-gray-500 leading-relaxed mb-5">
+   472→   472→                  {t('home.easy_to_use_desc')}
+   473→   473→                </p>
+   474→   474→                <ul className="space-y-2.5">
+   475→   475→                  {[t('home.easy_posting'), t('home.smart_search'), t('home.instant_messaging')].map((item) => (
+   476→   476→                    <li key={item} className="flex items-center gap-2.5 text-sm text-gray-600">
+   477→   477→                      <CheckCircle2 className="size-4.5 text-teal-500 shrink-0" />
+   478→   478→                      {item}
+   479→   479→                    </li>
+   480→   480→                  ))}
+   481→   481→                </ul>
+   482→   482→              </CardContent>
+   483→   483→            </Card>
+   484→   484→          </div>
+   485→   485→        </div>
+   486→   486→      </section>
+   487→   487→
+   488→   488→      {/* ── Stats Section (Real Data) ── */}
+   489→   489→      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 text-white relative overflow-hidden">
+   490→   490→        {/* Decorative elements */}
+   491→   491→        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+   492→   492→          <div className="absolute -start-20 top-0 size-60 rounded-full bg-white/5 blur-2xl" />
+   493→   493→          <div className="absolute -end-20 bottom-0 size-60 rounded-full bg-gold/10 blur-2xl" />
+   494→   494→        </div>
+   495→   495→        
+   496→   496→        <div className="relative max-w-7xl mx-auto">
+   497→   497→          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+   498→   498→            <div className="p-4">
+   499→   499→              <div className="text-4xl lg:text-5xl font-bold mb-2">
+   500→   500→                {stats ? formatNumber(stats.listings) : '0'}
+   501→   501→              </div>
+   502→   502→              <div className="text-white/80 text-sm uppercase tracking-wider font-medium">
+   503→   503→                {t('listings.featured')}
+   504→   504→              </div>
+   505→   505→            </div>
+   506→   506→            <div className="p-4">
+   507→   507→              <div className="text-4xl lg:text-5xl font-bold mb-2">
+   508→   508→                {stats ? formatNumber(stats.users) : '0'}
+   509→   509→              </div>
+   510→   510→              <div className="text-white/80 text-sm uppercase tracking-wider font-medium">
+   511→   511→                {t('admin.total_users')}
+   512→   512→              </div>
+   513→   513→            </div>
+   514→   514→            <div className="p-4">
+   515→   515→              <div className="text-4xl lg:text-5xl font-bold mb-2">
+   516→   516→                {stats ? formatNumber(stats.categories) : '0'}
+   517→   517→              </div>
+   518→   518→              <div className="text-white/80 text-sm uppercase tracking-wider font-medium">
+   519→   519→                {t('admin.total_categories')}
+   520→   520→              </div>
+   521→   521→            </div>
+   522→   522→            <div className="p-4">
+   523→   523→              <div className="text-4xl lg:text-5xl font-bold mb-2">
+   524→   524→                {stats ? formatNumber(stats.cities) : '0'}
+   525→   525→              </div>
+   526→   526→              <div className="text-white/80 text-sm uppercase tracking-wider font-medium">
+   527→   527→                {t('admin.total_countries')}
+   528→   528→              </div>
+   529→   529→            </div>
+   530→   530→          </div>
+   531→   531→        </div>
+   532→   532→      </section>
+   533→   533→
+   534→   534→      {/* ── CTA Section ── */}
+   535→   535→      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+   536→   536→        <div className="max-w-4xl mx-auto text-center">
+   537→   537→          <div className="inline-flex p-4 rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 mb-6">
+   538→   538→            <MavoraLogo size="lg" className="text-teal-600" />
+   539→   539→          </div>
+   540→   540→          <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+   541→   541→            {t('home.ready_to_start')}
+   542→   542→          </h2>
+   543→   543→          <p className="text-lg text-gray-500 mb-8 max-w-2xl mx-auto">
+   544→   544→            {t('home.join_thousands')}
+   545→   545→          </p>
+   546→   546→          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+   547→   547→            <Link href="/listings/create">
+   548→   548→              <Button size="lg" className="bg-gradient-to-r from-coral to-coral-light hover:from-coral-dark hover:to-coral text-white gap-2 shadow-xl shadow-coral/30 text-base px-9 h-13 rounded-xl btn-lift font-bold">
+   549→   549→                <Zap className="size-5" />
+   550→   550→                {t('home.post_free_ad')}
+   551→   551→              </Button>
+   552→   552→            </Link>
+   553→   553→            <Link href="/listings">
+   554→   554→              <Button size="lg" variant="outline" className="gap-2 text-base px-9 h-13 rounded-xl border-gray-200 hover:bg-teal-50 hover:border-teal-300 hover:text-teal-700 font-semibold">
+   555→   555→                {t('home.browse_listings')}
+   556→   556→                <ArrowRight className={`size-5 ${isRtl ? 'rotate-180' : ''}`} />
+   557→   557→              </Button>
+   558→   558→            </Link>
+   559→   559→          </div>
+   560→   560→          
+   561→   561→          {/* Trust Badges */}
+   562→   562→          <div className="flex flex-wrap items-center justify-center gap-6 mt-12 pt-8 border-t border-gray-100">
+   563→   563→            <div className="flex items-center gap-2 text-sm text-gray-500">
+   564→   564→              <Shield className="size-4.5 text-teal-500" />
+   565→   565→              {t('home.secure_platform')}
+   566→   566→            </div>
+   567→   567→            <div className="flex items-center gap-2 text-sm text-gray-500">
+   568→   568→              <Users className="size-4.5 text-teal-500" />
+   569→   569→              {t('home.large_community')}
+   570→   570→            </div>
+   571→   571→            <div className="flex items-center gap-2 text-sm text-gray-500">
+   572→   572→              <Star className="size-4.5 text-gold" />
+   573→   573→              {t('home.top_rated')}
+   574→   574→            </div>
+   575→   575→            <div className="flex items-center gap-2 text-sm text-gray-500">
+   576→   576→              <MapPin className="size-4.5 text-teal-500" />
+   577→   577→              {t('home.local_focus')}
+   578→   578→            </div>
+   579→   579→          </div>
+   580→   580→        </div>
+   581→   581→      </section>
+   582→   582→    </div>
+   583→   583→  );
+   584→   584→}
+   585→   585→
+   586→   586→// Missing icon component
+   587→   587→function SparklesIcon(props: React.SVGProps<SVGSVGElement>) {
+   588→   588→  return (
+   589→   589→    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+   590→   590→      <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3.5 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 20.5l1.912-5.813a2 2 0 0 1 1.275-1.275L20.5 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+   591→   591→    </svg>
+   592→   592→  );
+   593→   593→}
+   594→   594→

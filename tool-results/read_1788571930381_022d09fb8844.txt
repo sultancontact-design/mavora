@@ -1,0 +1,673 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState, useCallback } from 'react';
+     4→import { useTranslation } from '@/hooks/useTranslation';
+     5→import { useAuthStore } from '@/stores/auth';
+     6→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+     7→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+     8→import { Badge } from '@/components/ui/badge';
+     9→import { Button } from '@/components/ui/button';
+    10→import { Input } from '@/components/ui/input';
+    11→import { 
+    12→  LayoutDashboard,
+    13→  Users,
+    14→  FileText,
+    15→  DollarSign,
+    16→  AlertTriangle,
+    17→  Settings,
+    18→  BarChart3,
+    19→  Shield,
+    20→  Package,
+    21→  CreditCard,
+    22→  MessageSquare,
+    23→  Eye,
+    24→  TrendingUp,
+    25→  TrendingDown,
+    26→  Activity,
+    27→  CheckCircle,
+    28→  XCircle,
+    29→  Clock,
+    30→  Star,
+    31→  Zap,
+    32→  Globe,
+    33→  Database,
+    34→  Server,
+    35→  Heart,
+    36→  ShoppingBag,
+    37→  Tag,
+    38→  RefreshCw,
+    39→  Download,
+    40→  Upload,
+    41→  Search,
+    42→  Filter,
+    43→  MoreVertical,
+    44→  ChevronLeft,
+    45→  ChevronRight,
+    46→  Home,
+    47→  LogOut,
+    48→  Bell,
+    49→  UserCheck,
+    50→  UserX,
+    51→  Ban,
+    52→  Crown,
+    53→  Coins,
+    54→  Receipt,
+    55→  Target,
+    56→  PieChart,
+    57→  LineChart,
+    58→  Calendar,
+    59→  MapPin,
+    60→  Phone,
+    61→  Mail,
+    62→  Image as ImageIcon,
+    63→  Video,
+    64→  Link2,
+    65→  Flag,
+    66→  ThumbsUp,
+    67→  ThumbsDown,
+    68→  Archive,
+    69→  Trash2,
+    70→  Edit,
+    71→  ExternalLink,
+    72→  Copy,
+    73→  Wallet,
+    74→  Share2,
+    75→  Printer,
+    76→  Maximize2,
+    77→  Minimize2,
+    78→} from 'lucide-react';
+    79→import Link from 'next/link';
+    80→import UserManagement from './UserManagement';
+    81→import ListingManagement from './ListingManagement';
+    82→import ReportManagement from './ReportManagement';
+    83→import CategoryManagement from './CategoryManagement';
+    84→import PaymentManagement from './PaymentManagement';
+    85→import AuditLogViewer from './AuditLogViewer';
+    86→import SettingsPanel from './SettingsPanel';
+    87→import AdminCategoryFields from './AdminCategoryFields';
+    88→import ModerationQueue from './ModerationQueue';
+    89→
+    90→// Types
+    91→interface AdminStats {
+    92→  success: boolean;
+    93→  overview: {
+    94→    total_users: number;
+    95→    total_listings: number;
+    96→    total_revenue: number;
+    97→    pending_reports: number;
+    98→    total_wallet_balance: number;
+    99→    active_listings: number;
+   100→    categories_count: number;
+   101→  };
+   102→  users: {
+   103→    total: number;
+   104→    today: number;
+   105→    this_week: number;
+   106→    this_month: number;
+   107→  };
+   108→  listings: {
+   109→    today: number;
+   110→    this_week: number;
+   111→    this_month: number;
+   112→    active: number;
+   113→    pending: number;
+   114→    total: number;
+   115→  };
+   116→  charts: {
+   117→    listings: { date: string; count: number }[];
+   118→    users: { date: string; count: number }[];
+   119→  };
+   120→  categories: Array<{ id: string; name: string; nameAr?: string; slug: string }>;
+   121→  recent_listings: Array<{
+   122→    id: string;
+   123→    title: string;
+   124→    status: string;
+   125→    createdAt: string;
+   126→    price: number | null;
+   127→    currencyCode: string;
+   128→  }>;
+   129→  revenue: {
+   130→    total: number;
+   131→    monthly: number;
+   132→  };
+   133→  wallets: {
+   134→    total_balance: number;
+   135→  };
+   136→}
+   137→
+   138→// Sidebar Navigation Items
+   139→const navItems = [
+   140→  { id: 'overview', label: 'لوحة التحكم', icon: LayoutDashboard },
+   141→  { id: 'users', label: 'المستخدمون', icon: Users },
+   142→  { id: 'listings', label: 'الإعلانات', icon: FileText },
+   143→  { id: 'moderation', label: 'المراجعة', icon: Shield },
+   144→  { id: 'reports', label: 'البلاغات', icon: AlertTriangle },
+   145→  { id: 'categories', label: 'التصنيفات', icon: Tag },
+   146→  { id: 'payments', label: 'المدفوعات', icon: CreditCard },
+   147→  { id: 'subscriptions', label: 'الاشتراكات', icon: Crown },
+   148→  { id: 'promotions', label: 'الترويجات', icon: Zap },
+   149→  { id: 'tokens', label: 'الرصيد والنقاط', icon: Coins },
+   150→  { id: 'messages', label: 'الرسائل', icon: MessageSquare },
+   151→  { id: 'analytics', label: 'التحليلات', icon: BarChart3 },
+   152→  { id: 'audit', label: 'سجلات التدقيق', icon: Activity },
+   153→  { id: 'settings', label: 'الإعدادات', icon: Settings },
+   154→];
+   155→
+   156→export default function SuperAdminDashboard() {
+   157→  const { t, locale } = useTranslation();
+   158→  const { user } = useAuthStore();
+   159→  const [stats, setStats] = useState<AdminStats | null>(null);
+   160→  const [loading, setLoading] = useState(true);
+   161→  const [error, setError] = useState<string | null>(null);
+   162→  const [activeTab, setActiveTab] = useState('overview');
+   163→  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+   164→  const [searchQuery, setSearchQuery] = useState('');
+   165→  const [refreshing, setRefreshing] = useState(false);
+   166→
+   167→  const fetchStats = useCallback(async () => {
+   168→    try {
+   169→      setError(null);
+   170→      const statsRes = await fetch('/api/admin/stats?period=month');
+   171→      if (!statsRes.ok) throw new Error('Failed to fetch stats');
+   172→      const statsData = await statsRes.json();
+   173→      setStats(statsData);
+   174→    } catch (err) {
+   175→      console.error('Admin dashboard error:', err);
+   176→      setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+   177→    } finally {
+   178→      setLoading(false);
+   179→      setRefreshing(false);
+   180→    }
+   181→  }, []);
+   182→
+   183→  useEffect(() => {
+   184→    fetchStats();
+   185→  }, [fetchStats]);
+   186→
+   187→  const handleRefresh = () => {
+   188→    setRefreshing(true);
+   189→    fetchStats();
+   190→  };
+   191→
+   192→  // Format numbers with commas
+   193→  const formatNumber = (num: number) => {
+   194→    return new Intl.NumberFormat(locale === 'ar' ? 'ar-MA' : 'en-US').format(num);
+   195→  };
+   196→
+   197→  // Format currency
+   198→  const formatCurrency = (amount: number) => {
+   199→    return new Intl.NumberFormat(locale === 'ar' ? 'ar-MA' : 'en-US', {
+   200→      style: 'currency',
+   201→      currency: 'MAD',
+   202→      minimumFractionDigits: 0,
+   203→      maximumFractionDigits: 0,
+   204→    }).format(amount);
+   205→  };
+   206→
+   207→  // Format date
+   208→  const formatDate = (dateStr: string) => {
+   209→    return new Date(dateStr).toLocaleDateString(locale === 'ar' ? 'ar-MA' : 'en-US', {
+   210→      month: 'short',
+   211→      day: 'numeric',
+   212→      hour: '2-digit',
+   213→      minute: '2-digit',
+   214→    });
+   215→  };
+   216→
+   217→  // Get status badge variant
+   218→  const getStatusBadge = (status: string) => {
+   219→    const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+   220→      active: 'default',
+   221→      pending_review: 'secondary',
+   222→      rejected: 'destructive',
+   223→      archived: 'outline',
+   224→      draft: 'outline',
+   225→      sold: 'outline',
+   226→      reserved: 'secondary',
+   227→    };
+   228→    return variants[status] || 'outline';
+   229→  };
+   230→
+   231→  const getStatusLabel = (status: string) => {
+   232→    const labels: Record<string, string> = {
+   233→      active: 'نشط',
+   234→      pending_review: 'قيد المراجعة',
+   235→      rejected: 'مرفوض',
+   236→      archived: 'مؤرشف',
+   237→      draft: 'مسودة',
+   238→      sold: 'مباع',
+   239→      reserved: 'محجوز',
+   240→    };
+   241→    return labels[status] || status;
+   242→  };
+   243→
+   244→  if (loading) {
+   245→    return (
+   246→      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+   247→        <div className="text-center">
+   248→          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4" />
+   249→          <p className="text-gray-600 dark:text-gray-400">جاري تحميل لوحة التحكم...</p>
+   250→        </div>
+   251→      </div>
+   252→    );
+   253→  }
+   254→
+   255→  if (error && !stats) {
+   256→    return (
+   257→      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+   258→        <Card className="w-full max-w-md">
+   259→          <CardContent className="pt-6 text-center">
+   260→            <AlertTriangle className="h-12 w-12 mx-auto text-red-500 mb-4" />
+   261→            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">خطأ في التحميل</h2>
+   262→            <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+   263→            <Button onClick={handleRefresh}>
+   264→              <RefreshCw className="h-4 w-4 ml-2" />
+   265→              إعادة المحاولة
+   266→            </Button>
+   267→          </CardContent>
+   268→        </Card>
+   269→      </div>
+   270→    );
+   271→  }
+   272→
+   273→  return (
+   274→    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+   275→      {/* Sidebar */}
+   276→      <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-navy-900 text-white transition-all duration-300 flex flex-col fixed h-full z-40`}>
+   277→        {/* Logo */}
+   278→        <div className="p-4 border-b border-navy-800 flex items-center justify-between">
+   279→          {!sidebarCollapsed && (
+   280→            <div className="flex items-center gap-2">
+   281→              <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-lg flex items-center justify-center font-bold text-lg">
+   282→                M
+   283→              </div>
+   284→              <span className="font-bold text-lg">MAVORA</span>
+   285→            </div>
+   286→          )}
+   287→          <button
+   288→            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+   289→            className="p-1 hover:bg-navy-800 rounded-lg transition-colors"
+   290→          >
+   291→            {sidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+   292→          </button>
+   293→        </div>
+   294→
+   295→        {/* Navigation */}
+   296→        <nav className="flex-1 overflow-y-auto py-4 px-2">
+   297→          <ul className="space-y-1">
+   298→            {navItems.map((item) => (
+   299→              <li key={item.id}>
+   300→                <button
+   301→                  onClick={() => setActiveTab(item.id)}
+   302→                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+   303→                    activeTab === item.id
+   304→                      ? 'bg-emerald-600 text-white'
+   305→                      : 'text-gray-300 hover:bg-navy-800 hover:text-white'
+   306→                  }`}
+   307→                  title={item.label}
+   308→                >
+   309→                  <item.icon className="h-5 w-5 shrink-0" />
+   310→                  {!sidebarCollapsed && <span className="text-sm">{item.label}</span>}
+   311→                </button>
+   312→              </li>
+   313→            ))}
+   314→          </ul>
+   315→        </nav>
+   316→
+   317→        {/* User Info */}
+   318→        <div className="p-4 border-t border-navy-800">
+   319→          <div className={`flex items-center gap-3 ${sidebarCollapsed ? 'justify-center' : ''}`}>
+   320→            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-sm font-bold">
+   321→              {user?.display_name?.charAt(0)?.toUpperCase() || 'A'}
+   322→            </div>
+   323→            {!sidebarCollapsed && (
+   324→              <div className="flex-1 min-w-0">
+   325→                <p className="text-sm font-medium truncate">{user?.display_name || 'Admin'}</p>
+   326→                <p className="text-xs text-gray-400 truncate">Super Admin</p>
+   327→              </div>
+   328→            )}
+   329→          </div>
+   330→        </div>
+   331→      </aside>
+   332→
+   333→      {/* Main Content */}
+   334→      <main className={`flex-1 ${sidebarCollapsed ? 'ml-16' : 'ml-64'} transition-all duration-300`}>
+   335→        {/* Top Header */}
+   336→        <header className="bg-white dark:bg-gray-800 border-b sticky top-0 z-30 px-6 py-4">
+   337→          <div className="flex items-center justify-between">
+   338→            <div className="flex items-center gap-4">
+   339→              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+   340→                {navItems.find(item => item.id === activeTab)?.label || 'لوحة التحكم'}
+   341→              </h1>
+   342→              <Badge variant="outline" className="text-xs">
+   343→                {locale === 'ar' ? 'مباشر' : 'Live'}
+   344→              </Badge>
+   345→            </div>
+   346→            
+   347→            <div className="flex items-center gap-3">
+   348→              {/* Search */}
+   349→              <div className="relative hidden md:block">
+   350→                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+   351→                <Input
+   352→                  placeholder="بحث..."
+   353→                  value={searchQuery}
+   354→                  onChange={(e) => setSearchQuery(e.target.value)}
+   355→                  className="pl-10 w-64"
+   356→                />
+   357→              </div>
+   358→
+   359→              {/* Refresh Button */}
+   360→              <Button
+   361→                variant="outline"
+   362→                size="icon"
+   363→                onClick={handleRefresh}
+   364→                disabled={refreshing}
+   365→              >
+   366→                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+   367→              </Button>
+   368→
+   369→              {/* Notifications */}
+   370→              <Button variant="outline" size="icon" className="relative">
+   371→                <Bell className="h-4 w-4" />
+   372→                {stats?.overview.pending_reports ? (
+   373→                  <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+   374→                    {stats.overview.pending_reports > 9 ? '9+' : stats.overview.pending_reports}
+   375→                  </span>
+   376→                ) : null}
+   377→              </Button>
+   378→
+   379→              {/* Back to Site */}
+   380→              <Link href="/">
+   381→                <Button variant="outline" size="sm">
+   382→                  <Home className="h-4 w-4 ml-2" />
+   383→                  الموقع
+   384→                </Button>
+   385→              </Link>
+   386→            </div>
+   387→          </div>
+   388→        </header>
+   389→
+   390→        {/* Dashboard Content */}
+   391→        <div className="p-6">
+   392→          {/* Overview Tab */}
+   393→          {activeTab === 'overview' && stats && (
+   394→            <div className="space-y-6">
+   395→              {/* Stats Cards */}
+   396→              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+   397→                <Card className="border-l-4 border-l-blue-500">
+   398→                  <CardContent className="pt-6">
+   399→                    <div className="flex items-center justify-between">
+   400→                      <div>
+   401→                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">إجمالي المستخدمين</p>
+   402→                        <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">
+   403→                          {formatNumber(stats.overview.total_users)}
+   404→                        </p>
+   405→                        <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
+   406→                          <TrendingUp className="h-3 w-3" />
+   407→                          +{stats.users.today} اليوم
+   408→                        </p>
+   409→                      </div>
+   410→                      <div className="h-12 w-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+   411→                        <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+   412→                      </div>
+   413→                    </div>
+   414→                  </CardContent>
+   415→                </Card>
+   416→
+   417→                <Card className="border-l-4 border-l-emerald-500">
+   418→                  <CardContent className="pt-6">
+   419→                    <div className="flex items-center justify-between">
+   420→                      <div>
+   421→                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">إجمالي الإعلانات</p>
+   422→                        <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">
+   423→                          {formatNumber(stats.overview.total_listings)}
+   424→                        </p>
+   425→                        <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
+   426→                          <TrendingUp className="h-3 w-3" />
+   427→                          {stats.listings.active} نشط
+   428→                        </p>
+   429→                      </div>
+   430→                      <div className="h-12 w-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+   431→                        <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+   432→                      </div>
+   433→                    </div>
+   434→                  </CardContent>
+   435→                </Card>
+   436→
+   437→                <Card className="border-l-4 border-l-yellow-500">
+   438→                  <CardContent className="pt-6">
+   439→                    <div className="flex items-center justify-between">
+   440→                      <div>
+   441→                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">إجمالي الإيرادات</p>
+   442→                        <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">
+   443→                          {formatCurrency(stats.revenue.total)}
+   444→                        </p>
+   445→                        <p className="text-sm text-gray-500 mt-1">درهم مغربي</p>
+   446→                      </div>
+   447→                      <div className="h-12 w-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg flex items-center justify-center">
+   448→                        <DollarSign className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+   449→                      </div>
+   450→                    </div>
+   451→                  </CardContent>
+   452→                </Card>
+   453→
+   454→                <Card className="border-l-4 border-l-red-500">
+   455→                  <CardContent className="pt-6">
+   456→                    <div className="flex items-center justify-between">
+   457→                      <div>
+   458→                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">بلاغات معلقة</p>
+   459→                        <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">
+   460→                          {formatNumber(stats.overview.pending_reports)}
+   461→                        </p>
+   462→                        <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
+   463→                          <AlertTriangle className="h-3 w-3" />
+   464→                          تحتاج مراجعة
+   465→                        </p>
+   466→                      </div>
+   467→                      <div className="h-12 w-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+   468→                        <Flag className="h-6 w-6 text-red-600 dark:text-red-400" />
+   469→                      </div>
+   470→                    </div>
+   471→                  </CardContent>
+   472→                </Card>
+   473→              </div>
+   474→
+   475→              {/* Secondary Stats */}
+   476→              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+   477→                <Card>
+   478→                  <CardHeader className="pb-2">
+   479→                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+   480→                      <Wallet className="h-4 w-4 text-purple-500" />
+   481→                      رصيد المحافظ
+   482→                    </CardTitle>
+   483→                  </CardHeader>
+   484→                  <CardContent>
+   485→                    <p className="text-2xl font-bold text-purple-600">
+   486→                      {formatCurrency(stats.wallets.total_balance)}
+   487→                    </p>
+   488→                  </CardContent>
+   489→                </Card>
+   490→
+   491→                <Card>
+   492→                  <CardHeader className="pb-2">
+   493→                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+   494→                      <Tag className="h-4 w-4 text-teal-500" />
+   495→                      التصنيفات
+   496→                    </CardTitle>
+   497→                  </CardHeader>
+   498→                  <CardContent>
+   499→                    <p className="text-2xl font-bold text-teal-600">
+   500→                      {stats.categories.length}
+   501→                    </p>
+   502→                  </CardContent>
+   503→                </Card>
+   504→
+   505→                <Card>
+   506→                  <CardHeader className="pb-2">
+   507→                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+   508→                      <Activity className="h-4 w-4 text-orange-500" />
+   509→                      نشاط اليوم
+   510→                    </CardTitle>
+   511→                  </CardHeader>
+   512→                  <CardContent>
+   513→                    <div className="flex gap-4 text-sm">
+   514→                      <div>
+   515→                        <span className="text-gray-500">مستخدمين:</span>
+   516→                        <span className="font-semibold mr-1">{stats.users.today}</span>
+   517→                      </div>
+   518→                      <div>
+   519→                        <span className="text-gray-500">إعلانات:</span>
+   520→                        <span className="font-semibold mr-1">{stats.listings.today}</span>
+   521→                      </div>
+   522→                    </div>
+   523→                  </CardContent>
+   524→                </Card>
+   525→              </div>
+   526→
+   527→              {/* Recent Listings & Quick Actions */}
+   528→              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+   529→                {/* Recent Listings */}
+   530→                <Card>
+   531→                  <CardHeader>
+   532→                    <div className="flex items-center justify-between">
+   533→                      <CardTitle className="text-lg font-semibold">آخر الإعلانات</CardTitle>
+   534→                      <Button variant="ghost" size="sm" onClick={() => setActiveTab('listings')}>
+   535→                        عرض الكل
+   536→                        <ChevronLeft className="h-4 w-4 mr-1" />
+   537→                      </Button>
+   538→                    </div>
+   539→                  </CardHeader>
+   540→                  <CardContent>
+   541→                    <div className="space-y-3">
+   542→                      {stats.recent_listings.slice(0, 5).map((listing) => (
+   543→                        <div key={listing.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+   544→                          <div className="flex-1 min-w-0">
+   545→                            <p className="font-medium text-sm truncate">{listing.title}</p>
+   546→                            <p className="text-xs text-gray-500">{formatDate(listing.createdAt)}</p>
+   547→                          </div>
+   548→                          <div className="flex items-center gap-2 ml-4">
+   549→                            {listing.price && (
+   550→                              <span className="text-sm font-semibold text-emerald-600">
+   551→                                {formatCurrency(listing.price)}
+   552→                              </span>
+   553→                            )}
+   554→                            <Badge variant={getStatusBadge(listing.status)} className="text-xs">
+   555→                              {getStatusLabel(listing.status)}
+   556→                            </Badge>
+   557→                          </div>
+   558→                        </div>
+   559→                      ))}
+   560→                    </div>
+   561→                  </CardContent>
+   562→                </Card>
+   563→
+   564→                {/* Quick Actions */}
+   565→                <Card>
+   566→                  <CardHeader>
+   567→                    <CardTitle className="text-lg font-semibold">إجراءات سريعة</CardTitle>
+   568→                  </CardHeader>
+   569→                  <CardContent>
+   570→                    <div className="grid grid-cols-2 gap-3">
+   571→                      <Button
+   572→                        variant="outline"
+   573→                        className="h-auto py-4 flex-col gap-2"
+   574→                        onClick={() => setActiveTab('moderation')}
+   575→                      >
+   576→                        <Shield className="h-5 w-5" />
+   577→                        <span className="text-xs">مراجعة الإعلانات</span>
+   578→                        <Badge variant="secondary" className="text-xs">
+   579→                          {stats.listings.pending}
+   580→                        </Badge>
+   581→                      </Button>
+   582→                      <Button
+   583→                        variant="outline"
+   584→                        className="h-auto py-4 flex-col gap-2"
+   585→                        onClick={() => setActiveTab('reports')}
+   586→                      >
+   587→                        <Flag className="h-5 w-5" />
+   588→                        <span className="text-xs">البلاغات</span>
+   589→                        <Badge variant="destructive" className="text-xs">
+   590→                          {stats.overview.pending_reports}
+   591→                        </Badge>
+   592→                      </Button>
+   593→                      <Button
+   594→                        variant="outline"
+   595→                        className="h-auto py-4 flex-col gap-2"
+   596→                        onClick={() => setActiveTab('users')}
+   597→                      >
+   598→                        <Users className="h-5 w-5" />
+   599→                        <span className="text-xs">إدارة المستخدمين</span>
+   600→                      </Button>
+   601→                      <Button
+   602→                        variant="outline"
+   603→                        className="h-auto py-4 flex-col gap-2"
+   604→                        onClick={() => setActiveTab('settings')}
+   605→                      >
+   606→                        <Settings className="h-5 w-5" />
+   607→                        <span className="text-xs">الإعدادات</span>
+   608→                      </Button>
+   609→                    </div>
+   610→                  </CardContent>
+   611→                </Card>
+   612→              </div>
+   613→
+   614→              {/* Charts Placeholder - Would integrate Recharts here */}
+   615→              <Card>
+   616→                <CardHeader>
+   617→                  <CardTitle className="text-lg font-semibold">نمو المنصة</CardTitle>
+   618→                  <CardDescription>آخر 30 يوم</CardDescription>
+   619→                </CardHeader>
+   620→                <CardContent>
+   621→                  <div className="h-64 flex items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg">
+   622→                    <div className="text-center">
+   623→                      <BarChart3 className="h-12 w-12 mx-auto text-gray-400 mb-2" />
+   624→                      <p className="text-gray-500">بيان النمو سيظهر هنا</p>
+   625→                      <p className="text-sm text-gray-400 mt-1">يمكن دمج مكتبة Recharts لعرض البيانات</p>
+   626→                    </div>
+   627→                  </div>
+   628→                </CardContent>
+   629→              </Card>
+   630→            </div>
+   631→          )}
+   632→
+   633→          {/* Other Tabs - Render existing components */}
+   634→          {activeTab === 'users' && <UserManagement />}
+   635→          {activeTab === 'listings' && <ListingManagement />}
+   636→          {activeTab === 'moderation' && <ModerationQueue />}
+   637→          {activeTab === 'reports' && <ReportManagement />}
+   638→          {activeTab === 'categories' && <CategoryManagement />}
+   639→          {activeTab === 'payments' && <PaymentManagement />}
+   640→          {activeTab === 'audit' && <AuditLogViewer />}
+   641→          {activeTab === 'settings' && <SettingsPanel />}
+   642→
+   643→          {/* New Tabs - Placeholders for future development */}
+   644→          {(activeTab === 'subscriptions' ||
+   645→            activeTab === 'promotions' ||
+   646→            activeTab === 'tokens' ||
+   647→            activeTab === 'messages' ||
+   648→            activeTab === 'analytics') && (
+   649→            <Card>
+   650→              <CardContent className="py-16 text-center">
+   651→                <div className="max-w-md mx-auto">
+   652→                  <div className="h-16 w-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+   653→                    <Zap className="h-8 w-8 text-gray-400" />
+   654→                  </div>
+   655→                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+   656→                    قيد التطوير
+   657→                  </h3>
+   658→                  <p className="text-gray-500 dark:text-gray-400 mb-4">
+   659→                    هذه الميزة قيد التطوير وستكون متاحة قريباً
+   660→                  </p>
+   661→                  <Button variant="outline" onClick={() => setActiveTab('overview')}>
+   662→                    العودة للرئيسية
+   663→                  </Button>
+   664→                </div>
+   665→              </CardContent>
+   666→            </Card>
+   667→          )}
+   668→        </div>
+   669→      </main>
+   670→    </div>
+   671→  );
+   672→}
+   673→

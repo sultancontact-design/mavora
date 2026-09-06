@@ -1,0 +1,64 @@
+# GitHub Actions - Automated Dependency Update
+name: Dependency Update
+
+on:
+  schedule:
+    # Run every Monday at 9:00 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  update-dependencies:
+    name: 📦 Update Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 📦 Check for outdated packages
+        run: npm outdated
+
+      - name: 🔧 Update dependencies
+        run: npm update
+
+      - name: 🧪 Test after update
+        run: npm test -- __tests__/lib/ -- --run
+        continue-on-error: true
+
+      - name: 🏗️ Build test
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        continue-on-error: true
+
+      - name: 💾 Create PR if changes exist
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update dependencies"
+          title: "📦 chore: update dependencies"
+          body: |
+            ## 📦 Automated Dependency Update
+            
+            This PR was automatically created by the [Dependency Update](../actions/dependency-update.yml) workflow.
+            
+            ### Changes:
+            - Updated npm dependencies to latest compatible versions
+            
+            ### ✅ Checks:
+            - [ ] Unit tests pass
+            - [ ] Build succeeds
+            - [ ] Manual review required
+            
+            Please review the changes and merge if everything looks good.
+          branch: feature/auto-dependency-update
+          delete-branch: true

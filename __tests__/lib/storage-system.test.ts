@@ -48,11 +48,20 @@ describe('Image Validation', () => {
     });
 
     it('should accept valid image types', () => {
+      // Map MIME types to proper extensions
+      const typeToExt: Record<string, string> = {
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+        'image/gif': 'gif',
+        'image/webp': 'webp',
+        'image/svg+xml': 'svg',
+      };
+      
       for (const type of ALLOWED_IMAGE_TYPES) {
         const result = validateImage({
-          name: `test.${type.split('/')[1]}`,
+          name: `test.${typeToExt[type] || type.split('/')[1]}`,
           type,
-          size: 1000,
+          size: 2000, // Above MIN_IMAGE_SIZE (1024)
         });
         
         expect(result.valid).toBe(true);

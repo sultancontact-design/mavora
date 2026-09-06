@@ -1,0 +1,721 @@
+     1→'use client';
+     2→
+     3→import React, { useEffect, useState, useCallback, Suspense, lazy, ComponentType } from 'react';
+     4→import { useTranslation } from '@/hooks/useTranslation';
+     5→import { useAuthStore } from '@/stores/auth';
+     6→import { Card, CardContent } from '@/components/ui/card';
+     7→import { Badge } from '@/components/ui/badge';
+     8→import { Button } from '@/components/ui/button';
+     9→import { Input } from '@/components/ui/input';
+    10→import { 
+    11→  LayoutDashboard,
+    12→  Users,
+    13→  FileText,
+    14→  DollarSign,
+    15→  AlertTriangle,
+    16→  Settings,
+    17→  BarChart3,
+    18→  Shield,
+    19→  Tag,
+    20→  CreditCard,
+    21→  MessageSquare,
+    22→  Activity,
+    23→  Crown,
+    24→  Coins,
+    25→  Zap,
+    26→  RefreshCw,
+    27→  Search,
+    28→  ChevronLeft,
+    29→  ChevronRight,
+    30→  Home,
+    31→  LogOut,
+    32→  Bell,
+    33→  Wallet,
+    34→  Flag,
+    35→  TrendingUp,
+    36→} from 'lucide-react';
+    37→import Link from 'next/link';
+    38→
+    39→// Lazy loaded components for code splitting
+    40→const UserManagement = lazy(() => import('./UserManagement').then(m => ({ default: m.default })));
+    41→const ListingManagement = lazy(() => import('./ListingManagement').then(m => ({ default: m.default })));
+    42→const ReportManagement = lazy(() => import('./ReportManagement').then(m => ({ default: m.default })));
+    43→const CategoryManagement = lazy(() => import('./CategoryManagement').then(m => ({ default: m.default })));
+    44→const PaymentManagement = lazy(() => import('./PaymentManagement').then(m => ({ default: m.default })));
+    45→const AuditLogViewer = lazy(() => import('./AuditLogViewer').then(m => ({ default: m.default })));
+    46→const SettingsPanel = lazy(() => import('./SettingsPanel').then(m => ({ default: m.default })));
+    47→const ModerationQueue = lazy(() => import('./ModerationQueue').then(m => ({ default: m.default })));
+    48→
+    49→// Types
+    50→interface AdminStats {
+    51→  success: boolean;
+    52→  overview: {
+    53→    total_users: number;
+    54→    total_listings: number;
+    55→    total_revenue: number;
+    56→    pending_reports: number;
+    57→    total_wallet_balance: number;
+    58→    active_listings: number;
+    59→    categories_count: number;
+    60→  };
+    61→  users: {
+    62→    total: number;
+    63→    today: number;
+    64→    this_week: number;
+    65→    this_month: number;
+    66→  };
+    67→  listings: {
+    68→    today: number;
+    69→    this_week: number;
+    70→    this_month: number;
+    71→    active: number;
+    72→    pending: number;
+    73→    total: number;
+    74→  };
+    75→  categories: Array<{ id: string; name: string; nameAr?: string; slug: string }>;
+    76→  recent_listings: Array<{
+    77→    id: string;
+    78→    title: string;
+    79→    status: string;
+    80→    createdAt: string;
+    81→    price: number | null;
+    82→    currencyCode: string;
+    83→  }>;
+    84→  revenue: {
+    85→    total: number;
+    86→    monthly: number;
+    87→  };
+    88→  wallets: {
+    89→    total_balance: number;
+    90→  };
+    91→}
+    92→
+    93→// Sidebar Navigation Items
+    94→const navItems = [
+    95→  { id: 'overview', label: 'لوحة التحكم', icon: LayoutDashboard },
+    96→  { id: 'users', label: 'المستخدمون', icon: Users },
+    97→  { id: 'listings', label: 'الإعلانات', icon: FileText },
+    98→  { id: 'moderation', label: 'المراجعة', icon: Shield },
+    99→  { id: 'reports', label: 'البلاغات', icon: AlertTriangle },
+   100→  { id: 'categories', label: 'التصنيفات', icon: Tag },
+   101→  { id: 'payments', label: 'المدفوعات', icon: CreditCard },
+   102→  { id: 'subscriptions', label: 'الاشتراكات', icon: Crown },
+   103→  { id: 'promotions', label: 'الترويجات', icon: Zap },
+   104→  { id: 'tokens', label: 'الرصيد والنقاط', icon: Coins },
+   105→  { id: 'messages', label: 'الرسائل', icon: MessageSquare },
+   106→  { id: 'analytics', label: 'التحليلات', icon: BarChart3 },
+   107→  { id: 'audit', label: 'سجلات التدقيق', icon: Activity },
+   108→  { id: 'settings', label: 'الإعدادات', icon: Settings },
+   109→];
+   110→
+   111→// Loading fallback component
+   112→function TabLoader() {
+   113→  return (
+   114→    <div className="flex items-center justify-center py-16">
+   115→      <div className="text-center">
+   116→        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500 mx-auto mb-4" />
+   117→        <p className="text-gray-500">جاري التحميل...</p>
+   118→      </div>
+   119→    </div>
+   120→  );
+   121→}
+   122→
+   123→// Error boundary fallback
+   124→function ErrorFallback({ onRetry }: { onRetry: () => void }) {
+   125→  return (
+   126→    <div className="flex items-center justify-center py-16">
+   127→      <Card className="w-full max-w-md mx-4">
+   128→        <CardContent className="pt-6 text-center">
+   129→          <AlertTriangle className="h-12 w-12 mx-auto text-amber-500 mb-4" />
+   130→          <h3 className="text-lg font-semibold mb-2">حدث خطأ في تحميل هذا القسم</h3>
+   131→          <Button onClick={onRetry} variant="outline" className="mt-4">
+   132→            <RefreshCw className="h-4 w-4 ml-2" />
+   133→            إعادة المحاولة
+   134→          </Button>
+   135→        </CardContent>
+   136→      </Card>
+   137→    </div>
+   138→  );
+   139→}
+   140→
+   141→// Wrapper for lazy components with error handling
+   142→function LazyTab({ 
+   143→  component: Component, 
+   144→  onError 
+   145→}: { 
+   146→  component: ComponentType; 
+   147→  onError: () => void;
+   148→}) {
+   149→  const [hasError, setHasError] = useState(false);
+   150→
+   151→  if (hasError) {
+   152→    return <ErrorFallback onRetry={() => setHasError(false)} />;
+   153→  }
+   154→
+   155→  return (
+   156→    <Suspense fallback={<TabLoader />}>
+   157→      <ErrorCatcher onError={() => setHasError(true)}>
+   158→        <Component />
+   159→      </ErrorCatcher>
+   160→    </Suspense>
+   161→  );
+   162→}
+   163→
+   164→// Error catcher component
+   165→class ErrorCatcher extends React.Component<
+   166→  { children: React.ReactNode; onError: () => void },
+   167→  { hasError: boolean }
+   168→> {
+   169→  constructor(props: { children: React.ReactNode; onError: () => void }) {
+   170→    super(props);
+   171→    this.state = { hasError: false };
+   172→  }
+   173→
+   174→  static getDerivedStateFromError() {
+   175→    return { hasError: true };
+   176→  }
+   177→
+   178→  componentDidCatch() {
+   179→    this.props.onError();
+   180→  }
+   181→
+   182→  render() {
+   183→    if (this.state.hasError) return null;
+   184→    return this.props.children;
+   185→  }
+   186→}
+   187→
+   188→export default function SuperAdminDashboard() {
+   189→  const { t, locale } = useTranslation();
+   190→  const { user } = useAuthStore();
+   191→  const [stats, setStats] = useState<AdminStats | null>(null);
+   192→  const [loading, setLoading] = useState(true);
+   193→  const [error, setError] = useState<string | null>(null);
+   194→  const [activeTab, setActiveTab] = useState('overview');
+   195→  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+   196→  const [searchQuery, setSearchQuery] = useState('');
+   197→  const [refreshing, setRefreshing] = useState(false);
+   198→
+   199→  const fetchStats = useCallback(async () => {
+   200→    // Add timeout to prevent hanging
+   201→    const controller = new AbortController();
+   202→    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+   203→
+   204→    try {
+   205→      setError(null);
+   206→      const statsRes = await fetch('/api/admin/stats?period=month', {
+   207→        signal: controller.signal,
+   208→      });
+   209→      
+   210→      if (!statsRes.ok) throw new Error('Failed to fetch stats');
+   211→      const statsData = await statsRes.json();
+   212→      
+   213→      if (statsData.success) {
+   214→        setStats(statsData);
+   215→      } else {
+   216→        throw new Error(statsData.error || 'Invalid response');
+   217→      }
+   218→    } catch (err) {
+   219→      console.error('Admin dashboard error:', err);
+   220→      if (err instanceof DOMException && err.name === 'AbortError') {
+   221→        setError('انتهت مهلة الاتصال - يرجى المحاولة مرة أخرى');
+   222→      } else {
+   223→        setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+   224→      }
+   225→    } finally {
+   226→      clearTimeout(timeoutId);
+   227→      setLoading(false);
+   228→      setRefreshing(false);
+   229→    }
+   230→  }, []);
+   231→
+   232→  useEffect(() => {
+   233→    fetchStats();
+   234→  }, [fetchStats]);
+   235→
+   236→  const handleRefresh = () => {
+   237→    setRefreshing(true);
+   238→    fetchStats();
+   239→  };
+   240→
+   241→  // Format numbers with commas
+   242→  const formatNumber = (num: number) => {
+   243→    return new Intl.NumberFormat(locale === 'ar' ? 'ar-MA' : 'en-US').format(num);
+   244→  };
+   245→
+   246→  // Format currency
+   247→  const formatCurrency = (amount: number) => {
+   248→    return new Intl.NumberFormat(locale === 'ar' ? 'ar-MA' : 'en-US', {
+   249→      style: 'currency',
+   250→      currency: 'MAD',
+   251→      minimumFractionDigits: 0,
+   252→      maximumFractionDigits: 0,
+   253→    }).format(amount);
+   254→  };
+   255→
+   256→  // Format date
+   257→  const formatDate = (dateStr: string) => {
+   258→    return new Date(dateStr).toLocaleDateString(locale === 'ar' ? 'ar-MA' : 'en-US', {
+   259→      month: 'short',
+   260→      day: 'numeric',
+   261→      hour: '2-digit',
+   262→      minute: '2-digit',
+   263→    });
+   264→  };
+   265→
+   266→  // Get status badge variant
+   267→  const getStatusBadge = (status: string) => {
+   268→    const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+   269→      active: 'default',
+   270→      pending_review: 'secondary',
+   271→      rejected: 'destructive',
+   272→      archived: 'outline',
+   273→      draft: 'outline',
+   274→      sold: 'outline',
+   275→      reserved: 'secondary',
+   276→    };
+   277→    return variants[status] || 'outline';
+   278→  };
+   279→
+   280→  const getStatusLabel = (status: string) => {
+   281→    const labels: Record<string, string> = {
+   282→      active: 'نشط',
+   283→      pending_review: 'قيد المراجعة',
+   284→      rejected: 'مرفوض',
+   285→      archived: 'مؤرشف',
+   286→      draft: 'مسودة',
+   287→      sold: 'مباع',
+   288→      reserved: 'محجوز',
+   289→    };
+   290→    return labels[status] || status;
+   291→  };
+   292→
+   293→  // Loading state
+   294→  if (loading) {
+   295→    return (
+   296→      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+   297→        <div className="text-center">
+   298→          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4" />
+   299→          <p className="text-gray-600 dark:text-gray-400">جاري تحميل لوحة التحكم...</p>
+   300→        </div>
+   301→      </div>
+   302→    );
+   303→  }
+   304→
+   305→  // Error state (with stats still showing sidebar)
+   306→  return (
+   307→    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+   308→      {/* Sidebar */}
+   309→      <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-slate-900 text-white transition-all duration-300 flex flex-col fixed h-full z-40`}>
+   310→        {/* Logo */}
+   311→        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+   312→          {!sidebarCollapsed && (
+   313→            <div className="flex items-center gap-2">
+   314→              <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-lg flex items-center justify-center font-bold text-lg">
+   315→                M
+   316→              </div>
+   317→              <span className="font-bold text-lg">MAVORA</span>
+   318→            </div>
+   319→          )}
+   320→          <button
+   321→            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+   322→            className="p-1 hover:bg-slate-800 rounded-lg transition-colors"
+   323→            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+   324→          >
+   325→            {sidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+   326→          </button>
+   327→        </div>
+   328→
+   329→        {/* Navigation */}
+   330→        <nav className="flex-1 overflow-y-auto py-4 px-2">
+   331→          <ul className="space-y-1">
+   332→            {navItems.map((item) => (
+   333→              <li key={item.id}>
+   334→                <button
+   335→                  onClick={() => setActiveTab(item.id)}
+   336→                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+   337→                    activeTab === item.id
+   338→                      ? 'bg-emerald-600 text-white'
+   339→                      : 'text-gray-300 hover:bg-slate-800 hover:text-white'
+   340→                  }`}
+   341→                  title={item.label}
+   342→                >
+   343→                  <item.icon className="h-5 w-5 shrink-0" />
+   344→                  {!sidebarCollapsed && <span className="text-sm">{item.label}</span>}
+   345→                </button>
+   346→              </li>
+   347→            ))}
+   348→          </ul>
+   349→        </nav>
+   350→
+   351→        {/* User Info */}
+   352→        <div className="p-4 border-t border-slate-800">
+   353→          <div className={`flex items-center gap-3 ${sidebarCollapsed ? 'justify-center' : ''}`}>
+   354→            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-sm font-bold">
+   355→              {user?.display_name?.charAt(0)?.toUpperCase() || 'A'}
+   356→            </div>
+   357→            {!sidebarCollapsed && (
+   358→              <div className="flex-1 min-w-0">
+   359→                <p className="text-sm font-medium truncate">{user?.display_name || 'Admin'}</p>
+   360→                <p className="text-xs text-gray-400 truncate">Super Admin</p>
+   361→              </div>
+   362→            )}
+   363→          </div>
+   364→        </div>
+   365→      </aside>
+   366→
+   367→      {/* Main Content */}
+   368→      <main className={`flex-1 ${sidebarCollapsed ? 'ml-16' : 'ml-64'} transition-all duration-300`}>
+   369→        {/* Top Header */}
+   370→        <header className="bg-white dark:bg-gray-800 border-b sticky top-0 z-30 px-6 py-4">
+   371→          <div className="flex items-center justify-between">
+   372→            <div className="flex items-center gap-4">
+   373→              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+   374→                {navItems.find(item => item.id === activeTab)?.label || 'لوحة التحكم'}
+   375→              </h1>
+   376→              <Badge variant="outline" className="text-xs">
+   377→                {locale === 'ar' ? 'مباشر' : 'Live'}
+   378→              </Badge>
+   379→            </div>
+   380→            
+   381→            <div className="flex items-center gap-3">
+   382→              {/* Search */}
+   383→              <div className="relative hidden md:block">
+   384→                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+   385→                <Input
+   386→                  placeholder="بحث..."
+   387→                  value={searchQuery}
+   388→                  onChange={(e) => setSearchQuery(e.target.value)}
+   389→                  className="pl-10 w-64"
+   390→                />
+   391→              </div>
+   392→
+   393→              {/* Refresh Button */}
+   394→              <Button
+   395→                variant="outline"
+   396→                size="icon"
+   397→                onClick={handleRefresh}
+   398→                disabled={refreshing}
+   399→              >
+   400→                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+   401→              </Button>
+   402→
+   403→              {/* Notifications */}
+   404→              <Button variant="outline" size="icon" className="relative">
+   405→                <Bell className="h-4 w-4" />
+   406→                {stats?.overview.pending_reports ? (
+   407→                  <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+   408→                    {stats.overview.pending_reports > 9 ? '9+' : stats.overview.pending_reports}
+   409→                  </span>
+   410→                ) : null}
+   411→              </Button>
+   412→
+   413→              {/* Back to Site */}
+   414→              <Link href="/">
+   415→                <Button variant="outline" size="sm">
+   416→                  <Home className="h-4 w-4 ml-2" />
+   417→                  الموقع
+   418→                </Button>
+   419→              </Link>
+   420→            </div>
+   421→          </div>
+   422→        </header>
+   423→
+   424→        {/* Dashboard Content */}
+   425→        <div className="p-6">
+   426→          {/* Error Banner */}
+   427→          {error && (
+   428→            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+   429→              <div className="flex items-center gap-3">
+   430→                <AlertTriangle className="h-5 w-5 text-red-500 shrink-0" />
+   431→                <p className="text-red-700 dark:text-red-300">{error}</p>
+   432→                <Button variant="outline" size="sm" onClick={handleRefresh} className="ml-auto">
+   433→                  <RefreshCw className="h-4 w-4 ml-2" />
+   434→                  إعادة المحاولة
+   435→                </Button>
+   436→              </div>
+   437→            </div>
+   438→          )}
+   439→
+   440→          {/* Overview Tab */}
+   441→          {activeTab === 'overview' && stats && (
+   442→            <div className="space-y-6">
+   443→              {/* Stats Cards */}
+   444→              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+   445→                <Card className="border-l-4 border-l-blue-500">
+   446→                  <CardContent className="pt-6">
+   447→                    <div className="flex items-center justify-between">
+   448→                      <div>
+   449→                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">إجمالي المستخدمين</p>
+   450→                        <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">
+   451→                          {formatNumber(stats.overview.total_users)}
+   452→                        </p>
+   453→                        <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
+   454→                          <TrendingUp className="h-3 w-3" />
+   455→                          +{stats.users.today} اليوم
+   456→                        </p>
+   457→                      </div>
+   458→                      <div className="h-12 w-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+   459→                        <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+   460→                      </div>
+   461→                    </div>
+   462→                  </CardContent>
+   463→                </Card>
+   464→
+   465→                <Card className="border-l-4 border-l-emerald-500">
+   466→                  <CardContent className="pt-6">
+   467→                    <div className="flex items-center justify-between">
+   468→                      <div>
+   469→                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">إجمالي الإعلانات</p>
+   470→                        <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">
+   471→                          {formatNumber(stats.overview.total_listings)}
+   472→                        </p>
+   473→                        <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
+   474→                          <TrendingUp className="h-3 w-3" />
+   475→                          {stats.listings.active} نشط
+   476→                        </p>
+   477→                      </div>
+   478→                      <div className="h-12 w-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+   479→                        <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+   480→                      </div>
+   481→                    </div>
+   482→                  </CardContent>
+   483→                </Card>
+   484→
+   485→                <Card className="border-l-4 border-l-yellow-500">
+   486→                  <CardContent className="pt-6">
+   487→                    <div className="flex items-center justify-between">
+   488→                      <div>
+   489→                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">إجمالي الإيرادات</p>
+   490→                        <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">
+   491→                          {formatCurrency(stats.revenue.total)}
+   492→                        </p>
+   493→                        <p className="text-sm text-gray-500 mt-1">درهم مغربي</p>
+   494→                      </div>
+   495→                      <div className="h-12 w-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg flex items-center justify-center">
+   496→                        <DollarSign className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+   497→                      </div>
+   498→                    </div>
+   499→                  </CardContent>
+   500→                </Card>
+   501→
+   502→                <Card className="border-l-4 border-l-red-500">
+   503→                  <CardContent className="pt-6">
+   504→                    <div className="flex items-center justify-between">
+   505→                      <div>
+   506→                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">بلاغات معلقة</p>
+   507→                        <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">
+   508→                          {formatNumber(stats.overview.pending_reports)}
+   509→                        </p>
+   510→                        <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
+   511→                          <AlertTriangle className="h-3 w-3" />
+   512→                          تحتاج مراجعة
+   513→                        </p>
+   514→                      </div>
+   515→                      <div className="h-12 w-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+   516→                        <Flag className="h-6 w-6 text-red-600 dark:text-red-400" />
+   517→                      </div>
+   518→                    </div>
+   519→                  </CardContent>
+   520→                </Card>
+   521→              </div>
+   522→
+   523→              {/* Secondary Stats */}
+   524→              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+   525→                <Card>
+   526→                  <CardContent className="pt-6">
+   527→                    <div className="flex items-center justify-between">
+   528→                      <div>
+   529→                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">رصيد المحافظ</p>
+   530→                        <p className="text-2xl font-bold text-purple-600 mt-1">
+   531→                          {formatCurrency(stats.wallets.total_balance)}
+   532→                        </p>
+   533→                      </div>
+   534→                      <Wallet className="h-8 w-8 text-purple-500" />
+   535→                    </div>
+   536→                  </CardContent>
+   537→                </Card>
+   538→
+   539→                <Card>
+   540→                  <CardContent className="pt-6">
+   541→                    <div className="flex items-center justify-between">
+   542→                      <div>
+   543→                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">التصنيفات</p>
+   544→                        <p className="text-2xl font-bold text-teal-600 mt-1">
+   545→                          {stats.categories.length}
+   546→                        </p>
+   547→                      </div>
+   548→                      <Tag className="h-8 w-8 text-teal-500" />
+   549→                    </div>
+   550→                  </CardContent>
+   551→                </Card>
+   552→
+   553→                <Card>
+   554→                  <CardContent className="pt-6">
+   555→                    <div className="flex items-center justify-between">
+   556→                      <div>
+   557→                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">نشاط اليوم</p>
+   558→                        <div className="flex gap-4 text-sm mt-1">
+   559→                          <div>
+   560→                            <span className="text-gray-500">مستخدمين:</span>
+   561→                            <span className="font-semibold mr-1">{stats.users.today}</span>
+   562→                          </div>
+   563→                          <div>
+   564→                            <span className="text-gray-500">إعلانات:</span>
+   565→                            <span className="font-semibold mr-1">{stats.listings.today}</span>
+   566→                          </div>
+   567→                        </div>
+   568→                      </div>
+   569→                      <Activity className="h-8 w-8 text-orange-500" />
+   570→                    </div>
+   571→                  </CardContent>
+   572→                </Card>
+   573→              </div>
+   574→
+   575→              {/* Recent Listings & Quick Actions */}
+   576→              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+   577→                {/* Recent Listings */}
+   578→                <Card>
+   579→                  <div className="p-6 pb-2">
+   580→                    <div className="flex items-center justify-between mb-4">
+   581→                      <h3 className="text-lg font-semibold">آخر الإعلانات</h3>
+   582→                      <Button variant="ghost" size="sm" onClick={() => setActiveTab('listings')}>
+   583→                        عرض الكل
+   584→                        <ChevronLeft className="h-4 w-4 mr-1" />
+   585→                      </Button>
+   586→                    </div>
+   587→                  </div>
+   588→                  <div className="px-6 pb-6">
+   589→                    <div className="space-y-3">
+   590→                      {stats.recent_listings.slice(0, 5).map((listing) => (
+   591→                        <div key={listing.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+   592→                          <div className="flex-1 min-w-0">
+   593→                            <p className="font-medium text-sm truncate">{listing.title}</p>
+   594→                            <p className="text-xs text-gray-500">{formatDate(listing.createdAt)}</p>
+   595→                          </div>
+   596→                          <div className="flex items-center gap-2 ml-4">
+   597→                            {listing.price && (
+   598→                              <span className="text-sm font-semibold text-emerald-600">
+   599→                                {formatCurrency(listing.price)}
+   600→                              </span>
+   601→                            )}
+   602→                            <Badge variant={getStatusBadge(listing.status)} className="text-xs">
+   603→                              {getStatusLabel(listing.status)}
+   604→                            </Badge>
+   605→                          </div>
+   606→                        </div>
+   607→                      ))}
+   608→                    </div>
+   609→                  </div>
+   610→                </Card>
+   611→
+   612→                {/* Quick Actions */}
+   613→                <Card>
+   614→                  <div className="p-6 pb-2">
+   615→                    <h3 className="text-lg font-semibold mb-4">إجراءات سريعة</h3>
+   616→                  </div>
+   617→                  <div className="px-6 pb-6">
+   618→                    <div className="grid grid-cols-2 gap-3">
+   619→                      <Button
+   620→                        variant="outline"
+   621→                        className="h-auto py-4 flex-col gap-2"
+   622→                        onClick={() => setActiveTab('moderation')}
+   623→                      >
+   624→                        <Shield className="h-5 w-5" />
+   625→                        <span className="text-xs">مراجعة الإعلانات</span>
+   626→                        <Badge variant="secondary" className="text-xs">
+   627→                          {stats.listings.pending}
+   628→                        </Badge>
+   629→                      </Button>
+   630→                      <Button
+   631→                        variant="outline"
+   632→                        className="h-auto py-4 flex-col gap-2"
+   633→                        onClick={() => setActiveTab('reports')}
+   634→                      >
+   635→                        <Flag className="h-5 w-5" />
+   636→                        <span className="text-xs">البلاغات</span>
+   637→                        <Badge variant="destructive" className="text-xs">
+   638→                          {stats.overview.pending_reports}
+   639→                        </Badge>
+   640→                      </Button>
+   641→                      <Button
+   642→                        variant="outline"
+   643→                        className="h-auto py-4 flex-col gap-2"
+   644→                        onClick={() => setActiveTab('users')}
+   645→                      >
+   646→                        <Users className="h-5 w-5" />
+   647→                        <span className="text-xs">إدارة المستخدمين</span>
+   648→                      </Button>
+   649→                      <Button
+   650→                        variant="outline"
+   651→                        className="h-auto py-4 flex-col gap-2"
+   652→                        onClick={() => setActiveTab('settings')}
+   653→                      >
+   654→                        <Settings className="h-5 w-5" />
+   655→                        <span className="text-xs">الإعدادات</span>
+   656→                      </Button>
+   657→                    </div>
+   658→                  </div>
+   659→                </Card>
+   660→              </div>
+   661→
+   662→              {/* Charts Placeholder */}
+   663→              <Card>
+   664→                <div className="p-6">
+   665→                  <h3 className="text-lg font-semibold">نمو المنصة</h3>
+   666→                  <p className="text-sm text-gray-500 mt-1">آخر 30 يوم</p>
+   667→                </div>
+   668→                <div className="px-6 pb-6">
+   669→                  <div className="h-64 flex items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg">
+   670→                    <div className="text-center">
+   671→                      <BarChart3 className="h-12 w-12 mx-auto text-gray-400 mb-2" />
+   672→                      <p className="text-gray-500">بيان النمو سيظهر هنا</p>
+   673→                      <p className="text-sm text-gray-400 mt-1">يمكن دمج مكتبة Recharts لعرض البيانات</p>
+   674→                    </div>
+   675→                  </div>
+   676→                </div>
+   677→              </Card>
+   678→            </div>
+   679→          )}
+   680→
+   681→          {/* Other Tabs - Lazy Loaded Components */}
+   682→          {activeTab === 'users' && <LazyTab component={UserManagement} onError={() => {}} />}
+   683→          {activeTab === 'listings' && <LazyTab component={ListingManagement} onError={() => {}} />}
+   684→          {activeTab === 'moderation' && <LazyTab component={ModerationQueue} onError={() => {}} />}
+   685→          {activeTab === 'reports' && <LazyTab component={ReportManagement} onError={() => {}} />}
+   686→          {activeTab === 'categories' && <LazyTab component={CategoryManagement} onError={() => {}} />}
+   687→          {activeTab === 'payments' && <LazyTab component={PaymentManagement} onError={() => {}} />}
+   688→          {activeTab === 'audit' && <LazyTab component={AuditLogViewer} onError={() => {}} />}
+   689→          {activeTab === 'settings' && <LazyTab component={SettingsPanel} onError={() => {}} />}
+   690→
+   691→          {/* New Tabs - Placeholders for future development */}
+   692→          {(activeTab === 'subscriptions' ||
+   693→            activeTab === 'promotions' ||
+   694→            activeTab === 'tokens' ||
+   695→            activeTab === 'messages' ||
+   696→            activeTab === 'analytics') && (
+   697→            <Card>
+   698→              <CardContent className="py-16 text-center">
+   699→                <div className="max-w-md mx-auto">
+   700→                  <div className="h-16 w-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+   701→                    <Zap className="h-8 w-8 text-gray-400" />
+   702→                  </div>
+   703→                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+   704→                    قيد التطوير
+   705→                  </h3>
+   706→                  <p className="text-gray-500 dark:text-gray-400 mb-4">
+   707→                    هذه الميزة قيد التطوير وستكون متاحة قريباً
+   708→                  </p>
+   709→                  <Button variant="outline" onClick={() => setActiveTab('overview')}>
+   710→                    العودة للرئيسية
+   711→                  </Button>
+   712→                </div>
+   713→              </CardContent>
+   714→            </Card>
+   715→          )}
+   716→        </div>
+   717→      </main>
+   718→    </div>
+   719→  );
+   720→}
+   721→

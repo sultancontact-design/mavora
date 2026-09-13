@@ -1,0 +1,646 @@
+     1→/**
+     2→ * Seller Dashboard Component
+     3→ * Comprehensive dashboard for sellers to manage their listings, orders, and earnings
+     4→ * 
+     5→ * @module components/seller/SellerDashboard
+     6→ */
+     7→
+     8→'use client';
+     9→
+    10→import React, { useState, useEffect, useCallback } from 'react';
+    11→import { 
+    12→  BarChart3, 
+    13→  TrendingUp, 
+    14→  Package, 
+    15→  MessageSquare, 
+    16→  Eye, 
+    17→  Heart,
+    18→  DollarSign,
+    19→  ShoppingCart,
+    20→  Star,
+    21→  Plus,
+    22→  MoreVertical,
+    23→  Filter,
+    24→  Download,
+    25→  Calendar,
+    26→  AlertCircle,
+    27→  CheckCircle,
+    28→  Clock
+    29→} from 'lucide-react';
+    30→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+    31→import { Button } from '@/components/ui/button';
+    32→import { Badge } from '@/components/ui/badge';
+    33→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    34→import { Progress } from '@/components/ui/progress';
+    35→
+    36→// ============================================================
+    37→// Types
+    38→// ============================================================
+    39→
+    40→interface SellerStats {
+    41→  totalListings: number;
+    42→  activeListings: number;
+    43→  totalViews: number;
+    44→  totalLikes: number;
+    45→  totalMessages: number;
+    46→  totalOrders: number;
+    47→  totalRevenue: number;
+    48→  pendingPayout: number;
+    49→  averageRating: number;
+    50→  responseRate: number;
+    51→  responseTime: string; // e.g., "within 1 hour"
+    52→}
+    53→
+    54→interface ListingPerformance {
+    55→  id: string;
+    56→  title: string;
+    57→  price: number;
+    58→  currency: string;
+    59→  views: number;
+    60→  likes: number;
+    61→  messages: number;
+    62→  status: 'active' | 'pending' | 'sold' | 'expired' | 'rejected';
+    63→  publishedAt: Date;
+    64→  category: string;
+    65→}
+    66→
+    67→interface RecentOrder {
+    68→  id: string;
+    69→  buyerName: string;
+    70→  itemTitle: string;
+    71→  amount: number;
+    72→  currency: string;
+    73→  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+    74→  createdAt: Date;
+    75→}
+    76→
+    77→interface EarningData {
+    78→  date: string;
+    79→  revenue: number;
+    80→  orders: number;
+    81→}
+    82→
+    83→interface MessagePreview {
+    84→  id: string;
+    85→  senderName: string;
+    86→  message: string;
+    87→  listingTitle?: string;
+    88→  time: string;
+    89→  isRead: boolean;
+    90→}
+    91→
+    92→// ============================================================
+    93→// Mock Data (would come from API)
+    94→// ============================================================
+    95→
+    96→const mockStats: SellerStats = {
+    97→  totalListings: 24,
+    98→  activeListings: 18,
+    99→  totalViews: 15420,
+   100→  totalLikes: 892,
+   101→  totalMessages: 156,
+   102→  totalOrders: 43,
+   103→  totalRevenue: 28500,
+   104→  pendingPayout: 1250,
+   105→  averageRating: 4.8,
+   106→  responseRate: 95,
+   107→  responseTime: 'خلال ساعة',
+   108→};
+   109→
+   110→const mockListings: ListingPerformance[] = [
+   111→  { id: '1', title: 'iPhone 15 Pro Max', price: 12000, currency: 'MAD', views: 450, likes: 32, messages: 8, status: 'active', publishedAt: new Date('2025-01-01'), category: 'إلكترونيات' },
+   112→  { id: '2', title: 'ساعة رولكس أصلية', price: 25000, currency: 'MAD', views: 890, likes: 67, messages: 15, status: 'active', publishedAt: new Date('2024-12-20'), category: 'مجوهرات' },
+   113→  { id: '3', title: 'كنبة مودرن جديدة', price: 3500, currency: 'MAD', views: 230, likes: 18, messages: 3, status: 'pending', publishedAt: new Date('2025-01-10'), category: 'أثاث' },
+   114→  { id: '4', title: 'لابتوب Dell XPS 15', price: 8000, currency: 'MAD', views: 670, likes: 45, messages: 12, status: 'sold', publishedAt: new Date('2024-12-15'), category: 'إلكترونيات' },
+   115→];
+   116→
+   117→const mockOrders: RecentOrder[] = [
+   118→  { id: '1', buyerName: 'أحمد محمد', itemTitle: 'iPhone 15 Pro Max', amount: 12000, currency: 'MAD', status: 'confirmed', createdAt: new Date('2025-01-10') },
+   119→  { id: '2', buyerName: 'فاطمة العلوي', itemTitle: 'ساعة رولكس أصلية', amount: 25000, currency: 'MAD', status: 'shipped', createdAt: new Date('2025-01-09') },
+   120→  { id: '3', buyerName: 'يوسف بنعلي', itemTitle: 'حقيبة جلد فاخرة', amount: 850, currency: 'MAD', status: 'delivered', createdAt: new Date('2025-01-08') },
+   121→];
+   122→
+   123→const mockEarnings: EarningData[] = [
+   124→  { date: '2025-01-05', revenue: 1500, orders: 3 },
+   125→  { date: '2025-01-06', revenue: 2200, orders: 5 },
+   126→  { date: '2025-01-07', revenue: 1800, orders: 4 },
+   127→  { date: '2025-01-08', revenue: 3100, orders: 7 },
+   128→  { date: '2025-01-09', revenue: 2700, orders: 6 },
+   129→  { date: '2025-01-10', revenue: 4200, orders: 9 },
+   130→  { date: '2025-01-11', revenue: 3800, orders: 8 },
+   131→];
+   132→
+   133→const mockMessages: MessagePreview[] = [
+   134→  { id: '1', senderName: 'سارة أحمد', message: 'هل المنتج لا يزال متاحاً؟', listingTitle: 'iPhone 15 Pro Max', time: 'منذ 5 دقائق', isRead: false },
+   135→  { id: '2', senderName: 'محمد علي', message: 'هل يمكن التفاوض على السعر؟', listingTitle: 'ساعة رولكس أصلية', time: 'منذ ساعة', isRead: false },
+   136→  { id: '3', senderName: 'خديجة مراد', message: 'شكراً على الرد السريع!', time: 'منذ 3 ساعات', isRead: true },
+   137→];
+   138→
+   139→// ============================================================
+   140→// Components
+   141→// ============================================================
+   142→
+   143→function StatCard({ 
+   144→  title, 
+   145→  value, 
+   146→  icon: Icon, 
+   147→  change, 
+   148→  changeType,
+   149→  suffix = '',
+   150→  prefix = ''
+   151→}: { 
+   152→  title: string; 
+   153→  value: string | number; 
+   154→  icon: any; 
+   155→  change?: number; 
+   156→  changeType?: 'positive' | 'negative' | 'neutral';
+   157→  suffix?: string;
+   158→  prefix?: string;
+   159→}) {
+   160→  return (
+   161→    <Card>
+   162→      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+   163→        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+   164→        <Icon className="h-4 w-4 text-muted-foreground" />
+   165→      </CardHeader>
+   166→      <CardContent>
+   167→        <div className="text-2xl font-bold">{prefix}{value}{suffix}</div>
+   168→        {change !== undefined && (
+   169→          <p className={`text-xs ${changeType === 'positive' ? 'text-green-600' : changeType === 'negative' ? 'text-red-600' : 'text-gray-500'}`}>
+   170→            {changeType === 'positive' ? '+' : ''}{change}% من الأسبوع الماضي
+   171→          </p>
+   172→        )}
+   173→      </CardContent>
+   174→    </Card>
+   175→  );
+   176→}
+   177→
+   178→function StatusBadge({ status }: { status: string }) {
+   179→  const variants: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+   180→    active: { label: 'نشط', variant: 'default' },
+   181→    pending: { label: 'قيد المراجعة', variant: 'secondary' },
+   182→    sold: { label: 'مباع', variant: 'outline' },
+   183→    expired: { label: 'منتهي', variant: 'secondary' },
+   184→    rejected: { label: 'مرفوض', variant: 'destructive' },
+   185→    confirmed: { label: 'مؤكد', variant: 'default' },
+   186→    shipped: { label: 'تم الشحن', variant: 'secondary' },
+   187→    delivered: { label: 'تم التوصيل', variant: 'outline' },
+   188→    cancelled: { label: 'ملغي', variant: 'destructive' },
+   189→    pending: { label: 'قيد الانتظار', variant: 'secondary' },
+   190→  };
+   191→
+   192→  const config = variants[status] || { label: status, variant: 'secondary' as const };
+   193→  
+   194→  return <Badge variant={config.variant}>{config.label}</Badge>;
+   195→}
+   196→
+   197→// ============================================================
+   198→// Main Component
+   199→// ============================================================
+   200→
+   201→export function SellerDashboard() {
+   202→  const [stats] = useState<SellerStats>(mockStats);
+   203→  const [listings] = useState<ListingPerformance[]>(mockListings);
+   204→  const [orders] = useState<RecentOrder[]>(mockOrders);
+   205→  const [earnings] = useState<EarningData[]>(mockEarnings);
+   206→  const [messages] = useState<MessagePreview[]>(mockMessages);
+   207→  const [selectedTab, setSelectedTab] = useState('overview');
+   208→
+   209→  // Format currency
+   210→  const formatCurrency = (amount: number, currency: string = 'MAD') => {
+   211→    return new Intl.NumberFormat('ar-MA', {
+   212→      style: 'currency',
+   213→      currency,
+   214→      minimumFractionDigits: 0,
+   215→    }).format(amount);
+   216→  };
+   217→
+   218→  // Calculate totals
+   219→  const totalRevenue = earnings.reduce((sum, e) => sum + e.revenue, 0);
+   220→  const totalOrders = earnings.reduce((sum, e) => sum + e.orders, 0);
+   221→
+   222→  return (
+   223→    <div className="container mx-auto py-6 space-y-6" dir="rtl">
+   224→      {/* Header */}
+   225→      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+   226→        <div>
+   227→          <h1 className="text-3xl font-bold">لوحة البائع</h1>
+   228→          <p className="text-muted-foreground">مرحباً! إليك نظرة عامة على أداء متجرك</p>
+   229→        </div>
+   230→        <div className="flex gap-2">
+   231→          <Button variant="outline">
+   232→            <Download className="ml-2 h-4 w-4" />
+   233→            تصدير التقرير
+   234→          </Button>
+   235→          <Button>
+   236→            <Plus className="ml-2 h-4 w-4" />
+   237→            إضافة إعلان جديد
+   238→          </Button>
+   239→        </div>
+   240→      </div>
+   241→
+   242→      {/* Stats Grid */}
+   243→      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+   244→        <StatCard
+   245→          title="إجمالي الإعلانات"
+   246→          value={stats.totalListings}
+   247→          icon={Package}
+   248→          change={12}
+   249→          changeType="positive"
+   250→        />
+   251→        <StatCard
+   252→          title="إجمالي المشاهدات"
+   253→          value={stats.totalViews.toLocaleString('ar-MA')}
+   254→          icon={Eye}
+   255→          change={8}
+   256→          changeType="positive"
+   257→        />
+   258→        <StatCard
+   259→          title="الإيرادات"
+   260→          value={formatCurrency(stats.totalRevenue)}
+   261→          icon={DollarSign}
+   262→          change={23}
+   263→          changeType="positive"
+   264→        />
+   265→        <StatCard
+   266→          title="معدل الاستجابة"
+   267→          value={`${stats.responseRate}%`}
+   268→          icon={MessageSquare}
+   269→          change={2}
+   270→          changeType="positive"
+   271→        />
+   272→      </div>
+   273→
+   274→      {/* Main Content Tabs */}
+   275→      <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+   276→        <TabsList className="grid w-full grid-cols-5">
+   277→          <TabsTrigger value="overview">نظرة عامة</TabsTrigger>
+   278→          <TabsTrigger value="listings">إعلاناتي</TabsTrigger>
+   279→          <TabsTrigger value="orders">الطلبات</TabsTrigger>
+   280→          <TabsTrigger value="messages">الرسائل</TabsTrigger>
+   281→          <TabsTrigger value="analytics">التحليلات</TabsTrigger>
+   282→        </TabsList>
+   283→
+   284→        {/* Overview Tab */}
+   285→        <TabsContent value="overview" className="space-y-6">
+   286→          <div className="grid gap-6 lg:grid-cols-2">
+   287→            {/* Recent Orders */}
+   288→            <Card>
+   289→              <CardHeader>
+   290→                <CardTitle className="flex items-center gap-2">
+   291→                  <ShoppingCart className="h-5 w-5" />
+   292→                  آخر الطلبات
+   293→                </CardTitle>
+   294→                <CardDescription>آخر 5 طلبات جديدة</CardDescription>
+   295→              </CardHeader>
+   296→              <CardContent>
+   297→                <div className="space-y-4">
+   298→                  {orders.slice(0, 5).map(order => (
+   299→                    <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border">
+   300→                      <div className="space-y-1">
+   301→                        <p className="font-medium text-sm">{order.buyerName}</p>
+   302→                        <p className="text-xs text-muted-foreground">{order.itemTitle}</p>
+   303→                      </div>
+   304→                      <div className="text-left space-y-1">
+   305→                        <StatusBadge status={order.status} />
+   306→                        <p className="text-sm font-medium">{formatCurrency(order.amount, order.currency)}</p>
+   307→                      </div>
+   308→                    </div>
+   309→                  ))}
+   310→                </div>
+   311→              </CardContent>
+   312→            </Card>
+   313→
+   314→            {/* Recent Messages */}
+   315→            <Card>
+   316→              <CardHeader>
+   317→                <CardTitle className="flex items-center gap-2">
+   318→                  <MessageSquare className="h-5 w-5" />
+   319→                  الرسائل الأخيرة
+   320→                </CardTitle>
+   321→                <CardDescription>رسائل لم تُقرأ بعد</CardDescription>
+   322→              </CardHeader>
+   323→              <CardContent>
+   324→                <div className="space-y-4">
+   325→                  {messages.map(msg => (
+   326→                    <div key={msg.id} className={`flex items-start gap-3 p-3 rounded-lg border ${!msg.isRead ? 'bg-blue-50 dark:bg-blue-950/20' : ''}`}>
+   327→                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+   328→                        <span className="text-sm font-medium">
+   329→                          {msg.senderName.charAt(0)}
+   330→                        </span>
+   331→                      </div>
+   332→                      <div className="flex-1 min-w-0 space-y-1">
+   333→                        <div className="flex items-center justify-between">
+   334→                          <p className="font-medium text-sm">{msg.senderName}</p>
+   335→                          <span className="text-xs text-muted-foreground">{msg.time}</span>
+   336→                        </div>
+   337→                        <p className="text-sm text-muted-foreground truncate">{msg.message}</p>
+   338→                        {msg.listingTitle && (
+   339→                          <p className="text-xs text-primary">بخصوص: {msg.listingTitle}</p>
+   340→                        )}
+   341→                      </div>
+   342→                      {!msg.isRead && (
+   343→                        <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2" />
+   344→                      )}
+   345→                    </div>
+   346→                  ))}
+   347→                </div>
+   348→              </CardContent>
+   349→            </Card>
+   350→          </div>
+   351→
+   352→          {/* Quick Stats */}
+   353→          <div className="grid gap-4 md:grid-cols-3">
+   354→            <Card>
+   355→              <CardContent className="pt-6">
+   356→                <div className="flex items-center justify-between">
+   357→                  <div>
+   358→                    <p className="text-sm text-muted-foreground">التقييم العام</p>
+   359→                    <div className="flex items-center gap-2 mt-1">
+   360→                      <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+   361→                      <span className="text-2xl font-bold">{stats.averageRating}</span>
+   362→                    </div>
+   363→                  </div>
+   364→                  <div className="text-left">
+   365→                    <p className="text-sm text-muted-foreground">من 125 تقييم</p>
+   366→                  </div>
+   367→                </div>
+   368→              </CardContent>
+   369→            </Card>
+   370→
+   371→            <Card>
+   372→              <CardContent className="pt-6">
+   373→                <div className="flex items-center justify-between">
+   374→                  <div>
+   375→                    <p className="text-sm text-muted-foreground">مدة الاستجابة</p>
+   376→                    <p className="text-2xl font-bold mt-1">{stats.responseTime}</p>
+   377→                  </div>
+   378→                  <Clock className="h-8 w-8 text-muted-foreground" />
+   379→                </div>
+   380→              </CardContent>
+   381→            </Card>
+   382→
+   383→            <Card>
+   384→              <CardContent className="pt-6">
+   385→                <div className="flex items-center justify-between">
+   386→                  <div>
+   387→                    <p className="text-sm text-muted-foreground">مدفوعات معلقة</p>
+   388→                    <p className="text-2xl font-bold mt-1">{formatCurrency(stats.pendingPayout)}</p>
+   389→                  </div>
+   390→                  <DollarSign className="h-8 w-8 text-green-500" />
+   391→                </div>
+   392→              </CardContent>
+   393→            </Card>
+   394→          </div>
+   395→        </TabsContent>
+   396→
+   397→        {/* Listings Tab */}
+   398→        <TabsContent value="listings" className="space-y-4">
+   399→          <div className="flex items-center justify-between">
+   400→            <div className="flex items-center gap-2">
+   401→              <Button variant="outline" size="sm">
+   402→                <Filter className="ml-2 h-4 w-4" />
+   403→                فلتر
+   404→              </Button>
+   405→            </div>
+   406→            <p className="text-sm text-muted-foreground">
+   407→              عرض {listings.length} من {stats.totalListings} إعلان
+   408→            </p>
+   409→          </div>
+   410→
+   411→          <div className="border rounded-lg overflow-hidden">
+   412→            <table className="w-full">
+   413→              <thead className="bg-muted/50">
+   414→                <tr>
+   415→                  <th className="text-right p-3 font-medium">الإعلان</th>
+   416→                  <th className="text-right p-3 font-medium">السعر</th>
+   417→                  <th className="text-right p-3 font-medium">المشاهدات</th>
+   418→                  <th className="text-right p-3 font-medium">الإعجابات</th>
+   419→                  <th className="text-right p-3 font-medium">الرسائل</th>
+   420→                  <th className="text-right p-3 font-medium">الحالة</th>
+   421→                  <th className="text-right p-3 font-medium">إجراءات</th>
+   422→                </tr>
+   423→              </thead>
+   424→              <tbody>
+   425→                {listings.map(listing => (
+   426→                  <tr key={listing.id} className="border-t hover:bg-muted/30">
+   427→                    <td className="p-3">
+   428→                      <div>
+   429→                        <p className="font-medium">{listing.title}</p>
+   430→                        <p className="text-xs text-muted-foreground">{listing.category}</p>
+   431→                      </div>
+   432→                    </td>
+   433→                    <td className="p-3 font-medium">{formatCurrency(listing.price, listing.currency)}</td>
+   434→                    <td className="p-3">
+   435→                      <div className="flex items-center gap-1">
+   436→                        <Eye className="h-4 w-4 text-muted-foreground" />
+   437→                        {listing.views}
+   438→                      </div>
+   439→                    </td>
+   440→                    <td className="p-3">
+   441→                      <div className="flex items-center gap-1">
+   442→                        <Heart className="h-4 w-4 text-red-500" />
+   443→                        {listing.likes}
+   444→                      </div>
+   445→                    </td>
+   446→                    <td className="p-3">
+   447→                      <div className="flex items-center gap-1">
+   448→                        <MessageSquare className="h-4 w-4 text-blue-500" />
+   449→                        {listing.messages}
+   450→                      </div>
+   451→                    </td>
+   452→                    <td className="p-3"><StatusBadge status={listing.status} /></td>
+   453→                    <td className="p-3">
+   454→                      <Button variant="ghost" size="sm">
+   455→                        <MoreVertical className="h-4 w-4" />
+   456→                      </Button>
+   457→                    </td>
+   458→                  </tr>
+   459→                ))}
+   460→              </tbody>
+   461→            </table>
+   462→          </div>
+   463→        </TabsContent>
+   464→
+   465→        {/* Orders Tab */}
+   466→        <TabsContent value="orders" className="space-y-4">
+   467→          <div className="grid gap-4">
+   468→            {orders.map(order => (
+   469→              <Card key={order.id}>
+   470→                <CardContent className="pt-6">
+   471→                  <div className="flex items-center justify-between">
+   472→                    <div className="flex items-center gap-4">
+   473→                      <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+   474→                        <ShoppingCart className="h-6 w-6" />
+   475→                      </div>
+   476→                      <div>
+   477→                        <p className="font-medium">{order.buyerName}</p>
+   478→                        <p className="text-sm text-muted-foreground">{order.itemTitle}</p>
+   479→                        <p className="text-xs text-muted-foreground mt-1">
+   480→                          {order.createdAt.toLocaleDateString('ar-MA')}
+   481→                        </p>
+   482→                      </div>
+   483→                    </div>
+   484→                    <div className="text-left space-y-2">
+   485→                      <StatusBadge status={order.status} />
+   486→                      <p className="text-lg font-bold">{formatCurrency(order.amount, order.currency)}</p>
+   487→                    </div>
+   488→                  </div>
+   489→                  
+   490→                  {/* Order Actions */}
+   491→                  <div className="flex gap-2 mt-4 pt-4 border-t">
+   492→                    {order.status === 'confirmed' && (
+   493→                      <>
+   494→                        <Button size="sm">تحديث كـ تم الشحن</Button>
+   495→                        <Button size="sm" variant="outline">تواصل مع المشتري</Button>
+   496→                      </>
+   497→                    )}
+   498→                    {order.status === 'shipped' && (
+   499→                      <Button size="sm">تحديث كـ تم التوصيل</Button>
+   500→                    )}
+   501→                  </div>
+   502→                </CardContent>
+   503→              </Card>
+   504→            ))}
+   505→          </div>
+   506→        </TabsContent>
+   507→
+   508→        {/* Messages Tab */}
+   509→        <TabsContent value="messages" className="space-y-4">
+   510→          <div className="flex items-center justify-between">
+   511→            <h3 className="text-lg font-semibold">جميع الرسائل</h3>
+   512→            <Button variant="outline" size="sm">
+   513→              تحديد الكل كمقروء
+   514→            </Button>
+   515→          </div>
+   516→          
+   517→          <div className="space-y-2">
+   518→            {messages.map(msg => (
+   519→              <Card 
+   520→                key={msg.id} 
+   521→                className={`cursor-pointer transition-colors hover:bg-muted/50 ${!msg.isRead ? 'border-primary' : ''}`}
+   522→              >
+   523→                <CardContent className="py-4">
+   524→                  <div className="flex items-start gap-4">
+   525→                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+   526→                      <span className="text-lg font-semibold">
+   527→                        {msg.senderName.charAt(0)}
+   528→                      </span>
+   529→                    </div>
+   530→                    <div className="flex-1 min-w-0">
+   531→                      <div className="flex items-center justify-between mb-1">
+   532→                        <p className="font-semibold">{msg.senderName}</p>
+   533→                        <span className="text-xs text-muted-foreground">{msg.time}</span>
+   534→                      </div>
+   535→                      <p className="text-sm text-muted-foreground truncate">{msg.message}</p>
+   536→                      {msg.listingTitle && (
+   537→                        <p className="text-xs text-primary mt-1">
+   538→                          بخصوص: {msg.listingTitle}
+   539→                        </p>
+   540→                      )}
+   541→                    </div>
+   542→                    {!msg.isRead && (
+   543→                      <div className="w-3 h-3 bg-primary rounded-full flex-shrink-0" />
+   544→                    )}
+   545→                  </div>
+   546→                </CardContent>
+   547→              </Card>
+   548→            ))}
+   549→          </div>
+   550→        </TabsContent>
+   551→
+   552→        {/* Analytics Tab */}
+   553→        <TabsContent value="analytics" className="space-y-6">
+   554→          <div className="grid gap-6 lg:grid-cols-2">
+   555→            {/* Revenue Chart Placeholder */}
+   556→            <Card>
+   557→              <CardHeader>
+   558→                <CardTitle className="flex items-center gap-2">
+   559→                  <TrendingUp className="h-5 w-5" />
+   560→                  الإيرادات الأخيرة
+   561→                </CardTitle>
+   562→                <CardDescription>آخر 7 أيام</CardDescription>
+   563→              </CardHeader>
+   564→              <CardContent>
+   565→                <div className="h-[300px] flex items-end gap-2">
+   566→                  {earnings.map((day, i) => (
+   567→                    <div key={i} className="flex-1 flex flex-col items-center gap-2">
+   568→                      <div 
+   569→                        className="w-full bg-primary rounded-t-md transition-all hover:bg-primary/80"
+   570→                        style={{ height: `${(day.revenue / Math.max(...earnings.map(e => e.revenue))) * 250}px` }}
+   571→                      />
+   572→                      <span className="text-xs text-muted-foreground">
+   573→                        {new Date(day.date).getDate()}
+   574→                      </span>
+   575→                    </div>
+   576→                  ))}
+   577→                </div>
+   578→                <div className="mt-4 pt-4 border-t flex justify-between text-sm">
+   579→                  <span>إجمالي الإيرادات:</span>
+   580→                  <span className="font-bold">{formatCurrency(totalRevenue)}</span>
+   581→                </div>
+   582→                <div className="flex justify-between text-sm">
+   583→                  <span>عدد الطلبات:</span>
+   584→                  <span className="font-bold">{totalOrders}</span>
+   585→                </div>
+   586→              </CardContent>
+   587→            </Card>
+   588→
+   589→            {/* Performance Metrics */}
+   590→            <Card>
+   591→              <CardHeader>
+   592→                <CardTitle className="flex items-center gap-2">
+   593→                  <BarChart3 className="h-5 w-5" />
+   594→                  مؤشرات الأداء
+   595→                </CardTitle>
+   596→              </CardHeader>
+   597→              <CardContent className="space-y-6">
+   598→                <div>
+   599→                  <div className="flex justify-between mb-2">
+   600→                    <span className="text-sm">معدل الاستجابة</span>
+   601→                    <span className="text-sm font-medium">{stats.responseRate}%</span>
+   602→                  </div>
+   603→                  <Progress value={stats.responseRate} />
+   604→                </div>
+   605→                
+   606→                <div>
+   607→                  <div className="flex justify-between mb-2">
+   608→                    <span className="text-sm">معدل التحويل (مشاهدات → رسائل)</span>
+   609→                    <span className="text-sm font-medium">
+   610→                      {((stats.totalMessages / stats.totalViews) * 100).toFixed(1)}%
+   611→                    </span>
+   612→                  </div>
+   613→                  <Progress value={(stats.totalMessages / stats.totalViews) * 100} />
+   614→                </div>
+   615→
+   616→                <div>
+   617→                  <div className="flex justify-between mb-2">
+   618→                    <span className="text-sm">معدل التحويل (رسائل → طلبات)</span>
+   619→                    <span className="text-sm font-medium">
+   620→                      {((stats.totalOrders / stats.totalMessages) * 100).toFixed(1)}%
+   621→                    </span>
+   622→                  </div>
+   623→                  <Progress value={(stats.totalOrders / stats.totalMessages) * 100} />
+   624→                </div>
+   625→
+   626→                <div className="pt-4 border-t space-y-3">
+   627→                  <div className="flex items-center gap-2">
+   628→                    <CheckCircle className="h-4 w-4 text-green-500" />
+   629→                    <span className="text-sm">الإعلانات النشطة: {stats.activeListings}/{stats.totalListings}</span>
+   630→                  </div>
+   631→                  <div className="flex items-center gap-2">
+   632→                    <AlertCircle className="h-4 w-4 text-yellow-500" />
+   633→                    <span className="text-sm">إعلانات قيد المراجعة: {listings.filter(l => l.status === 'pending').length}</span>
+   634→                  </div>
+   635→                </div>
+   636→              </CardContent>
+   637→            </Card>
+   638→          </div>
+   639→        </TabsContent>
+   640→      </Tabs>
+   641→    </div>
+   642→  );
+   643→}
+   644→
+   645→export default SellerDashboard;
+   646→

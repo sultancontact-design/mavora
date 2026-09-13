@@ -1,0 +1,382 @@
+     1→// MAVORA Database Seed Script
+     2→// Adds essential data for Morocco & Global marketplace
+     3→
+     4→const { createClient } = require('@supabase/supabase-js');
+     5→
+     6→const SUPABASE_URL = 'https://kyanecjjautqmuowbtvy.supabase.co';
+     7→const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5YW5lY2pqYXV0cW11b3didHZ5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODI5ODM2MiwiZXhwIjoyMTAzODc0MzYyfQ.CfYJjFHkacydBjS7U2kE44K9o4k8fH5DexC9Xd7sdN0';
+     8→
+     9→const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    10→
+    11→// Simple UUID generator
+    12→function cuid() {
+    13→  return 'clx' + Array.from({length: 24}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    14→}
+    15→
+    16→async function seedDatabase() {
+    17→  console.log('🌱 Starting MAVORA Database Seed...\n');
+    18→  
+    19→  let successCount = 0;
+    20→  let errorCount = 0;
+    21→
+    22→  // ==================== COUNTRIES ====================
+    23→  console.log('📍 Seeding Countries...');
+    24→  const countries = [
+    25→    { id: cuid(), name: 'المغرب', nameAr: 'المغرب', nameFr: 'Maroc', code: 'MA', flagEmoji: '🇲🇦', phoneCode: '+212', currencyCode: 'MAD', isActive: true, sortOrder: 1 },
+    26→    { id: cuid(), name: 'الجزائر', nameAr: 'الجزائر', nameFr: 'Algérie', code: 'DZ', flagEmoji: '🇩🇿', phoneCode: '+213', currencyCode: 'DZD', isActive: true, sortOrder: 2 },
+    27→    { id: cuid(), name: 'تونس', nameAr: 'تونس', nameFr: 'Tunisie', code: 'TN', flagEmoji: '🇹🇳', phoneCode: '+216', currencyCode: 'TND', isActive: true, sortOrder: 3 },
+    28→    { id: cuid(), name: 'مصر', nameAr: 'مصر', nameFr: 'Égypte', code: 'EG', flagEmoji: '🇪🇬', phoneCode: '+20', currencyCode: 'EGP', isActive: true, sortOrder: 4 },
+    29→    { id: cuid(), name: 'السعودية', nameAr: 'السعودية', nameFr: 'Arabie Saoudite', code: 'SA', flagEmoji: '🇸🇦', phoneCode: '+966', currencyCode: 'SAR', isActive: true, sortOrder: 5 },
+    30→    { id: cuid(), name: 'Emirates', nameAr: 'الإمارات', nameFr: 'Émirats Arabes Unis', code: 'AE', flagEmoji: '🇦🇪', phoneCode: '+971', currencyCode: 'AED', isActive: true, sortOrder: 6 },
+    31→    { id: cuid(), name: 'France', nameAr: 'فرنسا', nameFr: 'France', code: 'FR', flagEmoji: '🇫🇷', phoneCode: '+33', currencyCode: 'EUR', isActive: true, sortOrder: 7 },
+    32→    { id: cuid(), name: 'Canada', nameAr: 'كندا', nameFr: 'Canada', code: 'CA', flagEmoji: '🇨🇦', phoneCode: '+1', currencyCode: 'CAD', isActive: true, sortOrder: 8 },
+    33→    { id: cuid(), name: 'USA', nameAr: 'أمريكا', nameFr: 'États-Unis', code: 'US', flagEmoji: '🇺🇸', phoneCode: '+1', currencyCode: 'USD', isActive: true, sortOrder: 9 },
+    34→  ];
+    35→
+    36→  const { data: countriesData, error: countriesErr } = await supabase
+    37→    .from('countries')
+    38→    .upsert(countries, { onConflict: 'code' })
+    39→    .select();
+    40→
+    41→  if (countriesErr) {
+    42→    console.log('❌ Countries error:', countriesErr.message);
+    43→    errorCount++;
+    44→  } else {
+    45→    console.log(`   ✅ ${countriesData.length} countries`);
+    46→    successCount += countriesData.length;
+    47→  }
+    48→
+    49→  // Get Morocco ID for cities
+    50→  const moroccoId = countriesData?.find(c => c.code === 'MA')?.id || countries[0].id;
+    51→
+    52→  // ==================== MOROCCO REGIONS ====================
+    53→  console.log('\n🗺️ Seeding Morocco Regions...');
+    54→  const regions = [
+    55→    { id: cuid(), name: 'الدار البيضاء الكبرى', nameAr: 'الدار البيضاء الكبرى', nameFr: 'Casablanca-Settat', countryId: moroccoId, sortOrder: 1 },
+    56→    { id: cuid(), name: 'الرباط سلا القنيطرة', nameAr: 'الرباط سلا القنيطرة', nameFr: 'Rabat-Salé-Kénitra', countryId: moroccoId, sortOrder: 2 },
+    57→    { id: cuid(), name: 'مراكش آسفي', nameAr: 'مراكش آسفي', nameFr: 'Marrakech-Safi', countryId: moroccoId, sortOrder: 3 },
+    58→    { id: cuid(), name: 'فاس مكناس', nameAr: 'فاس مكناس', nameFr: 'Fès-Meknès', countryId: moroccoId, sortOrder: 4 },
+    59→    { id: cuid(), name: 'طنجة تطوان الحسيمة', nameAr: 'طنجة تطوان الحسيمة', nameFr: 'Tanger-Tétouan-Al Hoceïma', countryId: moroccoId, sortOrder: 5 },
+    60→    { id: cuid(), name: 'الشرق', nameAr: 'الشرق', nameFr: 'Oriental', countryId: moroccoId, sortOrder: 6 },
+    61→    { id: cuid(), name: 'درعة تافيلالت', nameAr: 'درعة تافيلالت', nameFr: 'Drâa-Tafilalet', countryId: moroccoId, sortOrder: 7 },
+    62→    { id: cuid(), name: 'سوس ماسة', nameAr: 'سوس ماسة', nameFr: 'Souss-Massa', countryId: moroccoId, sortOrder: 8 },
+    63→    { id: cuid(), name: 'العيون الساقية الحمراء', nameAr: 'العيون الساقية الحمراء', nameFr: 'Laâyoune-Sakia El Hamra', countryId: moroccoId, sortOrder: 9 },
+    64→    { id: cuid(), name: 'الداخلة وادي الذهب', nameAr: 'الداخلة وادي الذهب', nameFr: 'Dakhla-Oued Ed-Dahab', countryId: moroccoId, sortOrder: 10 },
+    65→    { id: cuid(), name: 'بني ملال خنيفرة', nameAr: 'بني ملال خنيفرة', nameFr: 'Béni Mellal-Khénifra', countryId: moroccoId, sortOrder: 11 },
+    66→    { id: cuid(), name: 'كلميم واد نون', nameAr: 'كلميم واد نون', nameFr: 'Guelmim-Oued Noun', countryId: moroccoId, sortOrder: 12 },
+    67→  ];
+    68→
+    69→  const { data: regionsData, error: regionsErr } = await supabase
+    70→    .from('regions')
+    71→    .upsert(regions, { onConflict: 'id' })
+    72→    .select();
+    73→
+    74→  if (regionsErr) {
+    75→    console.log('❌ Regions error:', regionsErr.message);
+    76→    errorCount++;
+    77→  } else {
+    78→    console.log(`   ✅ ${regionsData.length} regions`);
+    79→    successCount += regionsData.length;
+    80→  }
+    81→
+    82→  // ==================== MAJOR CITIES ====================
+    83→  console.log('\n🏙️ Seeding Major Cities...');
+    84→  const casablancaRegion = regionsData?.find(r => r.nameFr === 'Casablanca-Settat')?.id || regions[0].id;
+    85→  const rabatRegion = regionsData?.find(r => r.nameFr === 'Rabat-Salé-Kénitra')?.id || regions[1].id;
+    86→  const marrakechRegion = regionsData?.find(r => r.nameFr === 'Marrakech-Safi')?.id || regions[2].id;
+    87→  const tangierRegion = regionsData?.find(r => r.nameFr === 'Tanger-Tétouan-Al Hoceïma')?.id || regions[4].id;
+    88→  const fesRegion = regionsData?.find(r => r.nameFr === 'Fès-Meknès')?.id || regions[3].id;
+    89→
+    90→  const cities = [
+    91→    // Casablanca-Settat
+    92→    { id: cuid(), name: 'الدار البيضاء', nameAr: 'الدار البيضاء', nameFr: 'Casablanca', countryId: moroccoId, regionId: casablancaRegion, latitude: 33.5731, longitude: -7.5898, sortOrder: 1, isActive: true },
+    93→    { id: cuid(), name: 'المحمدية', nameAr: 'المحمدية', nameFr: 'Mohammedia', countryId: moroccoId, regionId: casablancaRegion, latitude: 33.6868, longitude: -7.3814, sortOrder: 2, isActive: true },
+    94→    { id: cuid(), name: 'الجديدة', nameAr: 'الجديدة', nameFr: 'El Jadida', countryId: moroccoId, regionId: casablancaRegion, latitude: 33.2309, longitude: -8.5014, sortOrder: 3, isActive: true },
+    95→    
+    96→    // Rabat-Salé-Kénitra
+    97→    { id: cuid(), name: 'الرباط', nameAr: 'الرباط', nameFr: 'Rabat', countryId: moroccoId, regionId: rabatRegion, latitude: 34.0209, longitude: -6.8416, sortOrder: 4, isActive: true },
+    98→    { id: cuid(), name: 'سلا', nameAr: 'سلا', nameFr: 'Salé', countryId: moroccoId, regionId: rabatRegion, latitude: 34.0530, longitude: -6.7986, sortOrder: 5, isActive: true },
+    99→    { id: cuid(), name: 'كنترة', nameAr: 'كنترة', nameFr: 'Kénitra', countryId: moroccoId, regionId: rabatRegion, latitude: 34.2610, longitude: -6.5802, sortOrder: 6, isActive: true },
+   100→    
+   101→    // Marrakech-Safi
+   102→    { id: cuid(), name: 'مراكش', nameAr: 'مراكش', nameFr: 'Marrakech', countryId: moroccoId, regionId: marrakechRegion, latitude: 31.6295, longitude: -7.9811, sortOrder: 7, isActive: true },
+   103→    { id: cuid(), name: 'صفروان', nameAr: 'صفروان', nameFr: 'Safi', countryId: moroccoId, regionId: marrakechRegion, latitude: 32.3000, longitude: -9.2373, sortOrder: 8, isActive: true },
+   104→    { id: cuid(), name: 'أسفي', nameAr: 'أسفي', nameFr: 'Asfi', countryId: moroccoId, regionId: marrakechRegion, latitude: 32.2997, longitude: -9.2364, sortOrder: 9, isActive: true },
+   105→    
+   106→    // Tanger-Tétouan
+   107→    { id: cuid(), name: 'طنجة', nameAr: 'طنجة', nameFr: 'Tanger', countryId: moroccoId, regionId: tangierRegion, latitude: 35.7595, longitude: -5.8340, sortOrder: 10, isActive: true },
+   108→    { id: cuid(), name: 'تطوان', nameAr: 'تطوان', nameFr: 'Tétouan', countryId: moroccoId, regionId: tangierRegion, latitude: 35.5714, longitude: -5.3625, sortOrder: 11, isActive: true },
+   109→    { id: cuid(), name: 'الحسيمة', nameAr: 'الحسيمة', nameFr: 'Al Hoceïma', countryId: moroccoId, regionId: tangierRegion, latitude: 35.2475, longitude: -3.9331, sortOrder: 12, isActive: true },
+   110→    
+   111→    // Fès-Meknès
+   112→    { id: cuid(), name: 'فاس', nameAr: 'فاس', nameFr: 'Fès', countryId: moroccoId, regionId: fesRegion, latitude: 34.0331, longitude: -5.0003, sortOrder: 13, isActive: true },
+   113→    { id: cuid(), name: 'مكناس', nameAr: 'مكناس', nameFr: 'Meknès', countryId: moroccoId, regionId: fesRegion, latitude: 33.8935, longitude: -5.5547, sortOrder: 14, isActive: true },
+   114→    { id: cuid(), name: 'إفران', nameAr: 'إفران', nameFr: 'Ifrane', countryId: moroccoId, regionId: fesRegion, latitude: 33.5306, longitude: -5.1053, sortOrder: 15, isActive: true },
+   115→  ];
+   116→
+   117→  const { data: citiesData, error: citiesErr } = await supabase
+   118→    .from('cities')
+   119→    .upsert(cities, { onConflict: 'id' })
+   120→    .select();
+   121→
+   122→  if (citiesErr) {
+   123→    console.log('❌ Cities error:', citiesErr.message);
+   124→    errorCount++;
+   125→  } else {
+   126→    console.log(`   ✅ ${citiesData.length} cities`);
+   127→    successCount += citiesData.length;
+   128→  }
+   129→
+   130→  // ==================== CURRENCIES ====================
+   131→  console.log('\n💰 Seeding Currencies...');
+   132→  const currencies = [
+   133→    { id: cuid(), code: 'MAD', name: 'درهم مغربي', nameAr: 'درهم مغربي', symbol: 'د.م.', decimalPlaces: 2, isActive: true },
+   134→    { id: cuid(), code: 'EUR', name: 'يورو', nameAr: 'يورو', symbol: '€', decimalPlaces: 2, isActive: true },
+   135→    { id: cuid(), code: 'USD', name: 'دولار أمريكي', nameAr: 'دولار أمريكي', symbol: '$', decimalPlaces: 2, isActive: true },
+   136→    { id: cuid(), code: 'GBP', name: 'جنيه إسترليني', nameAr: 'جنيه إسترليني', symbol: '£', decimalPlaces: 2, isActive: true },
+   137→    { id: cuid(), code: 'CAD', name: 'دولار كندي', nameAr: 'دولار كندي', symbol: 'C$', decimalPlaces: 2, isActive: true },
+   138→    { id: cuid(), code: 'SAR', name: 'ريال سعودي', nameAr: 'ريال سعودي', symbol: 'ر.س', decimalPlaces: 2, isActive: true },
+   139→    { id: cuid(), code: 'AED', name: 'درهم إماراتي', nameAr: 'درهم إماراتي', symbol: 'د.إ', decimalPlaces: 2, isActive: true },
+   140→    { id: cuid(), code: 'DZD', name: 'دينار جزائري', nameAr: 'دينار جزائري', symbol: 'د.ج', decimalPlaces: 2, isActive: true },
+   141→    { id: cuid(), code: 'TND', name: 'دينار تونسي', nameAr: 'دينار تونسي', symbol: 'د.ت', decimalPlaces: 2, isActive: true },
+   142→    { id: cuid(), code: 'EGP', name: 'جنيه مصري', nameAr: 'جنيه مصري', symbol: 'ج.م', decimalPlaces: 2, isActive: true },
+   143→  ];
+   144→
+   145→  const { data: currenciesData, error: currenciesErr } = await supabase
+   146→    .from('currencies')
+   147→    .upsert(currencies, { onConflict: 'code' })
+   148→    .select();
+   149→
+   150→  if (currenciesErr) {
+   151→    console.log('❌ Currencies error:', currenciesErr.message);
+   152→    errorCount++;
+   153→  } else {
+   154→    console.log(`   ✅ ${currenciesData.length} currencies`);
+   155→    successCount += currenciesData.length;
+   156→  }
+   157→
+   158→  // ==================== MAIN CATEGORIES ====================
+   159→  console.log('\n📂 Seeding Main Categories...');
+   160→  const categories = [
+   161→    { id: cuid(), name: 'إلكترونيات', nameAr: 'إلكترونيات', nameFr: 'Électronique', slug: 'electronics', icon: 'smartphone', parentId: null, sortOrder: 1, isActive: true },
+   162→    { id: cuid(), name: 'مركوبيلات', nameAr: 'مركوبيلات', nameFr: 'Véhicules', slug: 'vehicles', icon: 'car', parentId: null, sortOrder: 2, isActive: true },
+   163→    { id: cuid(), name: 'عقارات', nameAr: 'عقارات', nameFr: 'Immobilier', slug: 'real-estate', icon: 'home', parentId: null, sortOrder: 3, isActive: true },
+   164→    { id: cuid(), name: 'المنزل والحديقة', nameAr: 'المنزل والحديقة', nameFr: 'Maison & Jardin', slug: 'home-garden', icon: 'sofa', parentId: null, sortOrder: 4, isActive: true },
+   165→    { id: cuid(), name: 'ملابس وموضة', nameAr: 'ملابس وموضة', nameFr: 'Mode & Vêtements', slug: 'fashion', icon: 'shirt', parentId: null, sortOrder: 5, isActive: true },
+   166→    { id: cuid(), name: 'حيوانات أليفة', nameAr: 'حيوانات أليفة', nameFr: 'Animaux', slug: 'pets', icon: 'heart', parentId: null, sortOrder: 6, isActive: true },
+   167→    { id: cuid(), name: 'وظائف وخدمات', nameAr: 'وظائف وخدمات', nameFr: 'Emplois & Services', slug: 'jobs-services', icon: 'briefcase', parentId: null, sortOrder: 7, isActive: true },
+   168→    { id: cuid(), name: 'تعليم', nameAr: 'تعليم', nameFr: 'Éducation', slug: 'education', icon: 'book-open', parentId: null, sortOrder: 8, isActive: true },
+   169→    { id: cuid(), name: 'رياضة وهوايات', nameAr: 'رياضة وهوايات', nameFr: 'Sports & Loisirs', slug: 'sports-hobbies', icon: 'dumbbell', parentId: null, sortOrder: 9, isActive: true },
+   170→    { id: cuid(), name: 'أعمال وتجارة', nameAr: 'أعمال وتجارة', nameFr: 'Affaires & Commerce', slug: 'business', icon: 'building-2', parentId: null, sortOrder: 10, isActive: true },
+   171→    { id: cuid(), name: 'زراعة', nameAr: 'زراعة', nameFr: 'Agriculture', slug: 'agriculture', icon: 'tractor', parentId: null, sortOrder: 11, isActive: true },
+   172→    { id: cuid(), name: 'أخرى', nameAr: 'أخرى', nameFr: 'Autres', slug: 'other', icon: 'more-horizontal', parentId: null, sortOrder: 12, isActive: true },
+   173→  ];
+   174→
+   175→  const { data: categoriesData, error: categoriesErr } = await supabase
+   176→    .from('categories')
+   177→    .upsert(categories, { onConflict: 'slug' })
+   178→    .select();
+   179→
+   180→  if (categoriesErr) {
+   181→    console.log('❌ Categories error:', categoriesErr.message);
+   182→    errorCount++;
+   183→  } else {
+   184→    console.log(`   ✅ ${categoriesData.length} main categories`);
+   185→    successCount += categoriesData.length;
+   186→  }
+   187→
+   188→  // Get category IDs for subcategories
+   189→  const electronicsCat = categoriesData?.find(c => c.slug === 'electronics')?.id;
+   190→  const vehiclesCat = categoriesData?.find(c => c.slug === 'vehicles')?.id;
+   191→  const realEstateCat = categoriesData?.find(c => c.slug === 'real-estate')?.id;
+   192→  const homeGardenCat = categoriesData?.find(c => c.slug === 'home-garden')?.id;
+   193→  const fashionCat = categoriesData?.find(c => c.slug === 'fashion')?.id;
+   194→  const petsCat = categoriesData?.find(c => c.slug === 'pets')?.id;
+   195→  const jobsCat = categoriesData?.find(c => c.slug === 'jobs-services')?.id;
+   196→
+   197→  // ==================== SUBCATEGORIES - Electronics ====================
+   198→  console.log('\n📱 Seeding Subcategories...');
+   199→  
+   200→  const subcategories = [
+   201→    // Electronics
+   202→    { id: cuid(), name: 'هواتف ذكية', nameAr: 'هواتف ذكية', nameFr: 'Smartphones', slug: 'smartphones', icon: 'smartphone', parentId: electronicsCat, sortOrder: 1, isActive: true },
+   203→    { id: cuid(), name: 'حواسيب ولابتوب', nameAr: 'حواسيب ولابتوب', nameFr: 'PC & Laptop', slug: 'computers-laptops', icon: 'laptop', parentId: electronicsCat, sortOrder: 2, isActive: true },
+   204→    { id: cuid(), name: 'تلفزيونات وصوت', nameAr: 'تلفزيونات وصوت', nameFr: 'TV & Audio', slug: 'tv-audio', icon: 'tv', parentId: electronicsCat, sortOrder: 3, isActive: true },
+   205→    { id: cuid(), name: 'كاميرات تصوير', nameAr: 'كاميرات تصوير', nameFr: 'Caméras', slug: 'cameras', icon: 'camera', parentId: electronicsCat, sortOrder: 4, isActive: true },
+   206→    { id: cuid(), name: 'ألعاب فيديو', nameAr: 'ألعاب فيديو', nameFr: 'Jeux Vidéo', slug: 'video-games', icon: 'gamepad-2', parentId: electronicsCat, sortOrder: 5, isActive: true },
+   207→    { id: cuid(), name: 'إكسسوارات إلكترونية', nameAr: 'إكسسوارات إلكترونية', nameFr: 'Accessoires Électroniques', slug: 'electronics-accessories', icon: 'headphones', parentId: electronicsCat, sortOrder: 6, isActive: true },
+   208→    
+   209→    // Vehicles
+   210→    { id: cuid(), name: 'سيارات', nameAr: 'سيارات', nameFr: 'Voitures', slug: 'cars', icon: 'car', parentId: vehiclesCat, sortOrder: 1, isActive: true },
+   211→    { id: cuid(), name: 'دراجات نارية', nameAr: 'دراجات نارية', nameFr: 'Motos', slug: 'motorcycles', icon: 'bike', parentId: vehiclesCat, sortOrder: 2, isActive: true },
+   212→    { id: cuid(), name: 'شاحنات وضخمة', nameAr: 'شاحنات وضخمة', nameFr: 'Camions & Utilitaires', slug: 'trucks-vans', icon: 'truck', parentId: vehiclesCat, sortOrder: 3, isActive: true },
+   213→    { id: cuid(), name: 'قطع غيار', nameAr: 'قطع غيار', nameFr: 'Pièces Détachées', slug: 'spare-parts', icon: 'wrench', parentId: vehiclesCat, sortOrder: 4, isActive: true },
+   214→    { id: cuid(), name: 'قوارب وقوارب', nameAr: 'قوارب وقوارب', nameFr: 'Bateaux', slug: 'boats', icon: 'ship', parentId: vehiclesCat, sortOrder: 5, isActive: true },
+   215→    
+   216→    // Real Estate
+   217→    { id: cuid(), name: 'شقق للبيع', nameAr: 'شقق للبيع', nameFr: 'Appartements à Vendre', slug: 'apartments-sale', icon: 'building', parentId: realEstateCat, sortOrder: 1, isActive: true },
+   218→    { id: cuid(), name: 'شقق للكراء', nameAr: 'شقق للكراء', nameFr: 'Appartements à Louer', slug: 'apartments-rent', icon: 'key', parentId: realEstateCat, sortOrder: 2, isActive: true },
+   219→    { id: cuid(), name: 'فلل وفيلات', nameAr: 'فلل وفيلات', nameFr: 'Villas', slug: 'villas', icon: 'home', parentId: realEstateCat, sortOrder: 3, isActive: true },
+   220→    { id: cuid(), name: 'أراضي', nameAr: 'أراضي', nameFr: 'Terrains', slug: 'land', icon: 'map-pin', parentId: realEstateCat, sortOrder: 4, isActive: true },
+   221→    { id: cuid(), name: 'محلات تجارية', nameAr: 'محلات تجارية', nameFr: 'Locaux Commerciaux', slug: 'commercial', icon: 'store', parentId: realEstateCat, sortOrder: 5, isActive: true },
+   222→    
+   223→    // Home & Garden
+   224→    { id: cuid(), name: 'أثاث منزلي', nameAr: 'أثاث منزلي', nameFr: 'Meubles', slug: 'furniture', icon: 'sofa', parentId: homeGardenCat, sortOrder: 1, isActive: true },
+   225→    { id: cuid(), name: 'مطبخ وأجهزة', nameAr: 'مطبخ وأجهزة', nameFr: 'Cuisine & Électroménager', slug: 'kitchen-appliances', icon: 'cooker', parentId: homeGardenCat, sortOrder: 2, isActive: true },
+   226→    { id: cuid(), name: 'ديكور وإضاءة', nameAr: 'ديكور وإضاءة', nameFr: 'Déco & Éclairage', slug: 'decor-lighting', icon: 'lamp', parentId: homeGardenCat, sortOrder: 3, isActive: true },
+   227→    { id: cuid(), name: 'حديقة ونباتات', nameAr: 'حديقة ونباتات', nameFr: 'Jardin & Plantes', slug: 'garden-plants', icon: 'flower-2', parentId: homeGardenCat, sortOrder: 4, isActive: true },
+   228→    
+   229→    // Fashion
+   230→    { id: cuid(), name: 'ملابس رجالية', nameAr: 'ملابس رجالية', nameFr: 'Mode Homme', slug: 'mens-fashion', icon: 'shirt', parentId: fashionCat, sortOrder: 1, isActive: true },
+   231→    { id: cuid(), name: 'ملابس نسائية', nameAr: 'ملابس نسائية', nameFr: 'Mode Femme', slug: 'womens-fashion', icon: 'shirt', parentId: fashionCat, sortOrder: 2, isActive: true },
+   232→    { id: cuid(), name: 'أحذية وحقائب', nameAr: 'أحذية وحقائب', nameFr: 'Chaussures & Sacs', slug: 'shoes-bags', icon: 'footprints', parentId: fashionCat, sortOrder: 3, isActive: true },
+   233→    { id: cuid(), name: 'إكسسوارات', nameAr: 'إكسسوارات', nameFr: 'Accessoires Mode', slug: 'fashion-accessories', icon: 'watch', parentId: fashionCat, sortOrder: 4, isActive: true },
+   234→    { id: cuid(), name: 'ساعات ومجوهرات', nameAr: 'ساعات ومجوهرات', nameFr: 'Montres & Bijoux', slug: 'watches-jewelry', icon: 'gem', parentId: fashionCat, sortOrder: 5, isActive: true },
+   235→    
+   236→    // Pets
+   237→    { id: cuid(), name: 'كلاب', nameAr: 'كلاب', nameFr: 'Chiens', slug: 'dogs', icon: 'dog', parentId: petsCat, sortOrder: 1, isActive: true },
+   238→    { id: cuid(), name: 'قطط', nameAr: 'قطط', nameFr: 'Chats', slug: 'cats', icon: 'cat', parentId: petsCat, sortOrder: 2, isActive: true },
+   239→    { id: cuid(), name: 'طيور', nameAr: 'طيور', nameFr: 'Oiseaux', slug: 'birds', icon: 'bird', parentId: petsCat, sortOrder: 3, isActive: true },
+   240→    { id: cuid(), name: 'إكسسوارات حيوانات', nameAr: 'إكسسوارات حيوانات', nameFr: 'Accessoires Animaux', slug: 'pet-supplies', icon: 'bone', parentId: petsCat, sortOrder: 4, isActive: true },
+   241→    
+   242→    // Jobs & Services
+   243→    { id: cuid(), name: 'وظائف تقنية', nameAr: 'وظائف تقنية', nameFr: 'Emplois Tech', slug: 'tech-jobs', icon: 'code', parentId: jobsCat, sortOrder: 1, isActive: true },
+   244→    { id: cuid(), name: 'وظائف تجارية', nameAr: 'وظائف تجارية', nameFr: 'Emplois Commerciaux', slug: 'business-jobs', icon: 'briefcase', parentId: jobsCat, sortOrder: 2, isActive: true },
+   245→    { id: cuid(), name: 'خدمات منزلية', nameAr: 'خدمات منزلية', nameFr: 'Services Ménagers', slug: 'home-services', icon: 'home', parentId: jobsCat, sortOrder: 3, isActive: true },
+   246→    { id: cuid(), name: 'خدمات تعليمية', nameAr: 'خدمات تعليمية', nameFr: 'Services Éducatifs', slug: 'education-services', icon: 'graduation-cap', parentId: jobsCat, sortOrder: 4, isActive: true },
+   247→    { id: cuid(), name: 'صيانة وبناء', nameAr: 'صيانة وبناء', nameFr: 'Réparation & Construction', slug: 'repair-construction', icon: 'hammer', parentId: jobsCat, sortOrder: 5, isActive: true },
+   248→    { id: cuid(), name: 'صحة وجمال', nameAr: 'صحة وجمال', nameFr: 'Santé & Beauté', slug: 'health-beauty', icon: 'sparkles', parentId: jobsCat, sortOrder: 6, isActive: true },
+   249→  ];
+   250→
+   251→  const { data: subcatsData, error: subcatsErr } = await supabase
+   252→    .from('categories')
+   253→    .upsert(subcategories, { onConflict: 'slug' })
+   254→    .select();
+   255→
+   256→  if (subcatsErr) {
+   257→    console.log('❌ Subcategories error:', subcatsErr.message);
+   258→    errorCount++;
+   259→  } else {
+   260→    console.log(`   ✅ ${subcatsData.length} subcategories`);
+   261→    successCount += subcatsData.length;
+   262→  }
+   263→
+   264→  // ==================== TOKEN PACKAGES ====================
+   265→  console.log('\n💎 Seeding Token Packages...');
+   266→  const now = new Date().toISOString();
+   267→  const tokenPackages = [
+   268→    { id: cuid(), name: 'الباقة الأساسية', tokens: 10, price: 10, currency: 'MAD', bonusTokens: 0, isActive: true, sortOrder: 1, createdAt: now, updatedAt: now },
+   269→    { id: cuid(), name: 'الباقة الشعبية', tokens: 25, price: 20, currency: 'MAD', bonusTokens: 5, isActive: true, sortOrder: 2, createdAt: now, updatedAt: now },
+   270→    { id: cuid(), name: 'باقة القيمة', tokens: 60, price: 40, currency: 'MAD', bonusTokens: 15, isActive: true, sortOrder: 3, createdAt: now, updatedAt: now },
+   271→    { id: cuid(), name: 'الباقة الاحترافية', tokens: 130, price: 80, currency: 'MAD', bonusTokens: 40, isActive: true, sortOrder: 4, createdAt: now, updatedAt: now },
+   272→    { id: cuid(), name: 'باحة الأعمال', tokens: 300, price: 150, currency: 'MAD', bonusTokens: 100, isActive: true, sortOrder: 5, createdAt: now, updatedAt: now },
+   273→  ];
+   274→
+   275→  const { data: packagesData, error: packagesErr } = await supabase
+   276→    .from('token_packages')
+   277→    .upsert(tokenPackages, { onConflict: 'id' })
+   278→    .select();
+   279→
+   280→  if (packagesErr) {
+   281→    console.log('❌ Token Packages error:', packagesErr.message);
+   282→    errorCount++;
+   283→  } else {
+   284→    console.log(`   ✅ ${packagesData.length} token packages`);
+   285→    successCount += packagesData.length;
+   286→  }
+   287→
+   288→  // ==================== SUBSCRIPTION PLANS ====================
+   289→  console.log('\n📋 Seeding Subscription Plans...');
+   290→  const plans = [
+   291→    { id: cuid(), name: 'مجاني', nameAr: 'مجاني', nameFr: 'Gratuit', description: 'خطة مجانية للمستخدمين العاديين', price: 0, currency: 'MAD', durationDays: 365, features: JSON.stringify({ listingsPerMonth: 5, imagesPerListing: 3, featuredListings: 0, support: 'community' }), maxListings: 5, maxImagesPerListing: 3, canPromote: false, hasAnalytics: false, hasCustomBranding: false, prioritySupport: false, isActive: true, sortOrder: 1, createdAt: now, updatedAt: now },
+   292→    { id: cuid(), name: 'احترافي', nameAr: 'احترافي', nameFr: 'Professionnel', description: 'للبائعين المحترفين', price: 99, currency: 'MAD', durationDays: 30, features: JSON.stringify({ listingsPerMonth: 50, imagesPerListing: 10, featuredListings: 5, support: 'email' }), maxListings: 50, maxImagesPerListing: 10, canPromote: true, hasAnalytics: true, hasCustomBranding: false, prioritySupport: false, isActive: true, sortOrder: 2, createdAt: now, updatedAt: now },
+   293→    { id: cuid(), name: 'أعمال', nameAr: 'أعمال', nameFr: 'Business', description: 'للشركات والمتاجر', price: 299, currency: 'MAD', durationDays: 30, features: JSON.stringify({ listingsPerMonth: 200, imagesPerListing: 20, featuredListings: 20, support: 'priority' }), maxListings: 200, maxImagesPerListing: 20, canPromote: true, hasAnalytics: true, hasCustomBranding: true, prioritySupport: true, isActive: true, sortOrder: 3, createdAt: now, updatedAt: now },
+   294→    { id: cuid(), name: 'مؤسسة', nameAr: 'مؤسسة', nameFr: 'Entreprise', description: 'للشركات الكبيرة', price: 799, currency: 'MAD', durationDays: 30, features: JSON.stringify({ listingsPerMonth: -1, imagesPerListing: 50, featuredListings: -1, support: 'dedicated' }), maxListings: null, maxImagesPerListing: 50, canPromote: true, hasAnalytics: true, hasCustomBranding: true, prioritySupport: true, isActive: true, sortOrder: 4, createdAt: now, updatedAt: now },
+   295→  ];
+   296→
+   297→  const { data: plansData, error: plansErr } = await supabase
+   298→    .from('plans')
+   299→    .upsert(plans, { onConflict: 'id' })
+   300→    .select();
+   301→
+   302→  if (plansErr) {
+   303→    console.log('❌ Plans error:', plansErr.message);
+   304→    errorCount++;
+   305→  } else {
+   306→    console.log(`   ✅ ${plansData.length} subscription plans`);
+   307→    successCount += plansData.length;
+   308→  }
+   309→
+   310→  // ==================== PROMOTIONS ====================
+   311→  console.log('\n⭐ Seeding Promotions...');
+   312→  const promotions = [
+   313→    { id: cuid(), name: 'إعلان مميز', type: 'feature', description: 'ظهور في أعلى النتائج مع شارة مميزة', basePrice: 15, currency: 'MAD', durationHours: 168, maxDurationHours: 720, isActive: true, sortOrder: 1, createdAt: now, updatedAt: now },
+   314→    { id: cuid(), name: 'إعلان عاجل', type: 'urgent', description: 'شارة "عاجل" لجذب الانتباه', basePrice: 10, currency: 'MAD', durationHours: 168, maxDurationHours: 720, isActive: true, sortOrder: 2, createdAt: now, updatedAt: now },
+   315→    { id: cuid(), name: 'رفع الإعلان', type: 'bump', description: 'إعادة الإعلان لأعلى القائمة', basePrice: 5, currency: 'MAD', durationHours: 0, maxDurationHours: 0, isActive: true, sortOrder: 3, createdAt: now, updatedAt: now },
+   316→    { id: cuid(), name: 'الصفحة الرئيسية', type: 'homepage', description: 'ظهور على الصفحة الرئيسية', basePrice: 50, currency: 'MAD', durationHours: 168, maxDurationHours: 720, isActive: true, sortOrder: 4, createdAt: now, updatedAt: now },
+   317→    { id: cuid(), name: 'تمييز باللون', type: 'highlight', description: 'خلفية ملونة للإعلان', basePrice: 8, currency: 'MAD', durationHours: 168, maxDurationHours: 720, isActive: true, sortOrder: 5, createdAt: now, updatedAt: now },
+   318→  ];
+   319→
+   320→  const { data: promosData, error: promosErr } = await supabase
+   321→    .from('promotions')
+   322→    .upsert(promotions, { onConflict: 'id' })
+   323→    .select();
+   324→
+   325→  if (promosErr) {
+   326→    console.log('❌ Promotions error:', promosErr.message);
+   327→    errorCount++;
+   328→  } else {
+   329→    console.log(`   ✅ ${promosData.length} promotions`);
+   330→    successCount += promosData.length;
+   331→  }
+   332→
+   333→  // ==================== ROLES ====================
+   334→  console.log('\n👥 Seeding Roles...');
+   335→  const roles = [
+   336→    { id: cuid(), name: 'user', description: 'مستخدم عادي' },
+   337→    { id: cuid(), name: 'verified_user', description: 'مستخدم موثق' },
+   338→    { id: cuid(), name: 'professional_seller', description: 'بائع محترف' },
+   339→    { id: cuid(), name: 'moderator', description: 'مشرف' },
+   340→    { id: cuid(), name: 'support_agent', description: 'موارد دعم' },
+   341→    { id: cuid(), name: 'finance_manager', description: 'مدير مالي' },
+   342→    { id: cuid(), name: 'content_manager', description: 'مدير محتوى' },
+   343→    { id: cuid(), name: 'analyst', description: 'محلل' },
+   344→    { id: cuid(), name: 'admin', description: 'مدير نظام' },
+   345→    { id: cuid(), name: 'super_admin', description: 'مدير عام' },
+   346→  ];
+   347→
+   348→  const { data: rolesData, error: rolesErr } = await supabase
+   349→    .from('roles')
+   350→    .upsert(roles, { onConflict: 'name' })
+   351→    .select();
+   352→
+   353→  if (rolesErr) {
+   354→    console.log('❌ Roles error:', rolesErr.message);
+   355→    errorCount++;
+   356→  } else {
+   357→    console.log(`   ✅ ${rolesData.length} roles`);
+   358→    successCount += rolesData.length;
+   359→  }
+   360→
+   361→  // ==================== SUMMARY ====================
+   362→  console.log('\n' + '='.repeat(50));
+   363→  console.log('🎉 SEED COMPLETED!');
+   364→  console.log('='.repeat(50));
+   365→  console.log(`\n✅ Successful inserts: ${successCount}`);
+   366→  console.log(`❌ Errors: ${errorCount}`);
+   367→  console.log('\n📊 Data Summary:');
+   368→  console.log('   📍 Countries: 9');
+   369→  console.log('   🗺️ Regions: 12 (Morocco)');
+   370→  console.log('   🏙️ Cities: 15 (Major Moroccan Cities)');
+   371→  console.log('   💰 Currencies: 10');
+   372→  console.log('   📂 Main Categories: 12');
+   373→  console.log('   📂 Subcategories: 41');
+   374→  console.log('   💎 Token Packages: 5');
+   375→  console.log('   📋 Subscription Plans: 4');
+   376→  console.log('   ⭐ Promotions: 5');
+   377→  console.log('   👥 Roles: 10');
+   378→  console.log('\n✨ MAVORA is now ready to use!');
+   379→}
+   380→
+   381→seedDatabase().catch(console.error);
+   382→

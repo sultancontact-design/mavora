@@ -107,34 +107,13 @@ const mockStats: SellerStats = {
   responseTime: 'خلال ساعة',
 };
 
-const mockListings: ListingPerformance[] = [
-  { id: '1', title: 'iPhone 15 Pro Max', price: 12000, currency: 'MAD', views: 450, likes: 32, messages: 8, status: 'active', publishedAt: new Date('2025-01-01'), category: 'إلكترونيات' },
-  { id: '2', title: 'ساعة رولكس أصلية', price: 25000, currency: 'MAD', views: 890, likes: 67, messages: 15, status: 'active', publishedAt: new Date('2024-12-20'), category: 'مجوهرات' },
-  { id: '3', title: 'كنبة مودرن جديدة', price: 3500, currency: 'MAD', views: 230, likes: 18, messages: 3, status: 'pending', publishedAt: new Date('2025-01-10'), category: 'أثاث' },
-  { id: '4', title: 'لابتوب Dell XPS 15', price: 8000, currency: 'MAD', views: 670, likes: 45, messages: 12, status: 'sold', publishedAt: new Date('2024-12-15'), category: 'إلكترونيات' },
-];
+const mockListings: ListingPerformance[] = [];
 
-const mockOrders: RecentOrder[] = [
-  { id: '1', buyerName: 'أحمد محمد', itemTitle: 'iPhone 15 Pro Max', amount: 12000, currency: 'MAD', status: 'confirmed', createdAt: new Date('2025-01-10') },
-  { id: '2', buyerName: 'فاطمة العلوي', itemTitle: 'ساعة رولكس أصلية', amount: 25000, currency: 'MAD', status: 'shipped', createdAt: new Date('2025-01-09') },
-  { id: '3', buyerName: 'يوسف بنعلي', itemTitle: 'حقيبة جلد فاخرة', amount: 850, currency: 'MAD', status: 'delivered', createdAt: new Date('2025-01-08') },
-];
+const mockOrders: RecentOrder[] = [];
 
-const mockEarnings: EarningData[] = [
-  { date: '2025-01-05', revenue: 1500, orders: 3 },
-  { date: '2025-01-06', revenue: 2200, orders: 5 },
-  { date: '2025-01-07', revenue: 1800, orders: 4 },
-  { date: '2025-01-08', revenue: 3100, orders: 7 },
-  { date: '2025-01-09', revenue: 2700, orders: 6 },
-  { date: '2025-01-10', revenue: 4200, orders: 9 },
-  { date: '2025-01-11', revenue: 3800, orders: 8 },
-];
+const mockEarnings: EarningData[] = [];
 
-const mockMessages: MessagePreview[] = [
-  { id: '1', senderName: 'سارة أحمد', message: 'هل المنتج لا يزال متاحاً؟', listingTitle: 'iPhone 15 Pro Max', time: 'منذ 5 دقائق', isRead: false },
-  { id: '2', senderName: 'محمد علي', message: 'هل يمكن التفاوض على السعر؟', listingTitle: 'ساعة رولكس أصلية', time: 'منذ ساعة', isRead: false },
-  { id: '3', senderName: 'خديجة مراد', message: 'شكراً على الرد السريع!', time: 'منذ 3 ساعات', isRead: true },
-];
+const mockMessages: MessagePreview[] = [];
 
 // ============================================================
 // Components

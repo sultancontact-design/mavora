@@ -49,33 +49,8 @@ export interface MapListing {
   createdAt: Date;
 }
 
-// ============================================================
-// Mock Data (Moroccan Cities)
-// ============================================================
-
-const mockListings: MapListing[] = [
-  // Casablanca
-  { id: '1', title: 'شقة فاخرة في المعاريف', price: 850000, currency: 'MAD', latitude: 33.5731, longitude: -7.5898, category: 'real_estate', cityName: 'عقارات', city: 'الدار البيضاء', image: '/images/placeholder.jpg', condition: 'new', views: 234, createdAt: new Date('2025-01-10') },
-  { id: '2', title: 'iPhone 15 Pro Max', price: 12000, currency: 'MAD', latitude: 33.5850, longitude: -7.5950, category: 'electronics', categoryName: 'إلكترونيات', city: 'الدار البيضاء', condition: 'like_new', views: 567, createdAt: new Date('2025-01-09') },
-  { id: '3', title: 'سيارة تويوتا كامري 2023', price: 320000, currency: 'MAD', latitude: 33.5650, longitude: -7.6100, category: 'vehicles', categoryName: 'مركبات', city: 'الدار البيضاء', condition: 'used', views: 890, createdAt: new Date('2025-01-08') },
-  
-  // Rabat
-  { id: '4', title: 'كنبة مودرن جديدة', price: 4500, currency: 'MAD', latitude: 34.0209, longitude: -6.8416, category: 'furniture', cityName: 'أثاث', city: 'الرباط', condition: 'new', views: 123, createdAt: new Date('2025-01-10') },
-  { id: '5', title: 'لابتوب Dell XPS 15', price: 9000, currency: 'MAD', latitude: 34.0250, longitude: -6.8350, category: 'electronics', cityName: 'إلكترونيات', city: 'الرباط', condition: 'like_new', views: 345, createdAt: new Date('2025-01-07') },
-  
-  // Marrakech
-  { id: '6', title: 'رياضة تقليدية مغربية', price: 1200, currency: 'MAD', latitude: 31.6295, longitude: -7.9811, category: 'arts', cityName: 'فنون', city: 'مراكش', condition: 'used', views: 89, createdAt: new Date('2025-01-10') },
-  { id: '7', title: 'فيلا للإيجار في الغابة', price: 15000, currency: 'MAD', latitude: 31.6200, longitude: -7.9900, category: 'real_estate', cityName: 'عقارات', city: 'مراكش', condition: 'used', views: 456, createdAt: new Date('2025-01-06') },
-  
-  // Fes
-  { id: '8', title: 'سجادة يدوية الصنع', price: 2500, currency: 'MAD', latitude: 34.0331, longitude: -5.0003, category: 'arts', cityName: 'فنون', city: 'فاس', condition: 'new', views: 178, createdAt: new Date('2025-01-09') },
-  
-  // Tangier
-  { id: '9', title: 'شقة بحرية في مطوانق', price: 650000, currency: 'MAD', latitude: 35.7595, longitude: -5.8340, category: 'real_estate', cityName: 'عقارات', city: 'طنجة', condition: 'like_new', views: 678, createdAt: new Date('2025-01-05') },
-  
-  // Agadir
-  { id: '10', title: 'دراجة هوائية جبلية', price: 3500, currency: 'MAD', latitude: 30.4278, longitude: -9.5981, category: 'sports', cityName: 'رياضة', city: 'أكادير', condition: 'used', views: 234, createdAt: new Date('2025-01-08') },
-];
+// No mock data - use empty array until real data is fetched from API
+const mockListings: MapListing[] = [];
 
 const moroccanCities = [
   { name: 'كل المدن', value: 'all' },

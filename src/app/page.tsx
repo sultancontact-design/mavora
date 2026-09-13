@@ -47,7 +47,7 @@ export default function HomePage() {
   useEffect(() => {
     const fetchFeaturedListings = async () => {
       try {
-        const res = await fetch('/api/listings?limit=8&featured=true');
+        const res = await fetch('/api/listings?per_page=8&sort_by=newest');
         if (res.ok) {
           const data = await res.json();
           if (data.listings && data.listings.length > 0) {

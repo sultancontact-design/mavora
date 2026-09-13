@@ -7,13 +7,12 @@ export async function GET(
 ) {
   const id = params.id
   console.log('[listing/id] Fetching id:', id)
-  console.log('[listing/id] URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-  console.log('[listing/id] Key exists:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 
   try {
+    // Use SERVICE_ROLE_KEY (same as list endpoint) to bypass RLS
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
     const { data, error, status } = await supabase

@@ -20,16 +20,23 @@ export async function GET(
       .from('listings')
       .select('*')
       .eq('id', id)
-      .single()
+      .maybeSingle()
 
     console.log('[listing/id] DB status:', status)
     console.log('[listing/id] DB error:', JSON.stringify(error))
     console.log('[listing/id] Data found:', !!data)
 
+    if (!data) {
+      return NextResponse.json(
+        { error: 'Listing not found', id },
+        { status: 404 }
+      )
+    }
+
     if (error) {
       return NextResponse.json(
         { error: error.message, code: error.code, id },
-        { status: 404 }
+        { status: 500 }
       )
     }
 

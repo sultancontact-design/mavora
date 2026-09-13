@@ -1,7 +1,7 @@
 // SET VERCEL ENVIRONMENT VARIABLES WITH NEW TOKEN
 const https = require('https');
 
-const VERCEL_TOKEN = 'REDACTED_TOKEN';
+const VERCEL_TOKEN = process.env.VERCEL_TOKEN || ''; // Set via environment variable for security
 const PROJECT_ID = 'prj_WVEai5zrNOgAyXJCAcnGc20k9iJe';
 
 // Environment variables to set
@@ -18,12 +18,12 @@ const ENV_VARS = [
   },
   {
     key: 'SUPABASE_SERVICE_ROLE_KEY',
-    value: 'REDACTED_KEY',
+    value: process.env.SUPABASE_SERVICE_ROLE_KEY || '', // Set via environment variable
     type: 'secret'
   },
   {
     key: 'JWT_SECRET',
-    value: 'mavora-super-secret-jwt-key-2024-production-minimum-32-chars!',
+    value: process.env.JWT_SECRET || 'your-jwt-secret-here', // Set via environment variable
     type: 'secret'
   },
   {

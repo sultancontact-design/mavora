@@ -72,9 +72,10 @@ export async function GET(request: NextRequest) {
         `, { count: 'exact' })
         .eq('status', 'active');
 
-      // Apply filters (same as before)
+      // Apply filters - DB uses camelCase columns
       if (categoryId) query = query.eq('categoryId', categoryId);
-      if (featured) query = query.not('featuredUntil', 'is', null);
+      // Featured: listing is featured when featuredUntil is set and in the future
+      if (featured) query = query.not('featuredUntil', 'is', null).gt('featuredUntil', new Date().toISOString());
       if (minPrice !== null && minPrice !== '') {
         const minNum = parseFloat(minPrice);
         if (!isNaN(minNum)) query = query.gte('price', minNum);
@@ -86,7 +87,7 @@ export async function GET(request: NextRequest) {
       if (condition) query = query.eq('condition', condition);
       if (search) query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
 
-      // Sorting
+      // Sorting - DB uses camelCase columns
       switch (validSort) {
         case 'oldest': query = query.order('createdAt', { ascending: true }); break;
         case 'price_asc': query = query.order('price', { ascending: true, nullsFirst: false }); break;

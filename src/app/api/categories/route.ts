@@ -8,7 +8,7 @@ export async function GET() {
     const supabase = getSupabaseServerClient();
     console.log('[Categories API] Supabase client created');
 
-    // Try to fetch from database
+    // Try to fetch from database - DB uses camelCase columns
     const { data, error } = await supabase
       .from('categories')
       .select('*')
@@ -25,7 +25,7 @@ export async function GET() {
     if (!error && data && data.length > 0) {
       console.log('[Categories API] ✅ Returning DB data');
       
-      // Group into parent-child hierarchy
+      // Group into parent-child hierarchy - DB uses camelCase columns
       const allCategories = data;
       const parentCategories = allCategories
         .filter((cat) => cat.parentId === null)

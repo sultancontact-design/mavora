@@ -397,8 +397,8 @@ export function InteractiveMap({
         </div>
       </div>
 
-      {/* Custom Styles */}
-      <style jsx global>{`
+      {/* Custom Styles - using standard style tag to avoid hydration issues */}
+      <style dangerouslySetInnerHTML={{__html: `
         .custom-popup .leaflet-popup-content-wrapper {
           border-radius: 12px;
           padding: 0;
@@ -413,7 +413,7 @@ export function InteractiveMap({
         .map-popup img {
           border-radius: 8px 8px 0 0;
         }
-      `}</style>
+      `}} />
     </div>
   );
 }

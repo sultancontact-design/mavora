@@ -219,48 +219,10 @@ export function MavoraThemeProvider({
         enableSystem={true}
         disableTransitionOnChange={false}
       >
-        {/* Smooth transitions for theme changes */}
-        <div className={`theme-transition ${theme}`}>
+        {/* Smooth transitions for theme changes - avoid hydration mismatch by using consistent class */}
+        <div className="theme-transition">
           {children}
         </div>
-        
-        {/* Global Styles for Theme Transitions */}
-        <style jsx global>{`
-          .theme-transition * {
-            transition: background-color 300ms ease, color 200ms ease, border-color 300ms ease !important;
-          }
-          
-          /* Custom scrollbar for dark mode */
-          .dark ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-          }
-          
-          .dark ::-webkit-scrollbar-track {
-            background: #1f2937;
-          }
-          
-          .dark ::-webkit-scrollbar-thumb {
-            background: #374151;
-            border-radius: 4px;
-          }
-          
-          .dark ::-webkit-scrollbar-thumb:hover {
-            background: #4b5563;
-          }
-          
-          /* Selection colors */
-          ::selection {
-            background-color: rgba(139, 92, 246, 0.3);
-            color: inherit;
-          }
-          
-          /* Focus styles */
-          :focus-visible {
-            outline: 2px solid #8b5cf6;
-            outline-offset: 2px;
-          }
-        `}</style>
       </NextThemesProvider>
     </ThemeContext.Provider>
   );

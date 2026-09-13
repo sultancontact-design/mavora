@@ -1073,6 +1073,46 @@
 .reveal-delay-5 { transition-delay: 500ms; }
 
 /* ═══════════════════════════════════════════════════════════════════
+   THEME TRANSITIONS & GLOBAL STYLES
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Theme Transitions */
+.theme-transition * {
+  transition: background-color 300ms ease, color 200ms ease, border-color 300ms ease !important;
+}
+
+/* Custom Scrollbar for Dark Mode */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}
+
+/* Selection Colors */
+::selection {
+  background-color: rgba(139, 92, 246, 0.3);
+  color: inherit;
+}
+
+/* Focus Styles */
+:focus-visible {
+  outline: 2px solid #8b5cf6;
+  outline-offset: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    PRINT STYLES
    ═══════════════════════════════════════════════════════════════════ */
 

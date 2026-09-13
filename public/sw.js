@@ -5,17 +5,17 @@
  * @version 1.0.0
  */
 
-const CACHE_NAME = 'mavora-v1';
-const STATIC_CACHE_NAME = 'mavora-static-v1';
-const DYNAMIC_CACHE_NAME = 'mavora-dynamic-v1';
+const CACHE_NAME = 'mavora-v2';
+const STATIC_CACHE_NAME = 'mavora-static-v2';
+const DYNAMIC_CACHE_NAME = 'mavora-dynamic-v2';
 
 // Assets to cache on install
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
   '/offline.html',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
+  '/icons/icon-192x192.svg',
+  '/icons/icon-512x512.svg',
 ];
 
 // API endpoints to cache with network-first strategy

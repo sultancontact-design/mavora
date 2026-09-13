@@ -37,11 +37,9 @@ export async function GET(
       .from('listings')
       .select(`
         *, 
-        seller:profiles!listings_seller_id_fkey(id, display_name, avatar_url, is_verified, phone, created_at), 
         category:categories(*), 
         currency:currencies(*), 
-        media:listing_media(*),
-        field_values:listing_field_values(*, field:category_fields(*))
+        media:listing_media(*)
       `)
       .eq('id', id);
 
@@ -56,23 +54,23 @@ export async function GET(
       return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
     }
 
-    // Sort media: primary first, then by sort_order
+    // Sort media: primary first, then by sortOrder
     const listing = {
       ...data,
       media: ((data.media as Record<string, unknown>[]) ?? []).sort(
         (a, b) => {
-          if (a.is_primary && !b.is_primary) return -1;
-          if (!a.is_primary && b.is_primary) return 1;
-          return (a.sort_order as number) - (b.sort_order as number);
+          if (a.isPrimary && !b.isPrimary) return -1;
+          if (!a.isPrimary && b.isPrimary) return 1;
+          return (a.sortOrder as number) - (b.sortOrder as number);
         }
       ),
     };
 
-    // Increment view_count only when not in edit mode (fire and forget)
+    // Increment viewCount only when not in edit mode (fire and forget)
     if (!edit) {
       supabase
         .from('listings')
-        .update({ view_count: (data.view_count ?? 0) + 1 })
+        .update({ viewCount: (data.viewCount ?? 0) + 1 })
         .eq('id', id)
         .then(() => {})
         .catch((err: unknown) => {

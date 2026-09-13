@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,7 +36,7 @@ export default function ListingsPage() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  const fetchListings = useCallback(async () => {
+  const fetchListings = async () => {
     try {
       setIsLoading(true);
       const params = new URLSearchParams({
@@ -51,7 +51,6 @@ export default function ListingsPage() {
       if (res.ok) {
         const responseData = await res.json();
         // API returns: { listings: [...], total, page, per_page, total_pages }
-        // (was previously read as `.data` which is undefined — fixed to `.listings`)
         const listingsData = responseData.listings || responseData.data || [];
         const totalPages = responseData.total_pages || responseData.totalPages || 1;
         
@@ -67,9 +66,9 @@ export default function ListingsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, searchQuery, selectedCategory, sortBy]);
+  };
 
-  const fetchCategories = useCallback(async () => {
+  const fetchCategories = async () => {
     try {
       const res = await fetch('/api/categories');
       if (res.ok) {
@@ -79,15 +78,15 @@ export default function ListingsPage() {
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
-  }, []);
+  };
 
   useEffect(() => {
     fetchCategories();
-  }, [fetchCategories]);
+  }, []);
 
   useEffect(() => {
     fetchListings();
-  }, [fetchListings]);
+  }, [page, searchQuery, selectedCategory, sortBy]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

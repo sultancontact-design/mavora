@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase';
-import { MOCK_CATEGORIES } from '@/lib/mock-data';
 
 export async function GET() {
   try {
@@ -8,7 +7,7 @@ export async function GET() {
     const supabase = getSupabaseServerClient();
     console.log('[Categories API] Supabase client created');
 
-    // Try to fetch from database - DB uses camelCase columns
+    // Fetch from database - DB uses camelCase columns
     const { data, error } = await supabase
       .from('categories')
       .select('*')
@@ -39,48 +38,14 @@ export async function GET() {
       return NextResponse.json(parentCategories);
     }
 
-    // If DB failed or empty, use mock data
-    console.warn('[Categories API] ⚠️ DB query failed/empty, using mock data');
-    
-    // Transform mock data to match expected format
-    const mockResponse = MOCK_CATEGORIES.map(cat => ({
-      id: cat.id,
-      name: cat.nameAr || cat.name,
-      nameAr: cat.nameAr,
-      nameFr: cat.name,
-      slug: cat.slug,
-      icon: cat.icon,
-      description: cat.description,
-      isActive: true,
-      parentId: null,
-      sortOrder: 0,
-      listingCount: cat.listingCount,
-      children: [],
-      color: cat.color,
-    }));
-
-    return NextResponse.json(mockResponse);
+    // If DB failed or empty, return empty array (no mock fallback)
+    console.warn('[Categories API] ⚠️ DB query failed/empty');
+    return NextResponse.json([]);
     
   } catch (error) {
-    console.error('[Categories API] ❌ Error, using mock data:', error);
+    console.error('[Categories API] ❌ Error:', error);
     
-    // Return mock data on any error
-    const mockResponse = MOCK_CATEGORIES.map(cat => ({
-      id: cat.id,
-      name: cat.nameAr || cat.name,
-      nameAr: cat.nameAr,
-      nameFr: cat.name,
-      slug: cat.slug,
-      icon: cat.icon,
-      description: cat.description,
-      isActive: true,
-      parentId: null,
-      sortOrder: 0,
-      listingCount: cat.listingCount,
-      children: [],
-      color: cat.color,
-    }));
-
-    return NextResponse.json(mockResponse);
+    // Return empty array on any error (no mock fallback)
+    return NextResponse.json([]);
   }
 }

@@ -67,37 +67,10 @@ interface DashboardStats {
   monthlyGrowth: number;
 }
 
-// ============================================================
-// Mock Data - بيانات تجريبية (تستخدم فقط عند فشل API)
-// ============================================================
-
-const MOCK_USERS: User[] = [
-  { id: '1', name: 'أحمد محمد', email: 'ahmed@example.com', role: 'seller', status: 'active', joinDate: '2024-01-15', lastLogin: '2024-01-20', listingsCount: 12 },
-  { id: '2', name: 'فاطمة الزهراء', email: 'fatima@example.com', role: 'seller', status: 'active', joinDate: '2024-01-10', lastLogin: '2024-01-19', listingsCount: 8 },
-  { id: '3', name: 'عبد الرحمن', email: 'abdel@example.com', role: 'user', status: 'active', joinDate: '2024-01-18', lastLogin: '2024-01-20', listingsCount: 0 },
-  { id: '4', name: 'خديجة بنشي', email: 'khadija@example.com', role: 'admin', status: 'active', joinDate: '2024-01-05', lastLogin: '2024-01-20', listingsCount: 3 },
-  { id: '5', name: 'يوسف أمين', email: 'youssef@example.com', role: 'seller', status: 'suspended', joinDate: '2024-01-08', lastLogin: '2024-01-15', listingsCount: 5 },
-  { id: '6', name: 'سارة علي', email: 'sara@example.com', role: 'user', status: 'pending', joinDate: '2024-01-20', lastLogin: '-', listingsCount: 0 },
-];
-
-const MOCK_LISTINGS: Listing[] = [
-  { id: '1', title: 'iPhone 15 Pro Max - جديد', category: 'إلكترونيات', price: 15000, seller: 'أحمد محمد', status: 'active', views: 245, createdAt: '2024-01-18', image: '📱' },
-  { id: '2', title: 'شقة للإيجار في الدار البيضاء', category: 'عقارات', price: 5000, seller: 'فاطمة الزهراء', status: 'active', views: 189, createdAt: '2024-01-17', image: '🏠' },
-  { id: '3', title: 'سيارة تويوتا كامري 2023', category: 'سيارات', price: 280000, seller: 'محمد الأمين', status: 'pending', views: 567, createdAt: '2024-01-19', image: '🚗' },
-  { id: '4', title: 'كنبة مودرن - حاله ممتازة', category: 'أثاث', price: 3500, seller: 'سعيد', status: 'active', views: 98, createdAt: '2024-01-16', image: '🛋️' },
-  { id: '5', title: 'لابتوب Dell XPS 15', category: 'إلكترونيات', price: 12000, seller: 'أحمد محمد', status: 'active', views: 334, createdAt: '2024-01-15', image: '💻' },
-  { id: '6', title: 'جهاز iPad Pro 12.9', category: 'إلكترونيات', price: 9000, seller: 'ليلى', status: 'rejected', views: 45, createdAt: '2024-01-14', image: '📱' },
-  { id: '7', title: 'دراجة هوائية جبلية', category: 'رياضة', price: 2500, seller: 'كريم', status: 'active', views: 156, createdAt: '2024-01-13', image: '🚴' },
-  { id: '8', title: 'مكنسة روبوت سامسونغ', category: 'أجهزة منزلية', price: 1800, seller: 'نادية', status: 'expired', views: 78, createdAt: '2024-01-10', image: '🤖' },
-];
-
-const MOCK_ORDERS: Order[] = [
-  { id: 'ORD-001', buyer: 'عبد الرحمن', item: 'iPhone 15 Pro Max', amount: 15000, status: 'completed', date: '2024-01-19' },
-  { id: 'ORD-002', buyer: 'مريم', item: 'شقة للإيجار', amount: 5000, status: 'pending', date: '2024-01-19' },
-  { id: 'ORD-003', buyer: 'حسن', item: 'لابتوب Dell XPS 15', amount: 12000, status: 'processing', date: '2024-01-18' },
-  { id: 'ORD-004', buyer: 'زينب', item: 'كنبة مودرن', amount: 3500, status: 'completed', date: '2024-01-17' },
-  { id: 'ORD-005', buyer: 'أيمن', item: 'دراجة هوائية', amount: 2500, status: 'refunded', date: '2024-01-16' },
-];
+// No mock data - use empty arrays when API is unavailable
+const MOCK_USERS: User[] = [];
+const MOCK_LISTINGS: Listing[] = [];
+const MOCK_ORDERS: Order[] = [];
 
 const DEFAULT_STATS: DashboardStats = {
   totalUsers: 1247,
@@ -414,8 +387,7 @@ export default function SuperAdminDashboard() {
       }
       
       if (!usersFetched) {
-        setUsers(MOCK_USERS);
-        setUsingMockData(true);
+        setUsers([]);
       }
 
       // Try to fetch listings from API
@@ -451,22 +423,20 @@ export default function SuperAdminDashboard() {
       }
       
       if (!listingsFetched) {
-        setListings(MOCK_LISTINGS);
-        setUsingMockData(true);
+        setListings([]);
       }
 
-      // Orders - use mock for now (orders API may not be fully implemented)
-      setOrders(MOCK_ORDERS);
+      // Orders - empty until orders API is fully implemented
+      setOrders([]);
 
     } catch (err) {
       console.error('[Dashboard] Unexpected error:', err);
       setError('فشل في تحميل البيانات. يرجى التحقق من اتصال الإنترنت.');
-      // Fall back to mock data on any error
-      setUsers(MOCK_USERS);
-      setListings(MOCK_LISTINGS);
-      setOrders(MOCK_ORDERS);
+      // Use empty arrays on error
+      setUsers([]);
+      setListings([]);
+      setOrders([]);
       setStats(DEFAULT_STATS);
-      setUsingMockData(true);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);

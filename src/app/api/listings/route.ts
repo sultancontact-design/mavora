@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase';
-import { MOCK_LISTINGS, MOCK_STATS } from '@/lib/mock-data';
 
 // ============================================================
 // Configuration - Uses secure admin client from lib/supabase
@@ -138,86 +137,9 @@ export async function GET(request: NextRequest) {
       console.warn('[Listings API] ⚠️ DB query failed:', dbError);
     }
 
-    // Fallback to mock data when DB fails
-    console.log('[Listings API] 📦 Using mock data');
-    
-    let mockListings = [...MOCK_LISTINGS];
-    
-    // Apply filters to mock data
-    if (categoryId) {
-      mockListings = mockListings.filter(l => l.category.id === categoryId);
-    }
-    if (featured) {
-      mockListings = mockListings.filter(l => l.featured);
-    }
-    if (search) {
-      const searchLower = search.toLowerCase();
-      mockListings = mockListings.filter(l => 
-        l.title.toLowerCase().includes(searchLower) || 
-        l.description.toLowerCase().includes(searchLower)
-      );
-    }
-    if (minPrice) {
-      const min = parseFloat(minPrice);
-      if (!isNaN(min)) mockListings = mockListings.filter(l => l.price >= min);
-    }
-    if (maxPrice) {
-      const max = parseFloat(maxPrice);
-      if (!isNaN(max)) mockListings = mockListings.filter(l => l.price <= max);
-    }
-
-    // Sort mock data
-    switch (validSort) {
-      case 'price_asc': mockListings.sort((a, b) => a.price - b.price); break;
-      case 'price_desc': mockListings.sort((a, b) => b.price - a.price); break;
-      case 'popular': mockListings.sort((a, b) => b.views - a.views); break;
-      default: mockListings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); break;
-    }
-
-    // Paginate
-    const total = mockListings.length;
-    const totalPages = Math.max(1, Math.ceil(total / perPage));
-    const paginatedListings = mockListings.slice((page - 1) * perPage, page * perPage);
-
-    // Transform to expected format
-    const formattedListings = paginatedListings.map(listing => ({
-      id: listing.id,
-      title: listing.title,
-      description: listing.description,
-      price: listing.price,
-      currencyCode: listing.currency,
-      condition: listing.condition,
-      status: listing.status,
-      negotiable: false,
-      viewCount: listing.views,
-      contactPhone: null,
-      locationAddress: listing.location,
-      createdAt: listing.createdAt,
-      updatedAt: listing.updatedAt,
-      category: listing.category,
-      media: listing.images.map((url, i) => ({
-        id: `mock-media-${listing.id}-${i}`,
-        url,
-        type: 'image',
-        thumbnailUrl: url,
-      })),
-      userId: listing.seller.id,
-      seller: {
-        id: listing.seller.id,
-        display_name: listing.seller.name,
-        avatar_url: listing.seller.avatar,
-        is_verified: listing.seller.isVerified,
-        phone: listing.seller.email,
-      },
-    }));
-
-    return NextResponse.json({
-      listings: formattedListings,
-      total,
-      page,
-      per_page: perPage,
-      total_pages: totalPages,
-    });
+    // No mock fallback - return empty when DB fails
+    console.warn('[Listings API] ⚠️ DB query failed or empty');
+    return NextResponse.json({ listings: [], total: 0, page, per_page: perPage, total_pages: 0 });
 
   } catch (error) {
     console.error('[Listings API] ❌ Error:', error);
